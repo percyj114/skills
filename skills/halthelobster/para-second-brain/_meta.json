@@ -1,11 +1,17 @@
 {
   "owner": "halthelobster",
   "slug": "para-second-brain",
-  "displayName": "Para Second Brain",
+  "displayName": "PARA Second Brain",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1769645462859,
-    "commit": "https://github.com/clawdbot/skills/commit/736f2c40b66855968edf06fc71e67163395b5a7f"
+    "version": "2.0.1",
+    "publishedAt": 1769704942488,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1769645462859,
+      "commit": "https://github.com/clawdbot/skills/commit/736f2c40b66855968edf06fc71e67163395b5a7f"
+    }
+  ]
 }

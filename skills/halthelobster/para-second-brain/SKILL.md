@@ -1,12 +1,25 @@
 ---
 name: para-second-brain
-version: 1.2.1
-description: Build a persistent knowledge system for your AI agent using PARA methodology (Projects, Areas, Resources, Archive). Transforms scattered notes into organized, searchable wisdom with two-layer memory (daily logs + curated MEMORY.md). Free, self-hosted, works offline.
+version: 2.0.1
+description: Organize your agent's knowledge using PARA (Projects, Areas, Resources, Archive) — then make it ALL searchable. The symlink trick enables full semantic search across your entire knowledge base, not just MEMORY.md. Includes session transcript indexing and memory flush protocol. Your agent finally has a real second brain.
 ---
 
 # PARA Second Brain
 
-Build a persistent knowledge system for your AI agent using PARA methodology. Transform scattered notes into organized, searchable wisdom.
+Your agent's memory just got a massive upgrade. Full semantic search across your entire knowledge base — not just MEMORY.md.
+
+## What's New in v2.0
+
+**Before v2.0:** `memory_search` only found content in MEMORY.md and daily logs. Your entire `notes/` folder was invisible to search. You had to manually know where to look.
+
+**After v2.0:** One symlink command makes your entire PARA knowledge base searchable. Ask about anything in your notes — it finds it. Plus session transcripts and memory flush protocol to prevent context loss.
+
+| Before | After |
+|--------|-------|
+| Search only MEMORY.md + daily logs | Search EVERYTHING |
+| "I don't have that information" | Finds it instantly |
+| Context compaction = lost information | Flush protocol saves critical context |
+| Conversations forgotten | Session transcripts indexed |
 
 ## What This Does
 
@@ -56,7 +69,54 @@ Run this to scaffold:
 mkdir -p memory notes/projects notes/areas notes/resources/templates notes/archive
 ```
 
-### 2. Initialize MEMORY.md
+### 2. Make Notes Searchable (The Symlink Trick)
+
+By default, `memory_search` only indexes `MEMORY.md` and `memory/*.md`. Your entire `notes/` folder is invisible to semantic search!
+
+**Fix this with one command:**
+```bash
+ln -s /path/to/your/workspace/notes /path/to/your/workspace/memory/notes
+```
+
+Example:
+```bash
+ln -s /Users/yourname/clawd/notes /Users/yourname/clawd/memory/notes
+```
+
+**What this does:** Creates a symbolic link so `memory/notes/` points to your actual `notes/` folder. Now Clawdbot's memory_search sees all your PARA notes.
+
+**Verify it worked:**
+```bash
+ls -la memory/notes  # Should show: memory/notes -> /path/to/notes
+```
+
+**Test the search:**
+Ask your agent something that's in your notes but NOT in MEMORY.md. If it finds it, the symlink is working.
+
+**Why this matters:**
+| Before | After |
+|--------|-------|
+| Search only finds MEMORY.md + daily logs | Search finds ALL your notes |
+| Must manually know where to look | Semantic search across everything |
+| "I don't have that information" | Finds connections you forgot existed |
+
+### 3. Enable Session Transcript Indexing
+
+Make your past conversations searchable too. Add this to your Clawdbot config:
+
+```json
+"memorySearch": {
+  "sources": ["memory", "sessions"],
+  "query": {
+    "minScore": 0.3,
+    "maxResults": 20
+  }
+}
+```
+
+**What this does:** Indexes your conversation transcripts alongside your notes. Now when you ask "what did we discuss about X last week?" — it can actually find it.
+
+### 4. Initialize MEMORY.md
 
 Create `MEMORY.md` in workspace root - this is your curated long-term memory:
 
@@ -90,7 +150,7 @@ Create `MEMORY.md` in workspace root - this is your curated long-term memory:
 - Important milestones
 ```
 
-### 3. Add to AGENTS.md
+### 5. Add to AGENTS.md
 
 Add these instructions to your AGENTS.md:
 
@@ -100,7 +160,7 @@ Add these instructions to your AGENTS.md:
 You wake up fresh each session. These files are your continuity:
 - **Daily notes:** `memory/YYYY-MM-DD.md` — raw logs of what happened
 - **Long-term:** `MEMORY.md` — curated memories (like human long-term memory)
-- **Topic notes:** `notes/` — organized by PARA structure
+- **Topic notes:** `notes/` — organized by PARA structure (all searchable via memory_search)
 
 ### Writing Rules
 - If it has future value, write it down NOW
@@ -113,22 +173,53 @@ You wake up fresh each session. These files are your continuity:
 - **Resources** (`notes/resources/`) — Reference material, how-tos, research
 - **Archive** (`notes/archive/`) — Completed or inactive items
 
-### Knowledge Quality — Curate, Don't Hoard
-Before saving anything to notes/ or MEMORY.md, ask: **"Will future-me thank me for this?"**
+### Memory Flush Protocol
+Monitor your context usage with `session_status`. Before compaction wipes your memory, flush important context to files:
 
-**Quality gates:**
-- Written for future self who forgot context
-- Includes the WHY, not just the WHAT
-- Has concrete examples or the "aha moment"
-- Structured for retrieval (scannable, not walls of text)
+| Context % | Action |
+|-----------|--------|
+| < 50% | Normal operation |
+| 50-70% | Write key points after substantial exchanges |
+| 70-85% | Active flushing — write everything important NOW |
+| > 85% | Emergency flush — full summary before next response |
+| After compaction | Note what context may have been lost |
 
-**Anti-patterns:**
-- Don't save half-understood concepts — learn it first
-- Don't create shallow entries — if you can't explain it, don't save it
-- Don't duplicate — check if it exists, update if needed
-
-Daily files = raw notes (fast, loose). Curated notes = high quality (structured, useful).
+**The rule:** Act on thresholds, not vibes. If it's important, write it down NOW.
 ```
+
+## Memory Flush Protocol (Critical!)
+
+Your agent's context window is finite. When it fills up, older context gets compacted or lost. **Don't lose important information.**
+
+### How to Monitor
+Run `session_status` periodically. Look for:
+```
+📚 Context: 36k/200k (18%) · 🧹 Compactions: 0
+```
+
+### Threshold-Based Actions
+
+| Context % | What to Do |
+|-----------|------------|
+| **< 50%** | Normal operation. Write decisions as they happen. |
+| **50-70%** | Increased vigilance. Write key points after each substantial exchange. |
+| **70-85%** | Active flushing. Write everything important to daily notes NOW. |
+| **> 85%** | Emergency flush. Stop and write full context summary before responding. |
+| **After compaction** | Immediately note what context may have been lost. Check continuity. |
+
+### What to Flush
+1. **Decisions made** — what was decided and why
+2. **Action items** — who's doing what
+3. **Open threads** — anything unfinished → `notes/areas/open-loops.md`
+4. **Working changes** — if you discussed changes to files, make them NOW
+
+### Memory Flush Checklist
+Before a long session ends or context gets high:
+- [ ] Key decisions documented?
+- [ ] Action items captured?
+- [ ] New learnings written to appropriate files?
+- [ ] Open loops noted for follow-up?
+- [ ] Could future-me continue this conversation from notes alone?
 
 ## Knowledge Quality
 
@@ -158,8 +249,6 @@ Before saving any curated note:
 Use these for structured, high-quality entries in `notes/resources/`:
 
 ### Concept Template
-For understanding how something works:
-
 ```markdown
 # [CONCEPT NAME]
 
@@ -174,41 +263,28 @@ For understanding how something works:
 
 ## Key Insight
 [The "aha" moment — what makes this click]
-
-## Related
-- [Links to related concepts/tools]
 ```
 
 ### Tool Template
-For tools and technologies you've actually used:
-
 ```markdown
 # [TOOL NAME]
 
-**Category:** [devtools | productivity | infrastructure | etc.]
-**Website:** [url]
-**Cost:** [free | paid | freemium]
+**Category:** [devtools | productivity | etc.]
 
 ## What It Does
 [Brief description]
 
 ## Why I Use It
-[Personal experience — what problem it solved for YOU]
+[What problem it solved for YOU]
 
 ## When to Reach For It
 [Scenarios where this is the right choice]
 
-## Quick Start
-[Minimal setup/usage to get going]
-
 ## Gotchas
 - [Things that tripped you up]
-- [What the docs don't tell you]
 ```
 
 ### Pattern Template
-For reusable solutions:
-
 ```markdown
 # [PATTERN NAME]
 
@@ -216,17 +292,16 @@ For reusable solutions:
 [What situation triggers this pattern]
 
 ## Solution
-[The approach, with code/pseudocode if relevant]
+[The approach]
 
 ## Trade-offs
 **Pros:** [Why this works]
 **Cons:** [When NOT to use it]
-
-## Example
-[Concrete implementation]
 ```
 
 ## PARA Explained
+
+PARA is a knowledge organization system created by [Tiago Forte](https://fortelabs.com/), author of *Building a Second Brain*. It organizes everything into four categories based on actionability:
 
 ### Projects
 **What:** Work with a deadline or end state
@@ -255,38 +330,26 @@ Create `memory/YYYY-MM-DD.md` for each day:
 ```markdown
 # YYYY-MM-DD
 
-## Morning
-- Context from start of day
-- Plans, intentions
-
-## Events
-### [Time] — [What happened]
-- Details
-- Decisions made
-- Follow-ups needed
+## Key Events
+- [What happened, decisions made]
 
 ## Learnings
-- What worked
-- What didn't
-- Insights
+- [What worked, what didn't]
 
-## Tomorrow
-- Carry-forward items
+## Open Threads
+- [Carry-forward items]
 ```
 
 ## The Curation Workflow
 
-Raw capture is easy. Curation is where value compounds.
-
 ### Daily (5 min)
 - Log notable events to `memory/YYYY-MM-DD.md`
-- File any topic-specific notes to appropriate `notes/` folder
+- File topic-specific notes to appropriate `notes/` folder
 
 ### Weekly (15 min)
 - Review the week's daily logs
 - Extract patterns and learnings to MEMORY.md
 - Move completed projects to archive
-- Update area notes with new context
 
 ### Monthly (30 min)
 - Review MEMORY.md for outdated info
@@ -327,15 +390,6 @@ Is it a distilled lesson or preference?
 
 Daily logs are your journal. MEMORY.md is your wisdom.
 
-## Integration with Memory Search
-
-This structure works perfectly with Clawdbot's `memory_search`:
-- Searches MEMORY.md + memory/*.md automatically
-- Returns relevant snippets with file path + line numbers
-- Use `memory_get` to pull specific sections
-
-The PARA structure in `notes/` gives you organized reference material beyond what memory search indexes.
-
 ## Principles
 
 1. **Quality over quantity** — Curated notes beat note hoarding
@@ -344,6 +398,7 @@ The PARA structure in `notes/` gives you organized reference material beyond wha
 4. **Future-me test** — "Will future-me thank me for this?"
 5. **One home per item** — Don't duplicate; link instead
 6. **Include the WHY** — Facts without context are useless
+7. **Flush before you lose** — Monitor context, write before compaction
 
 ---
 
