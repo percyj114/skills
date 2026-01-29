@@ -1,13 +1,22 @@
 ---
-name: stock-quote
-description: Get current stock quotes (price, change, changePercent) from Yahoo Finance.
+name: yahoo-data-fetcher
+description: Fetch real-time stock quotes from Yahoo Finance.
 user-invocable: true
-metadata: {"moltbot":{"emoji":"📈","requires":{"bins":["node"]},"homepage":"https://query1.finance.yahoo.com/v7/finance/quote"}}
+metadata:
+  moltbot:
+    emoji: "📈"
+    requires:
+      bins: ["node"]
+    homepage: https://query1.finance.yahoo.com/v7/finance/quote
 ---
 
-# Stock Quote (Yahoo Finance)
+# Yahoo Data Fetcher – Stock Quote
 
 Get current stock price data from Yahoo Finance.
+
+This skill fetches the latest market quote for one or more stock symbols and returns normalized JSON output.
+
+---
 
 ## Command
 
@@ -15,48 +24,42 @@ Get current stock price data from Yahoo Finance.
 
 Fetch the latest quote for one or more stock symbols.
 
-**Input**
-- `symbols`: string or array of strings  
-  Example: `"AAPL"` or `["AAPL", "MSFT", "TSLA"]`
+---
 
-**Output**
+## Input
+
+- `symbols` (string or array of strings)
+
+Examples:
+- `"AAPL"`
+- `"AAPL MSFT TSLA"`
+- `"AAPL,MSFT,TSLA"`
+- `["AAPL", "MSFT"]`
+- `{ "symbols": ["AAPL", "MSFT"] }`
+
+---
+
+## Output
+
 For each symbol:
-- symbol
-- price
-- change
-- changePercent
-- currency
-- marketState
 
-## How to run (implementation)
+- `symbol` – stock ticker
+- `price` – latest market price
+- `change` – absolute price change
+- `changePercent` – percentage change
+- `currency` – trading currency
+- `marketState` – market status (e.g. `REGULAR`, `CLOSED`)
 
-This skill is implemented by a local Node script at:
+Example output:
 
-- `{baseDir}/stock-quote.js`
-
-Run it with Node and pass symbols as args:
-
-- `node "{baseDir}/stock-quote.js" AAPL`
-- `node "{baseDir}/stock-quote.js" AAPL MSFT TSLA`
-- `node "{baseDir}/stock-quote.js" "AAPL,MSFT,TSLA"`
-
-Or pass JSON as the first argument:
-
-- `node "{baseDir}/stock-quote.js" '{"symbols":["AAPL","MSFT"]}'`
-
-The script prints JSON to stdout.
-
-## Data source
-
-Yahoo Finance quote API:
-https://query1.finance.yahoo.com/v7/finance/quote
-
-## Notes
-
-- No authentication required
-- Data may be delayed
-- Read-only (no alerts, no storage)
-
-## Version
-
-v1.2
+```json
+[
+  {
+    "symbol": "AAPL",
+    "price": 189.12,
+    "change": 1.23,
+    "changePercent": 0.65,
+    "currency": "USD",
+    "marketState": "REGULAR"
+  }
+]
