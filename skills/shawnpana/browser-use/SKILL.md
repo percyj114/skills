@@ -1,6 +1,10 @@
 ---
 name: browser-use
-description: Use Browser Use cloud API to spin up cloud browsers for Clawdbot and run autonomous browser tasks. Primary use is creating browser sessions with profiles (persisted logins/cookies) that Clawdbot can control. Secondary use is running task subagents for fast autonomous browser automation. Docs at docs.browser-use.com and docs.cloud.browser-use.com.
+description: Use Browser Use cloud API to spin up cloud browsers for Clawdbot and run autonomous browser tasks. Primary use is creating browser sessions with profiles (persisted logins/cookies) that Clawdbot can control. Secondary use is running task subagents for fast autonomous browser automation. Also supports executing pre-built Skills from the marketplace. Docs at docs.browser-use.com and docs.cloud.browser-use.com.
+read_when:
+  - Spinning up cloud browsers
+  - Running autonomous browser tasks
+  - Using pre-built browser automations from marketplace
 ---
 
 # Browser Use
@@ -157,6 +161,81 @@ Status values: `pending`, `running`, `finished`, `failed`, `stopped`
 
 ---
 
-## Full API Reference
+## 4. Skills (Reusable Automation APIs)
 
-See [references/api.md](references/api.md) for all endpoints including Sessions, Files, Skills, and Skills Marketplace.
+Skills are pre-built browser automation endpoints you can call repeatedly. Execute existing skills or use ones from the marketplace.
+
+**Pricing:** $0.02 per execution
+
+### Execute a skill
+
+```bash
+curl -X POST "https://api.browser-use.com/api/v2/skills/<skill-id>/execute" \
+  -H "X-Browser-Use-API-Key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"asin": "B0DLLFM1RK"}'
+```
+
+**Response:**
+```json
+{
+  "executionId": "exec-uuid",
+  "status": "finished",
+  "output": {
+    "price": "$1,099.00",
+    "currency": "USD"
+  }
+}
+```
+
+### Other skill operations
+
+```bash
+# List all skills
+curl "https://api.browser-use.com/api/v2/skills" -H "X-Browser-Use-API-Key: $API_KEY"
+
+# Get skill details
+curl "https://api.browser-use.com/api/v2/skills/<skill-id>" -H "X-Browser-Use-API-Key: $API_KEY"
+
+# List executions
+curl "https://api.browser-use.com/api/v2/skills/<skill-id>/executions" -H "X-Browser-Use-API-Key: $API_KEY"
+
+# Get execution output
+curl "https://api.browser-use.com/api/v2/skills/<skill-id>/executions/<exec-id>/output" -H "X-Browser-Use-API-Key: $API_KEY"
+```
+
+---
+
+## 5. Skills Marketplace
+
+Browse and use pre-built skills from the community. Execute directly or clone to customize.
+
+### Browse marketplace
+
+```bash
+curl "https://api.browser-use.com/api/v2/marketplace/skills" -H "X-Browser-Use-API-Key: $API_KEY"
+```
+
+### Get skill details
+
+```bash
+curl "https://api.browser-use.com/api/v2/marketplace/skills/<skill-slug>" -H "X-Browser-Use-API-Key: $API_KEY"
+```
+
+### Execute marketplace skill directly
+
+```bash
+curl -X POST "https://api.browser-use.com/api/v2/marketplace/skills/<skill-id>/execute" \
+  -H "X-Browser-Use-API-Key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"param1": "value1"}'
+```
+
+### Clone to your workspace
+
+Clone a marketplace skill to customize or modify it:
+
+```bash
+curl -X POST "https://api.browser-use.com/api/v2/marketplace/skills/<skill-id>/clone" \
+  -H "X-Browser-Use-API-Key: $API_KEY"
+```
