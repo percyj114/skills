@@ -1,0 +1,11 @@
+{
+  "owner": "mrgoodb",
+  "slug": "bitbucket",
+  "displayName": "Bitbucket",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1769781010167,
+    "commit": null
+  },
+  "history": []
+}
