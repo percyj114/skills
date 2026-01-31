@@ -1,0 +1,11 @@
+{
+  "owner": "digitaladaption",
+  "slug": "openclaw-skills-security-checker",
+  "displayName": "Security Skill Scanner",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1769854524668,
+    "commit": null
+  },
+  "history": []
+}
