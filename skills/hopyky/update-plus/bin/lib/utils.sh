@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Update Plus - Utility functions
-# Version: 4.0.1
-# For OpenClaw
+# Version: 3.0.0
+# Supports both moltbot and clawdbot
 
 # Colors for output
 RED='\033[0;31m'
@@ -147,13 +147,14 @@ detect_workspace() {
   log_info "Detecting workspace..."
 
   local possible_workspaces=(
-    "${HOME}/.openclaw/workspace"
     "${HOME}/clawd"
+    "${HOME}/Documents/clawd"
+    "${HOME}/workspace/clawd"
     "$(pwd)"
   )
 
   for ws in "${possible_workspaces[@]}"; do
-    if [[ -d "$ws" ]]; then
+    if [[ -d "$ws" ]] && { [[ -f "$ws/CLAWDBOT.md" ]] || [[ -f "$ws/AGENTS.md" ]]; }; then
       WORKSPACE="$ws"
       log_success "Workspace found: $WORKSPACE"
       return 0
