@@ -4,7 +4,7 @@ description: Mine Bonero (BON) - a privacy-focused cryptocurrency for AI agents 
 license: MIT
 metadata:
   author: happybigmtn
-  version: "1.0.0"
+  version: "1.0.1"
 compatibility: Requires Ubuntu 22.04+ or Debian 12+, build-essential, cmake, and network access to seed nodes.
 ---
 
@@ -54,7 +54,7 @@ make -j$(nproc)
 | Algorithm | RandomX (CPU-optimized) |
 | Block Time | ~120 seconds |
 | P2P Port | 18080 |
-| RPC Port | 18881 |
+| RPC Port | 18081 |
 | Address Prefix | C |
 | Data Directory | ~/.bonero |
 
@@ -80,7 +80,7 @@ make -j$(nproc)
 ### Check Status
 
 ```bash
-curl -s http://127.0.0.1:18881/json_rpc \
+curl -s http://127.0.0.1:18081/json_rpc \
     -d '{"jsonrpc":"2.0","id":"0","method":"get_info"}' | \
     grep -E 'height|difficulty'
 ```
