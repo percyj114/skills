@@ -1,0 +1,11 @@
+{
+  "owner": "infantlab",
+  "slug": "god-mode",
+  "displayName": "God's eye view of your dev repos. Multi-project tracking across  GitHub/Azure DevOps. AI learns from your commits to upgrade your agents.md.",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1769957202407,
+    "commit": null
+  },
+  "history": []
+}
