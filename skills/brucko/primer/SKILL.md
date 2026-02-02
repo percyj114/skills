@@ -293,3 +293,13 @@ grep -i "primer role" SOUL.md
 If PRIMER.md is complete but integration missing → jump to step 8.
 
 Resume from wherever it stopped. Don't restart from scratch.
+
+---
+
+## Feedback & Support
+
+Found a bug? Have a suggestion? We'd love to hear from you.
+
+**[Submit Feedback](https://docs.google.com/forms/d/e/1FAIpQLScbmg1WNwVaVZdK2tYvY2QLy_b8LWnePMmESeywLZl8IFC6Cg/viewform)**
+
+Or tell your agent "I have feedback on the Primer skill" — it'll know what to do.
