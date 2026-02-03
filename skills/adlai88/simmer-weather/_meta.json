@@ -3,11 +3,16 @@
   "slug": "simmer-weather",
   "displayName": "Simmer Weather",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1769977987341,
-    "commit": "https://github.com/clawdbot/skills/commit/f43d0a3d966c37a904c1ef1b1c88b4419a029bb4"
+    "version": "1.4.2",
+    "publishedAt": 1770101251527,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1769977987341,
+      "commit": "https://github.com/clawdbot/skills/commit/f43d0a3d966c37a904c1ef1b1c88b4419a029bb4"
+    },
     {
       "version": "1.3.0",
       "publishedAt": 1769648650980,
