@@ -9,9 +9,11 @@
 - ✅ Uses existing OpenClaw Antigravity OAuth tokens
 - ✅ No separate Gemini API key required
 - ✅ Supports Nano Banana Pro (with fallback to regular Nano Banana)
+- ✅ **WhatsApp HD ready** - auto-converts to progressive JPEG <6.28MB
 - ✅ Multiple aspect ratios: 1:1, 16:9, 9:16, 4:3, 3:4, etc.
 - ✅ Multiple resolutions: 1K, 2K, 4K
 - ✅ Image editing and multi-image composition
+- ✅ Automatic account rotation (12 Antigravity accounts)
 
 ## Prerequisites
 
@@ -21,15 +23,23 @@
 
 ## Usage
 
-### Generate Image
+### Generate Image (WhatsApp HD - Recommended)
 
 ```bash
-uv run skills/nano-banana-antigravity/scripts/generate_image.py \
+./skills/nano-banana-antigravity/scripts/generate_whatsapp_hd.sh \
   --prompt "a sunset over mountains" \
-  --filename "sunset.png"
+  --filename "sunset.jpg" \
+  --aspect-ratio 16:9 \
+  --resolution 4K
 ```
 
-### With Options
+**What it does:**
+- Generates 4K image via Nano Banana Pro
+- Auto-converts PNG → progressive JPEG
+- Optimizes quality to stay under 6.28MB
+- WhatsApp HD ready (no compression!)
+
+### Generate PNG (Standard)
 
 ```bash
 uv run skills/nano-banana-antigravity/scripts/generate_image.py \

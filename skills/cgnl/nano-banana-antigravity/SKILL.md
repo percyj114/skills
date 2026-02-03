@@ -13,6 +13,16 @@ Generate images using Nano Banana Pro (Gemini 3 Pro Image) via your existing Goo
 
 ## Generate Image
 
+**For WhatsApp HD (recommended):**
+```bash
+{baseDir}/scripts/generate_whatsapp_hd.sh \
+  --prompt "your image description" \
+  --filename "output.jpg" \
+  --aspect-ratio 16:9 \
+  --resolution 4K
+```
+
+**Standard PNG output:**
 ```bash
 uv run {baseDir}/scripts/generate_image.py --prompt "your image description" --filename "output.png"
 ```
@@ -20,12 +30,18 @@ uv run {baseDir}/scripts/generate_image.py --prompt "your image description" --f
 ## Generate with Options
 
 ```bash
-uv run {baseDir}/scripts/generate_image.py \
+{baseDir}/scripts/generate_whatsapp_hd.sh \
   --prompt "a sunset over mountains" \
-  --filename "sunset.png" \
+  --filename "sunset.jpg" \
   --aspect-ratio 16:9 \
-  --resolution 2K
+  --resolution 4K
 ```
+
+**What `generate_whatsapp_hd.sh` does:**
+- ✅ Auto-converts PNG → progressive JPEG
+- ✅ Optimizes quality (85-92%) to stay under 6.28MB
+- ✅ WhatsApp HD ready (no compression!)
+- ✅ Warns if image is too large
 
 ## Edit/Composite Images
 
@@ -51,7 +67,7 @@ uv run {baseDir}/scripts/generate_image.py \
 - `--filename, -f` (required): Output filename
 - `--input-image, -i`: Input image(s) for editing (can be repeated)
 - `--aspect-ratio, -a`: 1:1 (default), 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
-- `--resolution, -r`: 1K (default), 2K, 4K
+- `--resolution, -r`: 1K, 2K (default), 4K
 
 ## Authentication
 
@@ -66,9 +82,24 @@ The script looks for credentials in:
 - `~/.config/openclaw/credentials/google-antigravity.json`
 - `~/.config/opencode/antigravity-accounts.json`
 
+## WhatsApp HD Upload Limits
+
+**For best WhatsApp HD quality:**
+- Use `generate_whatsapp_hd.sh` instead of `generate_image.py`
+- Output filename must end in `.jpg` or `.jpeg`
+- Images ≤6.28MB will upload without compression
+- Images >6.28MB may be compressed by WhatsApp
+
+**Size guidelines:**
+- ≤6.28MB → ✅ HD (no compression)
+- 6.29-6.5MB → Slight compression (~5.7MB)
+- 6.5-7.6MB → Moderate compression (~6.2MB)
+- >9MB → ⚠️ Heavy compression
+
 ## Notes
 
 - The script prints a `MEDIA:` line for OpenClaw to auto-attach on supported chat providers.
 - Do not read the image back; report the saved path only.
 - Uses timestamps in filenames for uniqueness: `yyyy-mm-dd-hh-mm-ss-name.png`
 - Falls back to regular Nano Banana if Nano Banana Pro isn't available yet.
+- **Account rotation:** Automatically tries all 12 Antigravity accounts on rate limits

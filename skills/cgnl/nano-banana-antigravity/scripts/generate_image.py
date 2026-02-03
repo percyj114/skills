@@ -319,8 +319,8 @@ def main():
     parser.add_argument(
         "--resolution", "-r",
         choices=["1K", "2K", "4K"],
-        default="1K",
-        help="Output resolution: 1K (default), 2K, or 4K"
+        default="2K",
+        help="Output resolution: 1K, 2K (default), or 4K"
     )
     
     args = parser.parse_args()
