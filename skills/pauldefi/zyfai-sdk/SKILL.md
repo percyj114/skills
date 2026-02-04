@@ -193,6 +193,7 @@ async function withdrawYield(userAddress: string, privateKey: string, amount?: s
 | `withdrawFunds` | `(userAddress, chainId, amount?)` | Withdraw (all if no amount) |
 | `getPositions` | `(userAddress, chainId?)` | Get active DeFi positions |
 | `getAvailableProtocols` | `(chainId)` | Get available protocols & pools |
+| `getAPYPerStrategy` | `(crossChain?, days?, strategyType?)` | Get APY for conservative/aggressive strategies |
 | `getUserDetails` | `()` | Get authenticated user details |
 | `getOnchainEarnings` | `(walletAddress)` | Get earnings data |
 | `disconnectAccount` | `()` | End session |
@@ -293,6 +294,53 @@ interface UserDetailsResponse {
     agentName?: string;
     customization?: Record<string, string[]>;
   };
+}
+```
+
+### getAPYPerStrategy
+
+Get global APY by strategy type (conservative or aggressive), time period, and chain configuration. Use this to compare expected returns between strategies before deploying.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| crossChain | boolean | ❌ | If `true`, returns APY for cross-chain strategies; if `false`, single-chain |
+| days | number | ❌ | Period over which APY is calculated. One of `7`, `15`, `30`, `60` |
+| strategyType | string | ❌ | Strategy risk profile. One of `'conservative'` or `'aggressive'` |
+
+**Example:**
+
+```typescript
+// Get 7-day APY for conservative single-chain strategy
+const conservativeApy = await sdk.getAPYPerStrategy(false, 7, 'conservative');
+console.log("Conservative APY:", conservativeApy.data);
+
+// Get 30-day APY for aggressive cross-chain strategy
+const aggressiveApy = await sdk.getAPYPerStrategy(true, 30, 'aggressive');
+console.log("Aggressive APY:", aggressiveApy.data);
+
+// Compare strategies
+const conservative = await sdk.getAPYPerStrategy(false, 30, 'conservative');
+const aggressive = await sdk.getAPYPerStrategy(false, 30, 'aggressive');
+console.log(`Conservative 30d APY: ${conservative.data[0]?.apy}%`);
+console.log(`Aggressive 30d APY: ${aggressive.data[0]?.apy}%`);
+```
+
+**Returns:**
+
+```typescript
+interface APYPerStrategyResponse {
+  success: boolean;
+  count: number;
+  data: APYPerStrategy[];
+}
+
+interface APYPerStrategy {
+  strategyType: string;
+  apy: number;
+  period: number;
+  crossChain: boolean;
 }
 ```
 
