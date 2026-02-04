@@ -1,6 +1,6 @@
-# Associative Memory — Detailed Agent Guide
+# Reflective Memory — Detailed Agent Guide
 
-This guide provides in-depth patterns for using the associative memory store effectively.
+This guide provides in-depth patterns for using the reflective memory store effectively.
 
 For the practice introduction (why and when), see [../SKILL.md](../SKILL.md).
 For quick API/CLI reference, see [REFERENCE.md](REFERENCE.md).
@@ -9,12 +9,23 @@ For quick API/CLI reference, see [REFERENCE.md](REFERENCE.md).
 
 ## Overview
 
-The associative memory provides persistent storage with semantic search.
+The reflective memory provides persistent storage with semantic search.
 
 **Key principle:** The schema is data. Routing rules, domain patterns, process knowledge — all are documents in the store, queryable and updateable. An agent can be asked "research X and update how you handle X" and the changes persist.
 
 ## Quick Start (Agent Reference)
 
+**CLI:**
+```bash
+# Uses .keep/ at repo root by default
+keep update file:///project/readme.md -t project=myapp
+keep update "User prefers OAuth2 with PKCE" -t topic=auth
+keep find "authentication flow" --limit 5
+keep list --tag project=myapp
+keep get file:///project/readme.md
+```
+
+**Python API:**
 ```python
 from keep import Keeper, Item
 
@@ -22,13 +33,13 @@ from keep import Keeper, Item
 kp = Keeper()
 
 # Index a document from URI (fetches, embeds, summarizes, tags automatically)
-item = kp.update("file:///project/readme.md", source_tags={"project": "myapp"})
+item = kp.update("file:///project/readme.md", tags={"project": "myapp"})
 
-# Remember inline content (conversations, notes, insights)
+# Store inline content via API (conversations, notes, insights)
 kp.remember(
     content="User prefers OAuth2 with PKCE for auth. Discussed tradeoffs.",
     id="conversation:2026-01-30:auth",
-    source_tags={"topic": "authentication"}
+    tags={"topic": "authentication"}
 )
 
 # Semantic search
@@ -49,166 +60,173 @@ if kp.exists("file:///project/readme.md"):
     item = kp.get("file:///project/readme.md")
 ```
 
-**CLI equivalent:**
-```bash
-# Uses .keep/ at repo root by default
-keep update "file:///project/readme.md" -t project=myapp
-keep find "authentication flow" --limit 5 --json
-keep tag project myapp
-```
-
 **Item fields:** `id` (URI or custom), `summary` (str), `tags` (dict), `score` (float, search results only). Timestamps are in tags: `item.created` and `item.updated` are property accessors.
 
-**Prerequisites:** Python 3.11+, `pip install keep[local]` (preferably in a venv)
+**Prerequisites:** Python 3.11+, `uv tool install 'keep-skill[local]'` (or pip in a venv)
 
 **Default store location:** `.keep/` at the git repository root (created automatically). Override with `KEEP_STORE_PATH` or explicit path argument. Add `.keep/` to `.gitignore` if the store should not be committed.
 
-**Patterns documentation:**
-- [patterns/domains.md](../patterns/domains.md) — domain-specific organization (software dev, research, etc.)
-- [patterns/conversations.md](../patterns/conversations.md) — process knowledge: how work proceeds
+**Patterns documentation** (bundled system docs, access via `keep get`):
+- `_system:domains` — domain-specific organization (software dev, research, etc.)
+- `_system:conversations` — process knowledge: how work proceeds
 
 **When to use:**
-- Call `update()` whenever you reference a file or URL worth remembering
-- Call `remember()` to capture conversation insights, decisions, or notes
-- Call `find()` before filesystem search — the answer may already be indexed
-- Call `top_of_mind()` at session start to get current context
-- Call `set_context()` when focus changes to help future agents
+- CLI: `keep update` for all content (URI, inline text, or stdin)
+- API: `kp.update()` for URIs, `kp.remember()` for inline content
+- `find()` before filesystem search — the answer may already be indexed
+- `get_now()` at session start to see current working context
+- `set_now()` when focus changes to help future agents
 
 ---
 
 ## Working Session Pattern
 
-Use `set_context()` as a scratchpad to track where you are in the work. This isn't enforced structure — it's a convention that helps you (and future agents) maintain perspective.
+Use the nowdoc as a scratchpad to track where you are in the work. This isn't enforced structure — it's a convention that helps you (and future agents) maintain perspective.
 
-**Recommended metadata fields:**
+**Session lifecycle (CLI):**
+```bash
+# 1. Starting work — check current context (shows version history too)
+keep now                                    # Show current context with prev versions
 
-| Field | Purpose | Example |
-|-------|---------|---------|
-| `conversation_type` | What kind of work is this? | `"bug_diagnosis"`, `"feature_request"`, `"research"` |
-| `state` | Where are we in the flow? | `"gathering_info"`, `"investigating"`, `"implementing"`, `"awaiting_confirmation"` |
-| `commitments` | What have I promised? | `[{"what": "fix the flaky test", "to": "user"}]` |
-| `completion_criteria` | What does "done" look like? | `"test passes reliably in CI"` |
-| `hypothesis` | Current working theory | `"timing assertion too tight for CI latency"` |
-| `blocked_on` | What's preventing progress? | `"need CI logs from user"` |
+# 2. Update context as work evolves
+keep now "Diagnosing flaky test in auth module"
+keep now "Found timing issue" -t state=investigating
 
-**Session lifecycle:**
+# 3. Check previous context if needed
+keep now -V 1                               # Previous version
+keep now --history                          # List all versions
 
+# 4. Record learnings separately
+keep update "Flaky timing fix: mock time instead of real assertions" -t type=learning
+```
+
+**Python API equivalent:**
 ```python
-# 1. Starting work — record what we're doing
-kp.set_context(
-    summary="Diagnosing flaky test in auth module.",
-    topics=["auth", "testing"],
-    metadata={
-        "conversation_type": "bug_diagnosis",
-        "state": "gathering_info",
-        "commitments": []
-    }
+# 1. Starting work — check current context
+now = kp.get_now()
+print(now.summary)  # What are we working on?
+
+# 2. Update context as work evolves
+kp.set_now(
+    "Diagnosing flaky test in auth module. Likely timing issue.",
+    tags={"topic": "testing", "state": "investigating"}
 )
 
-# 2. Mid-work — update as understanding evolves
-kp.set_context(
-    summary="Investigating test_token_refresh. Likely timing issue.",
-    active_items=["file:///tests/test_oauth_flow.py"],
-    topics=["auth", "testing", "timing"],
-    metadata={
-        "conversation_type": "bug_diagnosis",
-        "state": "investigating",
-        "hypothesis": "hardcoded 100ms timeout too tight for CI",
-        "commitments": []
-    }
-)
+# 3. Check previous context if needed
+prev = kp.get_version("_now:default", offset=1)  # Previous version
+versions = kp.list_versions("_now:default")       # All versions
 
-# 3. Committing — I've promised to do something
-kp.set_context(
-    summary="Implementing mock timer fix for test_token_refresh.",
-    active_items=["file:///tests/test_oauth_flow.py"],
-    metadata={
-        "conversation_type": "bug_fix",
-        "state": "implementing",
-        "commitments": [{"what": "mock timer fix", "to": "user"}],
-        "completion_criteria": "test passes reliably, no timing dependency"
-    }
-)
-
-# 4. Completing — record the learning
+# 4. Record the learning
 kp.remember(
     content="Flaky timing in CI → mock time instead of real assertions.",
-    source_tags={"type": "learning", "domain": "testing"}
+    tags={"type": "learning", "domain": "testing"}
 )
-kp.set_context(
-    summary="Completed flaky test fix.",
-    metadata={"state": "completed", "commitments": []}
-)
+kp.set_now("Completed flaky test fix.", tags={"state": "completed"})
 ```
 
-**Key insight:** The store remembers across sessions; working memory doesn't. When you resume, read context first:
-
-```python
-ctx = kp.get_context()
-# ctx.metadata["state"] tells you where you left off
-# ctx.metadata["commitments"] tells you what's still owed
-# ctx.active_items tells you what to look at
-```
+**Key insight:** The store remembers across sessions; working memory doesn't. When you resume, read context first. All updates create version history automatically.
 
 ---
 
-## Hierarchical Context Model
+## Agent Handoff Pattern
 
-The store supports O(log(log(N))) context retrieval through a hierarchy:
-
-```
-Level 3:  [  Working Context  ]           ← "What are we doing?" (~100 tokens)
-Level 2:  [ Topic Summaries   ]           ← "What about X?" (~5-10 topics)
-Level 1:  [ Cluster Summaries ]           ← √N aggregated summaries
-Level 0:  [ Source Items      ]           ← N indexed documents
+**Starting a session (CLI):**
+```bash
+keep now                              # Check current context with version history
+keep now --history                    # See how context evolved
+keep find "recent work" --since P1D   # Last 24 hours
 ```
 
-**Agent handoff pattern:**
+**Ending a session (CLI):**
+```bash
+keep now "Completed OAuth2 flow. Token refresh working. Next: add tests." -t topic=auth
+```
+
+**Python API equivalent:**
 ```python
-# New agent/session starts
-ctx = kp.get_context()           # Instant: what are we working on?
-recent = kp.top_of_mind(limit=5) # Associative: what's relevant now?
+# Starting a session
+now = kp.get_now()
+print(f"Current focus: {now.summary}")
+recent = kp.find("", limit=5, since="P1D")  # Last 24 hours
 
-# ... work happens ...
-
-# Before ending session, update context for next agent
-kp.set_context(
-    summary="Completed OAuth2 flow. Token refresh working. Next: add tests.",
-    active_items=["file:///src/auth.py", "file:///src/oauth_client.py"],
-    topics=["authentication", "testing"]
+# Ending a session
+kp.set_now(
+    "Completed OAuth2 flow. Token refresh working. Next: add tests.",
+    tags={"topic": "authentication"}
 )
 ```
 
-**Top-of-mind retrieval:**
-```python
-# Combines: recency + context similarity + topic relevance + session
-items = kp.top_of_mind()                    # What's relevant right now?
-items = kp.top_of_mind("authentication")    # What's relevant about auth?
-items = kp.recent(limit=10)                 # Just the latest items
-items = kp.recent(since="2026-01-30")       # Items from today
+**Recent items retrieval (CLI):**
+```bash
+keep find "authentication" --since P7D   # Last week
+keep tag _updated_date=2026-01-30        # Items updated today
 ```
 
-**Topic summaries (Level 2):**
+**Python API:**
 ```python
-topics = kp.list_topics()                   # ["authentication", "database", ...]
-summary = kp.get_topic_summary("authentication")
-# → TopicSummary with aggregate overview, item count, key items
+recent = kp.find("", since="P1D")                    # Last day
+auth_items = kp.find("authentication", since="P7D") # Last week
+today = kp.query_tag("_updated_date", "2026-01-30") # Today
 ```
 
 ---
 
 ## Data Model
 
-An item has
+An item has:
 * A unique identifier (URI or custom ID for inline content)
 * A `created` timestamp (when first indexed)
-* A `updated` timestamp (when last indexed)
+* An `updated` timestamp (when last indexed)
 * A summary of the content, generated when indexed
 * A collection of tags (`{key: value, ...}`)
+* Version history (previous versions archived automatically on update)
 
 The full original document is not stored in this service.
 
 The services that implement embedding, summarization and tagging are configured at initialization time. This skill itself is provider-agnostic.
+
+## Document Versioning
+
+All documents retain version history automatically. When you update a document, the previous version is archived.
+
+**CLI:**
+```bash
+keep get ID                   # Current version with similar items
+keep get ID --no-similar      # Just the document, no similar
+keep get ID --similar         # List similar items (default 10, -n to override)
+keep get ID -V 1              # Previous version
+keep get ID -V 2              # Two versions ago
+keep get ID --history         # List all versions (default 10, -n to override)
+
+keep now -V 1                 # Previous nowdoc
+keep now --history            # Nowdoc version history
+```
+
+**Python API:**
+```python
+from keep.document_store import VersionInfo
+
+# Get previous versions
+prev = kp.get_version(id, offset=1)      # Previous
+two_ago = kp.get_version(id, offset=2)   # Two versions ago
+
+# List all archived versions (newest first)
+versions: list[VersionInfo] = kp.list_versions(id, limit=10)
+for v in versions:
+    print(f"v{v.version}: {v.created_at} - {v.summary[:50]}")
+
+# Get navigation info for display
+nav = kp.get_version_nav(id)  # {'prev': [...], 'next': [...]}
+```
+
+**Content-addressed IDs for text updates:**
+```bash
+keep update "my note"              # Creates _text:a1b2c3d4e5f6
+keep update "my note" -t done      # Same ID, new version (tag change)
+keep update "different note"       # Different ID (new document)
+```
+
+Same content = same ID = enables versioning via tag changes.
 
 ## Use Cases
 
@@ -223,11 +241,11 @@ The data is partitioned by *collection*. Collection names are lowercase ASCII wi
 
 within a collection:
 
-`update(id: URI, source_tags: dict)` - inserts or updates the document at `URI` into the store.  This process delegates the work of embedding, summarization and tagging, then updates the store.  Any `source_tags` are stored alongside the "derived tags" produced by the tagging service.
+`update(id: URI, tags: dict)` - inserts or updates the document at `URI` into the store.  This process delegates the work of embedding, summarization and tagging, then updates the store.  Any `tags` are merged with existing tags (overlay, not replace) and stored alongside the "derived tags" produced by the tagging service.
 
 > NOTE: update tasks are serialized to avoid any concurrency issues.
 
-> NOTE: there is no `delete` operation.
+> NOTE: Items cannot be deleted through the public API. To remove tags, use `tag()` with empty string values.
 
 `find(query: str)` - locate items using a semantic-similarity query for any text
 
@@ -245,7 +263,7 @@ There are three domains of tags:
 
 2. **System tags.**  These have special meaning for this service and are managed automatically.
    * System tags have keys that begin with underscore (`_`).
-   * **Source tags and generated tags cannot set system tag values** — any tag starting with `_` in source_tags is filtered out before storage.
+   * **Source tags and generated tags cannot set system tag values** — any tag starting with `_` in tags is filtered out before storage.
    * The tagging provider does not produce system tags.
 
    | System Tag | Description | Example |
@@ -260,13 +278,16 @@ There are three domains of tags:
 
 3. **Generated tags.**  Produced by the tagging provider based on content analysis at index time.
 
-**Temporal queries using system tags:**
-```python
-# Find items updated today
-kp.query_tag("_updated_date", "2026-01-30")
+**Temporal queries using system tags (CLI):**
+```bash
+keep list --tag _updated_date=2026-01-30   # Items updated today
+keep list --tag _source=inline             # All inline content
+```
 
-# Find all inline content (from remember())
-kp.query_tag("_source", "inline")
+**Python API:**
+```python
+kp.query_tag("_updated_date", "2026-01-30")  # Items updated today
+kp.query_tag("_source", "inline")            # All inline content
 ```
 
 ---
@@ -288,13 +309,13 @@ Knowledge has an interior/exterior dimension. Some items are working notes; othe
 # Working hypothesis — routes to private store
 kp.remember(
     "I think the bug is in token refresh, but need to verify.",
-    source_tags={"_visibility": "draft", "_for": "self"}
+    tags={"_visibility": "draft", "_for": "self"}
 )
 
 # Confirmed learning — routes to shared store
 kp.remember(
     "Token refresh fails when clock skew exceeds 30s. Fix: use server time.",
-    source_tags={"_visibility": "shared", "_for": "team", "_reviewed": "true"}
+    tags={"_visibility": "shared", "_for": "team", "_reviewed": "true"}
 )
 ```
 
@@ -344,7 +365,7 @@ The `_system:routing` document can be updated to change what routes privately. T
 
 ## Domain Patterns
 
-See [patterns/domains.md](../patterns/domains.md) for suggested collection and tag organization for common use cases:
+See `_system:domains` (`keep get _system:domains`) for suggested collection and tag organization for common use cases:
 - Software Development
 - Market Research
 - Personal Reflection & Growth
@@ -393,7 +414,7 @@ kp.remember(
     Source: Team retrospective + industry research.
     """,
     id="_system:guidance:code_review",
-    source_tags={"_system": "true", "domain": "code_review"}
+    tags={"_system": "true", "domain": "code_review"}
 )
 
 # 3. Future sessions read this guidance when doing code review
@@ -421,13 +442,7 @@ Components:
 
 ### Provider Options
 
-| Type | Local (Apple Silicon) | Local (other) | API-based |
-|------|----------------------|---------------|-----------|
-| Embedding | `mlx` | `sentence-transformers` | `openai` |
-| Summarization | `mlx` | `passthrough` | `openai`, `ollama` |
-| Tagging | `mlx` | `noop` | `openai`, `ollama` |
-
-Providers are auto-detected at initialization based on platform and available API keys.
+See [QUICKSTART.md](QUICKSTART.md#provider-options) for available embedding, summarization, and tagging providers. Providers are auto-detected at initialization based on platform and available API keys.
 
 ## Error Handling
 
@@ -441,10 +456,19 @@ Providers are auto-detected at initialization based on platform and available AP
 
 ## Initialization
 
-See [initialize.md](../initialize.md) for details.
+See [QUICKSTART.md](QUICKSTART.md) for details.
 
+**CLI:**
+```bash
+keep init                          # Initialize at .keep/ in repo root
+keep init -s /path/to/store        # Explicit store path
+KEEP_STORE_PATH=/path keep init    # Via environment
+```
+
+**Python API:**
 ```python
 from keep import Keeper
 
-kp = Keeper("/path/to/store")
+kp = Keeper()                      # Uses .keep/ at repo root
+kp = Keeper("/path/to/store")      # Explicit path
 ```

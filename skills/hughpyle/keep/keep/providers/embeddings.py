@@ -11,12 +11,12 @@ from .base import EmbeddingProvider, get_registry
 class SentenceTransformerEmbedding:
     """
     Embedding provider using sentence-transformers library.
-    
+
     Runs locally, no API key required. Good default for getting started.
-    
+
     Requires: pip install sentence-transformers
     """
-    
+
     def __init__(self, model: str = "all-MiniLM-L6-v2"):
         """
         Args:
@@ -29,9 +29,21 @@ class SentenceTransformerEmbedding:
                 "SentenceTransformerEmbedding requires 'sentence-transformers' library. "
                 "Install with: pip install sentence-transformers"
             )
-        
+
         self.model_name = model
-        self._model = SentenceTransformer(model)
+
+        # Check if model is already cached locally to avoid network calls
+        # Expand short model names (e.g. "all-MiniLM-L6-v2" -> "sentence-transformers/all-MiniLM-L6-v2")
+        local_only = False
+        try:
+            from huggingface_hub import try_to_load_from_cache
+            repo_id = model if "/" in model else f"sentence-transformers/{model}"
+            cached = try_to_load_from_cache(repo_id, "config.json")
+            local_only = cached is not None
+        except ImportError:
+            pass
+
+        self._model = SentenceTransformer(model, local_files_only=local_only)
     
     @property
     def dimension(self) -> int:
@@ -83,8 +95,9 @@ class OpenAIEmbedding:
             )
         
         self.model_name = model
-        self._dimension = self.MODEL_DIMENSIONS.get(model, 1536)
-        
+        # Use lookup table if available, otherwise detect lazily from first embedding
+        self._dimension = self.MODEL_DIMENSIONS.get(model)
+
         # Resolve API key
         key = api_key or os.environ.get("KEEP_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
         if not key:
@@ -96,16 +109,24 @@ class OpenAIEmbedding:
     
     @property
     def dimension(self) -> int:
-        """Get embedding dimension for the model."""
+        """Get embedding dimension for the model (detected lazily if unknown)."""
+        if self._dimension is None:
+            # Unknown model: detect from first embedding
+            test_embedding = self.embed("dimension test")
+            self._dimension = len(test_embedding)
         return self._dimension
-    
+
     def embed(self, text: str) -> list[float]:
         """Generate embedding for a single text."""
         response = self._client.embeddings.create(
             model=self.model_name,
             input=text,
         )
-        return response.data[0].embedding
+        embedding = response.data[0].embedding
+        # Cache dimension if not yet known
+        if self._dimension is None:
+            self._dimension = len(embedding)
+        return embedding
     
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
@@ -152,7 +173,8 @@ class GeminiEmbedding:
             )
 
         self.model_name = model
-        self._dimension = self.MODEL_DIMENSIONS.get(model, 768)
+        # Use lookup table if available, otherwise detect lazily from first embedding
+        self._dimension = self.MODEL_DIMENSIONS.get(model)
 
         # Resolve API key
         key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -165,7 +187,11 @@ class GeminiEmbedding:
 
     @property
     def dimension(self) -> int:
-        """Get embedding dimension for the model."""
+        """Get embedding dimension for the model (detected lazily if unknown)."""
+        if self._dimension is None:
+            # Unknown model: detect from first embedding
+            test_embedding = self.embed("dimension test")
+            self._dimension = len(test_embedding)
         return self._dimension
 
     def embed(self, text: str) -> list[float]:
@@ -174,7 +200,11 @@ class GeminiEmbedding:
             model=self.model_name,
             contents=text,
         )
-        return list(result.embeddings[0].values)
+        embedding = list(result.embeddings[0].values)
+        # Cache dimension if not yet known
+        if self._dimension is None:
+            self._dimension = len(embedding)
+        return embedding
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""

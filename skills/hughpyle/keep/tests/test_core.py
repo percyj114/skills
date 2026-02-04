@@ -1,8 +1,8 @@
 """
 Test harness for keep.
 
-Sample documents in tests/data/:
-- mn62: Mahārāhulovāda Sutta (Buddha's advice to Rāhula) - English JSON
+Sample documents in docs/library/:
+- an5.57: Upajjhāyasutta (Five Remembrances) - English JSON
 - fortytwo_chapters: 佛說四十二章經 (Sutra in 42 Sections) - Chinese text
 - ancrenewisse: Ancrene Wisse (Anchoresses' Guide) - PDF
 - mumford_sticks_and_stones: Lewis Mumford on American architecture - English text
@@ -29,13 +29,13 @@ from keep.types import Item
 @pytest.fixture
 def data_dir() -> Path:
     """Path to test data directory."""
-    return Path(__file__).parent / "data"
+    return Path(__file__).parent.parent / "docs" / "library"
 
 
 @pytest.fixture
-def mn62_path(data_dir: Path) -> Path:
-    """Mahārāhulovāda Sutta - English JSON."""
-    return data_dir / "mn62_translation-en-sujato.json"
+def an5_57_path(data_dir: Path) -> Path:
+    """Upajjhāyasutta (Five Remembrances) - English JSON."""
+    return data_dir / "an5.57_translation-en-sujato.json"
 
 
 @pytest.fixture
@@ -152,13 +152,13 @@ class TestSystemTagProtection:
 class TestDataFiles:
     """Verify test data files are present and readable.
 
-    Uses dynamic discovery to ensure all files in tests/data/ are tested.
+    Uses dynamic discovery to ensure all files in docs/library/ are tested.
     """
 
     def test_all_data_files_exist(self, data_dir: Path):
         """All test data files (non-README) exist and are readable."""
         files = list(data_dir.glob("*"))
-        data_files = [f for f in files if f.is_file() and f.name != "README.md"]
+        data_files = [f for f in files if f.is_file() and f.name != "INDEX.md"]
 
         assert len(data_files) >= 4, f"Expected at least 4 data files, found {len(data_files)}"
 
@@ -187,12 +187,12 @@ class TestDataFiles:
 
     # Specific content tests for known files
 
-    def test_mn62_content(self, mn62_path: Path):
-        """Mahārāhulovāda Sutta contains expected content."""
+    def test_an5_57_content(self, an5_57_path: Path):
+        """Upajjhāyasutta (Five Remembrances) contains expected content."""
         import json
-        data = json.loads(mn62_path.read_text())
-        assert "mn62:0.2" in data
-        assert "Rāhula" in data["mn62:0.2"]
+        data = json.loads(an5_57_path.read_text())
+        assert "an5.57:0.3" in data
+        assert "Reviewing" in data["an5.57:0.3"]
 
     def test_fortytwo_chapters_content(self, fortytwo_chapters_path: Path):
         """Sutra of Forty-Two Chapters contains Chinese text."""
@@ -241,114 +241,35 @@ class TestVisibilityPatterns:
 
 
 # -----------------------------------------------------------------------------
-# Routing Pattern Tests
+# Nowdoc Tests
 # -----------------------------------------------------------------------------
 
-class TestRoutingPatterns:
-    """Tests for private/shared routing logic."""
-    
-    def test_matches_private_pattern(self):
-        """matches_private_pattern correctly identifies private items."""
-        from keep.context import matches_private_pattern
-        
-        patterns = [
-            {"_visibility": "draft"},
-            {"_visibility": "private"},
-            {"_for": "self"},
-        ]
-        
-        # Should match
-        assert matches_private_pattern({"_visibility": "draft"}, patterns)
-        assert matches_private_pattern({"_visibility": "private", "topic": "auth"}, patterns)
-        assert matches_private_pattern({"_for": "self", "note": "test"}, patterns)
-        
-        # Should not match
-        assert not matches_private_pattern({"_visibility": "shared"}, patterns)
-        assert not matches_private_pattern({"topic": "auth"}, patterns)
-        assert not matches_private_pattern({}, patterns)
-    
-    def test_pattern_requires_all_keys(self):
-        """Pattern match requires ALL key-value pairs to match."""
-        from keep.context import matches_private_pattern
-        
-        # Pattern with multiple conditions
-        patterns = [{"_visibility": "draft", "_for": "self"}]
-        
-        # Both must match
-        assert matches_private_pattern({"_visibility": "draft", "_for": "self"}, patterns)
-        assert matches_private_pattern({"_visibility": "draft", "_for": "self", "extra": "ok"}, patterns)
-        
-        # Partial match is not enough
-        assert not matches_private_pattern({"_visibility": "draft"}, patterns)
-        assert not matches_private_pattern({"_for": "self"}, patterns)
+class TestNowdoc:
+    """Tests for nowdoc constants and system content."""
 
+    def test_nowdoc_id_constant(self):
+        """NOWDOC_ID is exported and has expected format."""
+        from keep import NOWDOC_ID
 
-# -----------------------------------------------------------------------------
-# Context Tests
-# -----------------------------------------------------------------------------
+        assert NOWDOC_ID == "_now:default"
+        assert NOWDOC_ID.startswith("_")  # System-managed ID
 
-class TestWorkingContext:
-    """Tests for WorkingContext dataclass."""
-    
-    def test_working_context_creation(self):
-        """WorkingContext can be created with defaults."""
-        from keep.context import WorkingContext
-        
-        ctx = WorkingContext(summary="Testing feature X")
-        assert ctx.summary == "Testing feature X"
-        assert ctx.active_items == []
-        assert ctx.topics == []
-        assert ctx.session_id is None
-        assert ctx.metadata == {}
-        assert ctx.updated is not None  # Auto-generated
-    
-    def test_working_context_full(self):
-        """WorkingContext with all fields."""
-        from keep.context import WorkingContext
-        
-        ctx = WorkingContext(
-            summary="Implementing OAuth2",
-            active_items=["file:///src/auth.py"],
-            topics=["authentication", "security"],
-            session_id="2026-01-30:abc123",
-            metadata={"commitments": [{"what": "implement login", "to": "user"}]}
-        )
-        assert len(ctx.active_items) == 1
-        assert "authentication" in ctx.topics
-        assert "commitments" in ctx.metadata
+    def test_system_now_md_exists(self):
+        """System now.md file exists in keep/data/system/ with frontmatter."""
+        from keep.api import _load_frontmatter, SYSTEM_DOC_DIR
 
+        content, tags = _load_frontmatter(SYSTEM_DOC_DIR / "now.md")
+        assert "# Now" in content
+        assert "keep find" in content
+        assert "keep update" in content
+        # Frontmatter should be parsed into tags
+        assert isinstance(tags, dict)
+        assert len(tags) > 0  # Has at least one tag from frontmatter
 
-class TestRoutingContext:
-    """Tests for RoutingContext dataclass."""
-    
-    def test_routing_context_defaults(self):
-        """RoutingContext has sensible defaults."""
-        from keep.context import RoutingContext
-        
-        ctx = RoutingContext()
-        assert "private" in ctx.summary.lower() or "draft" in ctx.summary.lower()
-        assert len(ctx.private_patterns) == 3
-        assert {"_visibility": "draft"} in ctx.private_patterns
-        assert {"_visibility": "private"} in ctx.private_patterns
-        assert {"_for": "self"} in ctx.private_patterns
+    def test_load_frontmatter_missing_file(self):
+        """_load_frontmatter raises FileNotFoundError for missing files."""
+        from keep.api import _load_frontmatter, SYSTEM_DOC_DIR
+        import pytest
 
-
-class TestSessionId:
-    """Tests for session ID generation."""
-    
-    def test_generate_session_id_format(self):
-        """Session ID has date:uuid format."""
-        from keep.context import generate_session_id
-        
-        sid = generate_session_id()
-        assert ":" in sid
-        date_part, uuid_part = sid.split(":", 1)
-        assert len(date_part) == 10  # YYYY-MM-DD
-        assert len(uuid_part) == 8   # Short UUID
-    
-    def test_generate_session_id_unique(self):
-        """Session IDs are unique."""
-        from keep.context import generate_session_id
-        
-        ids = {generate_session_id() for _ in range(100)}
-        assert len(ids) == 100  # All unique
+        with pytest.raises(FileNotFoundError):
+            _load_frontmatter(SYSTEM_DOC_DIR / "nonexistent.md")

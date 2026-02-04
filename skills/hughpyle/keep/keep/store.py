@@ -49,23 +49,18 @@ class ChromaStore:
     pluggable backends (SQLite+faiss, Postgres+pgvector, etc.)
     """
     
-    def __init__(self, store_path: Path, embedding_dimension: int):
+    def __init__(self, store_path: Path, embedding_dimension: Optional[int] = None):
         """
         Initialize or open a ChromaDb store.
-        
+
         Args:
             store_path: Directory for persistent storage
-            embedding_dimension: Expected dimension of embeddings (for validation)
+            embedding_dimension: Expected dimension of embeddings (for validation).
+                Can be None for read-only access; will be set on first write.
         """
-        try:
-            import chromadb
-            from chromadb.config import Settings
-        except ImportError:
-            raise RuntimeError(
-                "ChromaStore requires 'chromadb' library. "
-                "Install with: pip install chromadb"
-            )
-        
+        import chromadb
+        from chromadb.config import Settings
+
         self._store_path = store_path
         self._embedding_dimension = embedding_dimension
         
@@ -123,7 +118,7 @@ class ChromaStore:
     ) -> None:
         """
         Insert or update an item in the store.
-        
+
         Args:
             collection: Collection name
             id: Item identifier (URI or custom)
@@ -131,14 +126,17 @@ class ChromaStore:
             summary: Human-readable summary (stored as document)
             tags: All tags (source + system + generated)
         """
-        if len(embedding) != self._embedding_dimension:
+        # Validate or set embedding dimension
+        if self._embedding_dimension is None:
+            self._embedding_dimension = len(embedding)
+        elif len(embedding) != self._embedding_dimension:
             raise ValueError(
                 f"Embedding dimension mismatch: expected {self._embedding_dimension}, "
                 f"got {len(embedding)}"
             )
-        
+
         coll = self._get_collection(collection)
-        
+
         # Add timestamp if not present
         now = datetime.now(timezone.utc).isoformat()
         if "_updated" not in tags:
@@ -154,36 +152,122 @@ class ChromaStore:
                     tags = {**tags, "_created": now}
             else:
                 tags = {**tags, "_created": now}
-        
+
         # Add date portion for easier date queries
         tags = {**tags, "_updated_date": now[:10]}
-        
+
         coll.upsert(
             ids=[id],
             embeddings=[embedding],
             documents=[summary],
             metadatas=[self._tags_to_metadata(tags)],
         )
-    
-    def delete(self, collection: str, id: str) -> bool:
+
+    def upsert_version(
+        self,
+        collection: str,
+        id: str,
+        version: int,
+        embedding: list[float],
+        summary: str,
+        tags: dict[str, str],
+    ) -> None:
         """
-        Delete an item from the store.
-        
+        Store an archived version with a versioned ID.
+
+        The versioned ID format is: {id}@v{version}
+        Metadata includes _version and _base_id for filtering/navigation.
+
+        Args:
+            collection: Collection name
+            id: Base item identifier (not versioned)
+            version: Version number (1=oldest archived)
+            embedding: Vector embedding
+            summary: Human-readable summary
+            tags: All tags from the archived version
+        """
+        if self._embedding_dimension is None:
+            self._embedding_dimension = len(embedding)
+        elif len(embedding) != self._embedding_dimension:
+            raise ValueError(
+                f"Embedding dimension mismatch: expected {self._embedding_dimension}, "
+                f"got {len(embedding)}"
+            )
+
+        coll = self._get_collection(collection)
+
+        # Versioned ID format
+        versioned_id = f"{id}@v{version}"
+
+        # Add version metadata
+        versioned_tags = dict(tags)
+        versioned_tags["_version"] = str(version)
+        versioned_tags["_base_id"] = id
+
+        coll.upsert(
+            ids=[versioned_id],
+            embeddings=[embedding],
+            documents=[summary],
+            metadatas=[self._tags_to_metadata(versioned_tags)],
+        )
+
+    def get_content_hash(self, collection: str, id: str) -> Optional[str]:
+        """
+        Get the content hash of an existing item.
+
+        Used to check if content changed (to skip re-embedding).
+
         Args:
             collection: Collection name
             id: Item identifier
-            
+
+        Returns:
+            Content hash if item exists and has one, None otherwise
+        """
+        coll = self._get_collection(collection)
+        result = coll.get(ids=[id], include=["metadatas"])
+
+        if not result["ids"]:
+            return None
+
+        metadata = result["metadatas"][0] or {}
+        return metadata.get("_content_hash")
+    
+    def delete(self, collection: str, id: str, delete_versions: bool = True) -> bool:
+        """
+        Delete an item from the store.
+
+        Args:
+            collection: Collection name
+            id: Item identifier
+            delete_versions: If True, also delete versioned copies ({id}@v{N})
+
         Returns:
             True if item existed and was deleted, False if not found
         """
         coll = self._get_collection(collection)
-        
+
         # Check existence first
         existing = coll.get(ids=[id])
         if not existing["ids"]:
             return False
-        
+
         coll.delete(ids=[id])
+
+        if delete_versions:
+            # Delete all versioned copies
+            # Query by _base_id metadata to find all versions
+            try:
+                versions = coll.get(
+                    where={"_base_id": id},
+                    include=[],
+                )
+                if versions["ids"]:
+                    coll.delete(ids=versions["ids"])
+            except Exception:
+                # Metadata filter might fail if no versions exist
+                pass
+
         return True
 
     def update_summary(self, collection: str, id: str, summary: str) -> bool:
@@ -218,6 +302,40 @@ class ChromaStore:
         coll.update(
             ids=[id],
             documents=[summary],
+            metadatas=[metadata],
+        )
+        return True
+
+    def update_tags(self, collection: str, id: str, tags: dict[str, str]) -> bool:
+        """
+        Update tags of an existing item without changing embedding or summary.
+
+        Args:
+            collection: Collection name
+            id: Item identifier
+            tags: New tags dict (replaces existing)
+
+        Returns:
+            True if item was updated, False if not found
+        """
+        coll = self._get_collection(collection)
+
+        # Get existing item
+        existing = coll.get(ids=[id], include=["metadatas"])
+        if not existing["ids"]:
+            return False
+
+        # Update timestamp
+        now = datetime.now(timezone.utc).isoformat()
+        tags = dict(tags)  # Copy to avoid mutating input
+        tags["_updated"] = now
+        tags["_updated_date"] = now[:10]
+
+        # Convert to metadata format
+        metadata = self._tags_to_metadata(tags)
+
+        coll.update(
+            ids=[id],
             metadatas=[metadata],
         )
         return True
@@ -257,7 +375,38 @@ class ChromaStore:
         coll = self._get_collection(collection)
         result = coll.get(ids=[id], include=[])
         return bool(result["ids"])
-    
+
+    def get_embedding(self, collection: str, id: str) -> list[float] | None:
+        """
+        Retrieve the stored embedding for a document.
+
+        Args:
+            collection: Collection name
+            id: Item identifier
+
+        Returns:
+            Embedding vector if found, None otherwise
+        """
+        coll = self._get_collection(collection)
+        result = coll.get(ids=[id], include=["embeddings"])
+        if not result["ids"] or result["embeddings"] is None or len(result["embeddings"]) == 0:
+            return None
+        return list(result["embeddings"][0])
+
+    def list_ids(self, collection: str) -> list[str]:
+        """
+        List all document IDs in a collection.
+
+        Args:
+            collection: Collection name
+
+        Returns:
+            List of document IDs
+        """
+        coll = self._get_collection(collection)
+        result = coll.get(include=[])
+        return result["ids"]
+
     def query_embedding(
         self,
         collection: str,
@@ -340,27 +489,33 @@ class ChromaStore:
         collection: str,
         query: str,
         limit: int = 10,
+        where: dict[str, Any] | None = None,
     ) -> list[StoreResult]:
         """
         Query by full-text search on document content (summaries).
-        
+
         Args:
             collection: Collection name
             query: Text to search for
             limit: Maximum results to return
-            
+            where: Optional metadata filter (Chroma where clause)
+
         Returns:
             List of matching results
         """
         coll = self._get_collection(collection)
-        
+
         # Chroma's where_document does substring matching
-        result = coll.get(
-            where_document={"$contains": query},
-            limit=limit,
-            include=["documents", "metadatas"],
-        )
-        
+        get_params = {
+            "where_document": {"$contains": query},
+            "limit": limit,
+            "include": ["documents", "metadatas"],
+        }
+        if where:
+            get_params["where"] = where
+
+        result = coll.get(**get_params)
+
         results = []
         for i, id in enumerate(result["ids"]):
             results.append(StoreResult(
@@ -368,7 +523,7 @@ class ChromaStore:
                 summary=result["documents"][i] or "",
                 tags=self._metadata_to_tags(result["metadatas"][i]),
             ))
-        
+
         return results
     
     # -------------------------------------------------------------------------

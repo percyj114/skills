@@ -6,6 +6,7 @@ This enables fast indexing with lazy summarization.
 """
 
 import sqlite3
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,12 +38,19 @@ class PendingSummaryQueue:
         """
         self._queue_path = queue_path
         self._conn: Optional[sqlite3.Connection] = None
+        self._lock = threading.Lock()
         self._init_db()
 
     def _init_db(self) -> None:
         """Initialize the SQLite database."""
         self._queue_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(self._queue_path), check_same_thread=False)
+
+        # Enable WAL mode for better concurrent access across processes
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        # Wait up to 5 seconds for locks instead of failing immediately
+        self._conn.execute("PRAGMA busy_timeout=5000")
+
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS pending_summaries (
                 id TEXT NOT NULL,
@@ -66,12 +74,13 @@ class PendingSummaryQueue:
         If the same id+collection already exists, replaces it (newer content wins).
         """
         now = datetime.now(timezone.utc).isoformat()
-        self._conn.execute("""
-            INSERT OR REPLACE INTO pending_summaries
-            (id, collection, content, queued_at, attempts)
-            VALUES (?, ?, ?, ?, 0)
-        """, (id, collection, content, now))
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("""
+                INSERT OR REPLACE INTO pending_summaries
+                (id, collection, content, queued_at, attempts)
+                VALUES (?, ?, ?, ?, 0)
+            """, (id, collection, content, now))
+            self._conn.commit()
 
     def dequeue(self, limit: int = 10) -> list[PendingSummary]:
         """
@@ -80,42 +89,44 @@ class PendingSummaryQueue:
         Items are returned but not removed - call `complete()` after successful processing.
         Increments attempt counter on each dequeue.
         """
-        cursor = self._conn.execute("""
-            SELECT id, collection, content, queued_at, attempts
-            FROM pending_summaries
-            ORDER BY queued_at ASC
-            LIMIT ?
-        """, (limit,))
+        with self._lock:
+            cursor = self._conn.execute("""
+                SELECT id, collection, content, queued_at, attempts
+                FROM pending_summaries
+                ORDER BY queued_at ASC
+                LIMIT ?
+            """, (limit,))
 
-        items = []
-        for row in cursor.fetchall():
-            items.append(PendingSummary(
-                id=row[0],
-                collection=row[1],
-                content=row[2],
-                queued_at=row[3],
-                attempts=row[4],
-            ))
+            items = []
+            for row in cursor.fetchall():
+                items.append(PendingSummary(
+                    id=row[0],
+                    collection=row[1],
+                    content=row[2],
+                    queued_at=row[3],
+                    attempts=row[4],
+                ))
 
-        # Increment attempt counters
-        if items:
-            ids = [(item.id, item.collection) for item in items]
-            self._conn.executemany("""
-                UPDATE pending_summaries
-                SET attempts = attempts + 1
-                WHERE id = ? AND collection = ?
-            """, ids)
-            self._conn.commit()
+            # Increment attempt counters
+            if items:
+                ids = [(item.id, item.collection) for item in items]
+                self._conn.executemany("""
+                    UPDATE pending_summaries
+                    SET attempts = attempts + 1
+                    WHERE id = ? AND collection = ?
+                """, ids)
+                self._conn.commit()
 
         return items
 
     def complete(self, id: str, collection: str) -> None:
         """Remove an item from the queue after successful processing."""
-        self._conn.execute("""
-            DELETE FROM pending_summaries
-            WHERE id = ? AND collection = ?
-        """, (id, collection))
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("""
+                DELETE FROM pending_summaries
+                WHERE id = ? AND collection = ?
+            """, (id, collection))
+            self._conn.commit()
 
     def count(self) -> int:
         """Get count of pending items."""
@@ -143,9 +154,10 @@ class PendingSummaryQueue:
 
     def clear(self) -> int:
         """Clear all pending items. Returns count of items cleared."""
-        count = self.count()
-        self._conn.execute("DELETE FROM pending_summaries")
-        self._conn.commit()
+        with self._lock:
+            count = self.count()
+            self._conn.execute("DELETE FROM pending_summaries")
+            self._conn.commit()
         return count
 
     def close(self) -> None:

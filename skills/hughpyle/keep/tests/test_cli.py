@@ -1,5 +1,5 @@
 """
-CLI tests for associative memory.
+CLI tests for reflective memory.
 
 Tests verify:
 1. CLI commands map to equivalent Python API
@@ -49,16 +49,17 @@ class TestCliBasics:
         assert "find" in result.stdout
         assert "update" in result.stdout
     
-    def test_no_args_shows_help(self, cli):
-        """CLI shows help when called with no arguments."""
+    def test_no_args_shows_now(self, cli):
+        """CLI with no args shows current working context."""
         result = cli()
-        # Typer returns exit code 2 for missing required command
-        assert result.returncode == 2
-        assert "Usage" in result.stdout or "usage" in result.stderr.lower()
-    
+        # Returns success and shows the "now" document
+        assert result.returncode == 0
+        assert "---" in result.stdout  # YAML frontmatter
+        assert "id:" in result.stdout
+
     def test_command_help(self, cli):
         """Individual commands have help."""
-        for cmd in ["find", "update", "get", "remember", "tag", "similar"]:
+        for cmd in ["find", "update", "get", "list"]:
             result = cli(cmd, "--help")
             assert result.returncode == 0, f"{cmd} --help failed"
             assert "Usage" in result.stdout or "usage" in result.stdout.lower()
@@ -72,15 +73,15 @@ class TestJsonOutput:
     """Tests for JSON output format."""
     
     def test_json_flag_exists(self, cli):
-        """Commands accept --json flag."""
-        # Just verify the flag is recognized (command may fail due to NotImplemented)
-        result = cli("find", "test", "--json", "--help")
+        """Global --json flag is recognized."""
+        # --json is now a global flag (before the command)
+        result = cli("--json", "find", "--help")
         # --help takes precedence, should succeed
         assert result.returncode == 0
-    
+
     def test_collections_json_is_valid(self, cli):
-        """collections --json produces valid JSON array."""
-        result = cli("collections", "--json")
+        """--json collections produces valid JSON array."""
+        result = cli("--json", "collections")
         # May fail with NotImplementedError, but if it produces output, it should be JSON
         if result.returncode == 0 and result.stdout.strip():
             parsed = json.loads(result.stdout)
@@ -154,14 +155,16 @@ class TestHumanOutput:
         assert "A document about testing" in output
     
     def test_human_item_with_score(self):
-        """Human-readable item shows score when present."""
-        from keep.cli import _format_item
+        """Human-readable item shows score in full YAML mode."""
+        from keep.cli import _format_yaml_frontmatter
         from keep.types import Item
-        
+
         item = Item(id="test:1", summary="Test", score=0.95)
-        output = _format_item(item, as_json=False)
-        
-        assert "[0.950]" in output
+        output = _format_yaml_frontmatter(item)
+
+        # YAML frontmatter format includes score
+        assert "score: 0.950" in output
+        assert "---" in output
     
     def test_human_list_empty(self):
         """Empty list shows user-friendly message."""
@@ -171,20 +174,21 @@ class TestHumanOutput:
         assert "No results" in output
     
     def test_human_list_separates_items(self):
-        """Items are separated for easy reading."""
+        """Items are separated by newlines (summary format)."""
         from keep.cli import _format_items
         from keep.types import Item
-        
+
         items = [
             Item(id="test:1", summary="First"),
             Item(id="test:2", summary="Second"),
         ]
         output = _format_items(items, as_json=False)
-        
-        # Items should be separated (double newline)
-        assert "\n\n" in output
-        assert "test:1" in output
-        assert "test:2" in output
+
+        # Items should be on separate lines (summary format: id@V{N} date summary)
+        lines = output.strip().split("\n")
+        assert len(lines) == 2
+        assert "test:1" in lines[0]
+        assert "test:2" in lines[1]
 
 
 # -----------------------------------------------------------------------------
@@ -319,11 +323,12 @@ class TestApiCliEquivalence:
         assert "URI" in result.stdout or "document" in result.stdout.lower()
         # The CLI update uses mem.update(id, source_tags=...)
     
-    def test_remember_maps_to_api_remember(self, cli):
-        """'remember' command maps to Keeper.remember()."""
-        result = cli("remember", "--help")
-        assert "content" in result.stdout.lower()
-        # The CLI remember uses mem.remember(content, id=id, source_tags=...)
+    def test_update_text_mode_maps_to_api_remember(self, cli):
+        """'update' text mode (no ://) maps to Keeper.remember()."""
+        result = cli("update", "--help")
+        # The help should mention text content mode
+        assert "text" in result.stdout.lower() or "content" in result.stdout.lower()
+        # The CLI update with text calls kp.remember() internally
     
     def test_get_maps_to_api_get(self, cli):
         """'get' command maps to Keeper.get()."""
@@ -331,11 +336,11 @@ class TestApiCliEquivalence:
         assert "ID" in result.stdout or "id" in result.stdout.lower()
         # The CLI get uses mem.get(id)
     
-    def test_tag_maps_to_api_query_tag(self, cli):
-        """'tag' command maps to Keeper.query_tag()."""
-        result = cli("tag", "--help")
-        assert "key" in result.stdout.lower()
-        # The CLI tag uses mem.query_tag(key, value, limit=limit)
+    def test_list_tag_maps_to_api_query_tag(self, cli):
+        """'list --tag' command maps to Keeper.query_tag()."""
+        result = cli("list", "--help")
+        assert "--tag" in result.stdout
+        # The CLI list --tag uses kp.query_tag(key, value, limit=limit)
 
 
 # -----------------------------------------------------------------------------
@@ -361,6 +366,7 @@ class TestOptions:
         assert "--limit" in result.stdout or "-n" in result.stdout
     
     def test_json_option(self, cli):
-        """--json option is available."""
-        result = cli("find", "--help")
+        """--json global option is available."""
+        # --json is now a global flag, visible in main help
+        result = cli("--help")
         assert "--json" in result.stdout or "-j" in result.stdout

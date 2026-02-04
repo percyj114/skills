@@ -1,7 +1,7 @@
 """
-Keep - Semantic Memory
+Keep - Reflective Memory
 
-A persistent semantic memory with similarity search, full-text search,
+A persistent reflective memory with similarity search, full-text search,
 and tag-based retrieval. Remember everything, find by meaning.
 
 Quick Start:
@@ -37,17 +37,15 @@ if not os.environ.get("KEEP_VERBOSE"):
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
-from .api import Keeper
-from .types import Item, filter_non_system_tags, SYSTEM_TAG_PREFIX
-from .context import WorkingContext, TopicSummary, RoutingContext
+from .api import Keeper, NOWDOC_ID
+from .types import Item, filter_non_system_tags, SYSTEM_TAG_PREFIX, INTERNAL_TAGS
 
-__version__ = "0.1.0"
+__version__ = "0.7.0"
 __all__ = [
     "Keeper",
     "Item",
-    "WorkingContext",
-    "TopicSummary",
-    "RoutingContext",
+    "NOWDOC_ID",
     "filter_non_system_tags",
     "SYSTEM_TAG_PREFIX",
+    "INTERNAL_TAGS",
 ]

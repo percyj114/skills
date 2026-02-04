@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "keep"
-version = "0.1.0"
-description = "Semantic memory - remember and search documents by meaning"
+name = "keep-skill"
+version = "0.8.1"
+description = "Reflective memory - remember and search documents by meaning"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = {text = "MIT"}
@@ -23,14 +23,15 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 
-[project.urls]
-Homepage = "https://github.com/hughpyle/keep"
-Repository = "https://github.com/hughpyle/keep"
 dependencies = [
     "chromadb>=0.4",
     "typer>=0.9",
     "tomli-w>=1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/hughpyle/keep"
+Repository = "https://github.com/hughpyle/keep"
 
 [project.optional-dependencies]
 openai = ["openai>=1.0"]
@@ -71,16 +72,11 @@ keep = "keep.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["keep"]
-artifacts = [
-    "SKILL.md",
-    "patterns/**/*.md",
-]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/keep",
     "/SKILL.md",
-    "/patterns",
     "/README.md",
     "/LICENSE",
 ]
