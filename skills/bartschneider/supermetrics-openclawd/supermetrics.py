@@ -5,18 +5,37 @@ Provides simple functions to query marketing data from 100+ platforms.
 
 import json
 import os
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 BASE_URL = "https://mcp.supermetrics.com"
+ENV_FILE = Path.home() / ".openclaw" / "skills" / "supermetrics-openclawd" / ".env"
+
+
+def _load_env_file() -> dict[str, str]:
+    """Load variables from .env file."""
+    env_vars: dict[str, str] = {}
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                env_vars[key.strip()] = value.strip().strip("\"'")
+    return env_vars
 
 
 def _get_api_key() -> str:
-    """Get API key from environment."""
+    """Get API key from environment or .env file."""
     key = os.environ.get("SUPERMETRICS_API_KEY")
     if not key:
-        raise ValueError("SUPERMETRICS_API_KEY environment variable not set")
+        env_vars = _load_env_file()
+        key = env_vars.get("SUPERMETRICS_API_KEY")
+    if not key:
+        raise ValueError(
+            f"SUPERMETRICS_API_KEY not found in environment or {ENV_FILE}"
+        )
     return key
 
 

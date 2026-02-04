@@ -1,7 +1,7 @@
 ---
 name: supermetrics
-description: "Query marketing data from Supermetrics. Access metrics from Google Analytics, Meta Ads, Google Ads, LinkedIn, and 100+ marketing platforms."
-version: 1.0.0
+description: "Official Supermetrics skill. Query marketing data from 100+ platforms including Google Analytics, Meta Ads, Google Ads, and LinkedIn. Requires API key."
+version: 1.0.1
 triggers:
   - marketing data
   - supermetrics
