@@ -1,0 +1,11 @@
+{
+  "owner": "davidkjelkerud",
+  "slug": "test-skillz",
+  "displayName": "My skill test",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770181686574,
+    "commit": null
+  },
+  "history": []
+}
