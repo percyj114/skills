@@ -4,7 +4,7 @@ Free compliance and policy enforcement for [OpenClaw](https://github.com/opencla
 
 Define security policies for agent workspaces, audit installed skills against those policies, and generate audit-ready compliance reports.
 
-**Looking for active enforcement?** See [openclaw-marshal-pro](https://github.com/AtlasPA/openclaw-marshal-pro) for hook-based blocking, auto-remediation, compliance templates, and team policy sharing.
+**Want automated countermeasures?** Upgrade to Pro — hook-based blocking, auto-remediation, compliance templates, and team policy sharing. [Get Pro access](https://github.com/sponsors/AtlasPA).
 
 ## The Problem
 
@@ -132,7 +132,7 @@ Deductions are weighted by severity: CRITICAL (25pts), HIGH (15pts), MEDIUM (8pt
 
 ## Free vs Pro
 
-| Feature | Free | [Pro](https://github.com/AtlasPA/openclaw-marshal-pro) |
+| Feature | Free | [Pro](https://github.com/sponsors/AtlasPA) |
 |---------|------|-----|
 | Policy definition | Yes | Yes |
 | Compliance audit | Yes | Yes |
