@@ -1,11 +1,17 @@
 {
   "owner": "cyberengage",
   "slug": "secure-sync",
-  "displayName": "Secure Credential Sync",
+  "displayName": "Secure Sync",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770201624500,
-    "commit": "https://github.com/clawdbot/skills/commit/4ff128af91fec3b6bb4daca01473403a0803e0ba"
+    "version": "1.1.0",
+    "publishedAt": 1770242194432,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770201624500,
+      "commit": "https://github.com/clawdbot/skills/commit/4ff128af91fec3b6bb4daca01473403a0803e0ba"
+    }
+  ]
 }
