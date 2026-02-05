@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-智谱AI网络搜索API调用脚本
-通过 chat completions API 调用 web_search 工具
+Zhipu AI Web Search API Script
+Call web_search tool via chat completions API
 """
 
 import os
@@ -19,7 +19,7 @@ API_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
 
 def search(
     search_query: str,
-    search_engine: str = "search_std",
+    search_engine: str = "search_pro_quark",
     search_intent: bool = False,
     count: int = 10,
     search_domain_filter: Optional[str] = None,
@@ -29,15 +29,15 @@ def search(
     user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    调用智谱搜索API
+    Call Zhipu Search API
     
-    参数与智谱API保持一致，提供最大的灵活性
+    Parameters consistent with Zhipu API, providing maximum flexibility
     """
     api_key = os.environ.get("ZHIPU_API_KEY")
     if not api_key:
         raise ValueError("ZHIPU_API_KEY environment variable is not set")
     
-    # 构建工具调用参数
+    # Build tool call parameters
     tool_params = {
         "search_query": search_query,
         "search_engine": search_engine,
@@ -45,7 +45,7 @@ def search(
         "count": count,
     }
     
-    # 添加可选参数
+    # Add optional parameters
     if search_domain_filter:
         tool_params["search_domain_filter"] = search_domain_filter
     if search_recency_filter:
@@ -53,11 +53,11 @@ def search(
     if content_size:
         tool_params["content_size"] = content_size
     
-    # 构建请求体 - 使用 function calling 方式
+    # Build request body - using function calling
     payload: Dict[str, Any] = {
         "model": "glm-4-flash",
         "messages": [
-            {"role": "system", "content": "你是一个能够使用搜索工具的AI助手。当用户需要搜索信息时，请使用web_search工具。"},
+            {"role": "system", "content": "You are an AI assistant capable of using search tools. When users need to search for information, use the web_search tool."},
             {"role": "user", "content": search_query}
         ],
         "tools": [
@@ -72,7 +72,7 @@ def search(
         "tool_choice": "auto",
     }
     
-    # 添加可选的元数据
+    # Add optional metadata
     if request_id:
         payload["request_id"] = request_id
     if user_id:
@@ -93,12 +93,12 @@ def search(
     response.raise_for_status()
     result = response.json()
     
-    # 提取搜索结果
+    # Extract search results
     return extract_search_results(result, search_query)
 
 
 def extract_search_results(response: Dict[str, Any], original_query: str) -> Dict[str, Any]:
-    """从API响应中提取搜索结果"""
+    """Extract search results from API response"""
     output = {
         "id": response.get("id", ""),
         "created": response.get("created", 0),
@@ -109,14 +109,14 @@ def extract_search_results(response: Dict[str, Any], original_query: str) -> Dic
         "raw_response": response,
     }
     
-    # 尝试从 choices 中提取工具调用结果
+    # Try to extract tool call results from choices
     choices = response.get("choices", [])
     if not choices:
         return output
     
     message = choices[0].get("message", {})
     
-    # 检查 tool_calls (结构化搜索结果)
+    # Check tool_calls (structured search results)
     tool_calls = message.get("tool_calls", [])
     for tool_call in tool_calls:
         if tool_call.get("type") == "web_search":
@@ -126,10 +126,10 @@ def extract_search_results(response: Dict[str, Any], original_query: str) -> Dic
             if "search_result" in web_search_result:
                 output["search_result"] = web_search_result["search_result"]
     
-    # 如果没有结构化结果，尝试从 content 中解析
+    # If no structured results, try parsing from content
     content = message.get("content", "")
     if content and not output["search_result"]:
-        # 尝试解析 JSON
+        # Try parsing JSON
         try:
             if isinstance(content, str) and content.strip().startswith("{"):
                 parsed = json.loads(content)
@@ -140,7 +140,7 @@ def extract_search_results(response: Dict[str, Any], original_query: str) -> Dic
         except:
             pass
         
-        # 如果JSON解析失败，尝试从文本中提取链接和信息
+        # If JSON parsing fails, try extracting links and info from text
         if not output["search_result"]:
             parsed_results = parse_text_to_results(content)
             if parsed_results:
@@ -151,25 +151,25 @@ def extract_search_results(response: Dict[str, Any], original_query: str) -> Dic
 
 
 def parse_text_to_results(text: str) -> List[Dict[str, Any]]:
-    """尝试从文本内容中提取搜索结果"""
+    """Try to extract search results from text content"""
     results = []
     
-    # 匹配URL模式
+    # Match URL patterns
     url_pattern = r'https?://[^\s\)\]\>\"\']+'
     urls = re.findall(url_pattern, text)
     
-    # 按段落分割
+    # Split by paragraphs
     paragraphs = text.split('\n\n')
     
     for i, para in enumerate(paragraphs):
-        # 查找包含URL的段落
+        # Find paragraphs containing URLs
         para_urls = re.findall(url_pattern, para)
         if para_urls or (para.strip() and len(para) > 20):
-            # 尝试提取标题（通常是比较短的句子或加粗内容）
+            # Try to extract title (usually shorter sentence or bold content)
             lines = para.strip().split('\n')
-            title = lines[0][:100] if lines else f"结果 {i+1}"
+            title = lines[0][:100] if lines else f"Result {i+1}"
             
-            # 清理标题
+            # Clean title
             title = re.sub(r'^\d+\.\s*', '', title)
             title = re.sub(r'^[\*\-\#]+\s*', '', title)
             
@@ -181,11 +181,11 @@ def parse_text_to_results(text: str) -> List[Dict[str, Any]]:
             }
             results.append(result)
     
-    return results[:10]  # 最多返回10条
+    return results[:10]  # Max 10 results
 
 
 def extract_domain(url: str) -> str:
-    """从URL中提取域名"""
+    """Extract domain from URL"""
     try:
         parsed = urlparse(url)
         return parsed.netloc.replace('www.', '')
@@ -194,100 +194,100 @@ def extract_domain(url: str) -> str:
 
 
 def format_results(data: Dict[str, Any]) -> str:
-    """格式化搜索结果为可读文本"""
+    """Format search results to readable text"""
     lines = []
     
-    lines.append(f"🔍 搜索: {data.get('search_query', 'N/A')}")
+    lines.append(f"🔍 Search: {data.get('search_query', 'N/A')}")
     lines.append("")
     
-    # 搜索意图信息
+    # Search intent info
     if data.get("search_intent"):
-        lines.append("=== 搜索意图 ===")
+        lines.append("=== Search Intent ===")
         for intent in data["search_intent"]:
-            lines.append(f"原始Query: {intent.get('query', 'N/A')}")
-            lines.append(f"识别意图: {intent.get('intent', 'N/A')}")
-            lines.append(f"改写关键词: {intent.get('keywords', 'N/A')}")
+            lines.append(f"Original Query: {intent.get('query', 'N/A')}")
+            lines.append(f"Intent: {intent.get('intent', 'N/A')}")
+            lines.append(f"Keywords: {intent.get('keywords', 'N/A')}")
         lines.append("")
     
-    # 搜索结果
+    # Search results
     results = data.get("search_result", [])
     if results:
-        lines.append(f"=== 搜索结果 (共{len(results)}条) ===")
+        lines.append(f"=== Search Results ({len(results)} total) ===")
         for idx, result in enumerate(results, 1):
-            lines.append(f"\n[{idx}] {result.get('title', '无标题')}")
+            lines.append(f"\n[{idx}] {result.get('title', 'No Title')}")
             if result.get('media'):
-                lines.append(f"    来源: {result['media']}")
+                lines.append(f"    Source: {result['media']}")
             if result.get('link'):
-                lines.append(f"    链接: {result['link']}")
+                lines.append(f"    Link: {result['link']}")
             if result.get('publish_date'):
-                lines.append(f"    发布时间: {result['publish_date']}")
+                lines.append(f"    Published: {result['publish_date']}")
             content = result.get('content', '')
             if content:
-                lines.append(f"    摘要: {content[:200]}{'...' if len(content) > 200 else ''}")
+                lines.append(f"    Summary: {content[:200]}{'...' if len(content) > 200 else ''}")
     else:
-        lines.append("未找到结构化搜索结果")
-        # 显示模型回复
+        lines.append("No structured search results found")
+        # Show model response
         if data.get("model_response"):
-            lines.append("\n=== 模型回复 ===")
+            lines.append("\n=== Model Response ===")
             lines.append(data["model_response"][:1000])
     
     return "\n".join(lines)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="智谱AI网络搜索工具")
+    parser = argparse.ArgumentParser(description="Zhipu AI Web Search Tool")
     
-    # 必填参数
+    # Required parameters
     parser.add_argument(
         "--query", "-q",
         required=True,
-        help="搜索内容 (search_query)，建议不超过70字符"
+        help="Search content (search_query), recommended max 70 chars"
     )
     parser.add_argument(
         "--engine", "-e",
-        default="search_std",
+        default="search_pro_quark",
         choices=["search_std", "search_pro", "search_pro_sogou", "search_pro_quark"],
-        help="搜索引擎 (search_engine)，默认: search_std"
+        help="Search engine (search_engine), default: search_pro_quark"
     )
     
-    # 可选参数
+    # Optional parameters
     parser.add_argument(
         "--intent", "-i",
         action="store_true",
-        help="启用搜索意图识别 (search_intent)"
+        help="Enable search intent recognition (search_intent)"
     )
     parser.add_argument(
         "--count", "-c",
         type=int,
         default=10,
-        help="返回结果数量 (count)，范围1-50，默认: 10"
+        help="Result count (count), range 1-50, default: 10"
     )
     parser.add_argument(
         "--domain-filter", "-d",
-        help="域名白名单过滤 (search_domain_filter)"
+        help="Domain whitelist filter (search_domain_filter)"
     )
     parser.add_argument(
         "--recency", "-r",
         choices=["oneDay", "oneWeek", "oneMonth", "oneYear", "noLimit"],
-        help="时间范围过滤 (search_recency_filter)"
+        help="Time range filter (search_recency_filter)"
     )
     parser.add_argument(
         "--content-size", "-s",
         choices=["medium", "high"],
-        help="内容长度控制 (content_size): medium(摘要) / high(详细)"
+        help="Content size control (content_size): medium(summary) / high(detailed)"
     )
     parser.add_argument(
         "--request-id",
-        help="唯一请求标识 (request_id)"
+        help="Unique request identifier (request_id)"
     )
     parser.add_argument(
         "--user-id", "-u",
-        help="终端用户ID (user_id)，6-128字符"
+        help="End user ID (user_id), 6-128 chars"
     )
     parser.add_argument(
         "--json", "-j",
         action="store_true",
-        help="输出原始JSON格式"
+        help="Output raw JSON format"
     )
     
     args = parser.parse_args()
@@ -306,20 +306,20 @@ def main():
         )
         
         if args.json:
-            # 移除 raw_response 以减少输出
+            # Remove raw_response to reduce output
             output = {k: v for k, v in result.items() if k != "raw_response"}
             print(json.dumps(output, ensure_ascii=False, indent=2))
         else:
             print(format_results(result))
             
     except requests.exceptions.RequestException as e:
-        print(f"API请求失败: {e}", file=sys.stderr)
+        print(f"API request failed: {e}", file=sys.stderr)
         sys.exit(1)
     except ValueError as e:
-        print(f"配置错误: {e}", file=sys.stderr)
+        print(f"Configuration error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"未知错误: {e}", file=sys.stderr)
+        print(f"Unknown error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

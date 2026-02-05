@@ -1,16 +1,16 @@
 ---
 name: zhipu-search
 description: |
-  智谱AI网络搜索工具，提供灵活的搜索引擎调用能力。
+  Zhipu AI Web Search Tool - Provides flexible search engine capabilities.
   
   Use when:
-  - 需要搜索网络信息获取最新数据
-  - 需要特定搜索引擎（搜狗、夸克、智谱搜索）
-  - 需要按时间范围、域名过滤搜索结果
-  - 需要控制搜索结果数量和详细程度
+  - Need to search web information for latest data
+  - Need specific search engines (Sogou, Quark, Zhipu Search)
+  - Need to filter search results by time range or domain
+  - Need to control result count and detail level
   
-  支持搜索引擎：search_std(基础版)、search_pro(高阶版)、search_pro_sogou(搜狗)、search_pro_quark(夸克)
-  支持参数：搜索意图识别、结果数量、时间过滤、域名过滤、内容长度控制
+  Supported search engines: search_std (basic), search_pro (advanced), search_pro_sogou (Sogou), search_pro_quark (Quark)
+  Supported parameters: search intent recognition, result count, time filter, domain filter, content size control
 metadata:
   {
     "openclaw":
@@ -20,73 +20,73 @@ metadata:
   }
 ---
 
-# 智谱搜索 (Zhipu Search)
+# Zhipu Search
 
-通过智谱AI API进行网络搜索，支持多种搜索引擎和灵活的参数配置。
+Web search via Zhipu AI API, supporting multiple search engines and flexible parameter configuration.
 
-## 快速使用
+## Quick Start
 
-### 基础搜索
+### Basic Search
 
 ```python
-# 使用默认参数搜索
-search_query = "OpenClaw 最新版本"
+# Use default parameters
+search_query = "OpenClaw latest version"
 search_engine = "search_std"
 ```
 
-### 高级搜索（完整参数）
+### Advanced Search (Full Parameters)
 
 ```python
-search_query = "人工智能发展趋势"      # 必填，最多70字符
-search_engine = "search_pro"          # 必填：search_std/search_pro/search_pro_sogou/search_pro_quark
-search_intent = true                  # 可选，默认false，是否进行搜索意图识别
-count = 20                            # 可选，默认10，范围1-50
-search_domain_filter = "example.com"  # 可选，限定域名白名单
-search_recency_filter = "oneWeek"     # 可选：oneDay/oneWeek/oneMonth/oneYear/noLimit
-content_size = "high"                 # 可选：medium/high，控制内容详细程度
-request_id = "unique-request-id"      # 可选，唯一请求标识
-user_id = "user-123456"               # 可选，终端用户ID（6-128字符）
+search_query = "AI development trends"      # Required, max 70 chars
+search_engine = "search_pro"                # Required: search_std/search_pro/search_pro_sogou/search_pro_quark
+search_intent = true                        # Optional, default false, enable search intent recognition
+count = 20                                  # Optional, default 10, range 1-50
+search_domain_filter = "example.com"        # Optional, whitelist domain filter
+search_recency_filter = "oneWeek"           # Optional: oneDay/oneWeek/oneMonth/oneYear/noLimit
+content_size = "high"                       # Optional: medium/high, control content detail level
+request_id = "unique-request-id"            # Optional, unique request identifier
+user_id = "user-123456"                     # Optional, end user ID (6-128 chars)
 ```
 
-## 调用方式
+## Usage Methods
 
-### 方式1：直接调用脚本（推荐）
+### Method 1: Direct Script Call (Recommended)
 
 ```bash
 python scripts/zhipu_search.py \
-  --query "搜索内容" \
+  --query "search content" \
   --engine search_pro \
   --count 10
 ```
 
-### 方式2：使用OpenClaw工具调用
+### Method 2: Use OpenClaw Tool
 
-系统会自动根据需求选择合适的参数调用搜索功能。
+System will automatically select appropriate parameters based on needs.
 
-## API 参数说明
+## API Parameter Reference
 
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| search_query | string | ✅ | - | 搜索内容，建议≤70字符 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| search_query | string | ✅ | - | Search content, recommended ≤70 chars |
 | search_engine | enum | ✅ | - | search_std/search_pro/search_pro_sogou/search_pro_quark |
-| search_intent | boolean | - | false | 是否进行搜索意图识别 |
-| count | integer | - | 10 | 返回结果数量，1-50 |
-| search_domain_filter | string | - | - | 限定白名单域名 |
+| search_intent | boolean | - | false | Enable search intent recognition |
+| count | integer | - | 10 | Result count, 1-50 |
+| search_domain_filter | string | - | - | Whitelist domain filter |
 | search_recency_filter | enum | - | noLimit | oneDay/oneWeek/oneMonth/oneYear/noLimit |
-| content_size | enum | - | - | medium/high，控制内容长度 |
-| request_id | string | - | - | 唯一请求标识 |
-| user_id | string | - | - | 终端用户ID（6-128字符） |
+| content_size | enum | - | - | medium/high, control content length |
+| request_id | string | - | - | Unique request identifier |
+| user_id | string | - | - | End user ID (6-128 chars) |
 
-## 搜索引擎选择指南
+## Search Engine Selection Guide
 
-| 引擎 | 适用场景 |
-|------|----------|
-| search_std | 基础搜索，常规问答 |
-| search_pro | 高阶搜索，需要更精准结果 |
-| search_pro_sogou | 搜狗搜索，国内内容 |
-| search_pro_quark | 夸克搜索，特定场景 |
+| Engine | Use Case |
+|--------|----------|
+| search_std | Basic search, regular Q&A |
+| search_pro | Advanced search, need more accurate results |
+| search_pro_sogou | Sogou search, China domestic content |
+| search_pro_quark | Quark search, specific scenarios |
 
-## 返回结果结构
+## Response Structure
 
 ```json
 {
@@ -95,34 +95,34 @@ python scripts/zhipu_search.py \
   "request_id": "request-id",
   "search_intent": [
     {
-      "query": "原始搜索query",
+      "query": "original query",
       "intent": "SEARCH_ALL",
-      "keywords": "改写后的关键词"
+      "keywords": "rewritten keywords"
     }
   ],
   "search_result": [
     {
-      "title": "标题",
-      "content": "内容摘要",
-      "link": "结果链接",
-      "media": "网站名称",
-      "icon": "网站图标",
-      "refer": "角标序号",
-      "publish_date": "发布时间"
+      "title": "title",
+      "content": "content summary",
+      "link": "result link",
+      "media": "site name",
+      "icon": "site icon",
+      "refer": "reference number",
+      "publish_date": "publish date"
     }
   ]
 }
 ```
 
-## 环境要求
+## Environment Requirements
 
-- 环境变量 `ZHIPU_API_KEY` 必须已配置
+- Environment variable `ZHIPU_API_KEY` must be configured
 - Python 3.7+
-- requests 库
+- requests library
 
-## 注意事项
+## Notes
 
-1. search_query 建议控制在70字符以内
-2. search_pro_sogou 的 count 必须是 10/20/30/40/50 之一
-3. user_id 如果提供，长度必须在6-128字符之间
-4. 搜索意图识别会增加响应时间，但能提升搜索结果相关性
+1. search_query should be kept within 70 characters
+2. search_pro_sogou count must be 10/20/30/40/50
+3. user_id length must be between 6-128 characters if provided
+4. Search intent recognition increases response time but improves result relevance
