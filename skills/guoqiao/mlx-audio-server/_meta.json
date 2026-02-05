@@ -3,9 +3,15 @@
   "slug": "mlx-audio-server",
   "displayName": "MLX Audio Server",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1770175666608,
-    "commit": "https://github.com/clawdbot/skills/commit/efefc4a693699533909e5a48a29de38dc5e153d9"
+    "version": "0.1.3",
+    "publishedAt": 1770262796198,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1770175666608,
+      "commit": "https://github.com/clawdbot/skills/commit/efefc4a693699533909e5a48a29de38dc5e153d9"
+    }
+  ]
 }
