@@ -3,11 +3,16 @@
   "slug": "google-workspace",
   "displayName": "Google Workspace",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770269679660,
-    "commit": "https://github.com/clawdbot/skills/commit/50a2ebb8d9e635398fc18f6f2b77b6b32cde64c3"
+    "version": "1.0.3",
+    "publishedAt": 1770355200343,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770269679660,
+      "commit": "https://github.com/clawdbot/skills/commit/50a2ebb8d9e635398fc18f6f2b77b6b32cde64c3"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770222918581,
