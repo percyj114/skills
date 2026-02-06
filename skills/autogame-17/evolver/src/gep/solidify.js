@@ -120,8 +120,15 @@ function countFileLines(absPath) {
   }
 }
 
-function computeBlastRadius({ repoRoot }) {
-  const changedFiles = gitListChangedFiles({ repoRoot });
+function computeBlastRadius({ repoRoot, baselineUntracked }) {
+  let changedFiles = gitListChangedFiles({ repoRoot });
+
+  // Exclude files that were already untracked in the baseline.
+  // This prevents counting existing untracked files as "changed".
+  if (Array.isArray(baselineUntracked) && baselineUntracked.length > 0) {
+    const baselineSet = new Set(baselineUntracked);
+    changedFiles = changedFiles.filter(f => !baselineSet.has(f));
+  }
   const filesCount = changedFiles.length;
 
   const u = tryRunCmd('git diff --numstat', { cwd: repoRoot, timeoutMs: 60000 });
@@ -134,7 +141,9 @@ function computeBlastRadius({ repoRoot }) {
   let untrackedLines = 0;
   if (untracked.ok) {
     const rels = String(untracked.out).split('\n').map(l => l.trim()).filter(Boolean);
+    const baselineSet = new Set(Array.isArray(baselineUntracked) ? baselineUntracked : []);
     for (const rel of rels) {
+      if (baselineSet.has(rel)) continue;
       const abs = path.join(repoRoot, rel);
       untrackedLines += countFileLines(abs);
     }
@@ -208,6 +217,30 @@ function buildCapsuleId(tsIso) {
   return `capsule_${Number.isFinite(t) ? t : Date.now()}`;
 }
 
+// --- Validation command safety ---
+// Allowed command prefixes for Gene validation commands.
+// Only node/npm/npx are permitted; arbitrary binaries are rejected.
+const VALIDATION_ALLOWED_PREFIXES = ['node ', 'npm ', 'npx '];
+
+// Check whether a validation command is safe to execute.
+// Rules:
+//   1. Must start with an allowed prefix (node/npm/npx).
+//   2. Must not contain command substitution (backtick or $() ) anywhere,
+//      because these are evaluated even inside double quotes.
+//   3. After stripping quoted strings, must not contain shell operators
+//      (; & | > <) which could chain or redirect commands.
+function isValidationCommandAllowed(cmd) {
+  const c = String(cmd || '').trim();
+  if (!c) return false;
+  if (!VALIDATION_ALLOWED_PREFIXES.some(p => c.startsWith(p))) return false;
+  // Reject command substitution anywhere (dangerous even inside double quotes)
+  if (/`|\$\(/.test(c)) return false;
+  // Strip quoted content, then check for shell operators in remaining text
+  const stripped = c.replace(/"[^"]*"/g, '').replace(/'[^']*'/g, '');
+  if (/[;&|><]/.test(stripped)) return false;
+  return true;
+}
+
 function runValidations(gene, opts = {}) {
   const repoRoot = opts.repoRoot || getRepoRoot();
   const timeoutMs = Number.isFinite(Number(opts.timeoutMs)) ? Number(opts.timeoutMs) : 180000;
@@ -216,6 +249,10 @@ function runValidations(gene, opts = {}) {
   for (const cmd of validation) {
     const c = String(cmd || '').trim();
     if (!c) continue;
+    if (!isValidationCommandAllowed(c)) {
+      results.push({ cmd: c, ok: false, out: '', err: 'BLOCKED: validation command rejected by safety check (allowed prefixes: node/npm/npx; shell operators prohibited)' });
+      return { ok: false, results };
+    }
     const r = tryRunCmd(c, { cwd: repoRoot, timeoutMs });
     results.push({ cmd: c, ok: r.ok, out: String(r.out || ''), err: String(r.err || '') });
     if (!r.ok) return { ok: false, results };
@@ -382,7 +419,10 @@ function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } 
   const ensured = ensureGene({ genes, selectedGene, signals, intent, dryRun: !!dryRun });
   const geneUsed = ensured.gene;
 
-  const blast = computeBlastRadius({ repoRoot });
+  const blast = computeBlastRadius({
+    repoRoot,
+    baselineUntracked: lastRun && Array.isArray(lastRun.baseline_untracked) ? lastRun.baseline_untracked : [],
+  });
   const constraintCheck = checkConstraints({ gene: geneUsed, blast });
 
   let validation = { ok: true, results: [] };
@@ -529,5 +569,6 @@ module.exports = {
   solidify,
   readStateForSolidify,
   writeStateForSolidify,
+  isValidationCommandAllowed,
 };
 
