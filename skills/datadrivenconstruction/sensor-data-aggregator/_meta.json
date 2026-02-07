@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "sensor-data-aggregator",
+  "displayName": "Sensor Data Aggregator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476446048,
+    "commit": null
+  },
+  "history": []
+}
