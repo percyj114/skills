@@ -107,11 +107,132 @@ curl https://prezentit.net/api/v1/themes?search=minimal
 
 ---
 
+### GET /api/v1/me/generation/status
+
+Check if you have an active generation and its progress.
+
+**Request:**
+```bash
+curl -H "Authorization: Bearer pk_xxx" \
+  https://prezentit.net/api/v1/me/generation/status
+```
+
+**Response (no active generation):**
+```json
+{
+  "hasActiveGeneration": false,
+  "_ai": {
+    "canStartNew": true,
+    "nextSteps": ["You can start a new generation request"]
+  }
+}
+```
+
+**Response (generation in progress):**
+```json
+{
+  "hasActiveGeneration": true,
+  "generation": {
+    "topic": "Introduction to Machine Learning",
+    "stage": "design_progress",
+    "progress": 65,
+    "designsCompleted": 3,
+    "designsTotal": 5,
+    "startedAt": "2024-01-15T10:30:00.000Z",
+    "estimatedRemainingSeconds": 90
+  },
+  "_ai": {
+    "canStartNew": false,
+    "waitingFor": "Current generation to complete",
+    "suggestedAction": "Check back in 90 seconds",
+    "nextSteps": [
+      "Tell user: 'Your presentation is 65% complete'",
+      "Wait 30-60 seconds and check again",
+      "Or cancel with POST /me/generation/cancel"
+    ]
+  }
+}
+```
+
+---
+
+### POST /api/v1/me/generation/cancel
+
+Cancel tracking of active generation (allows starting a new one).
+
+**Request:**
+```bash
+curl -X POST \
+  -H "Authorization: Bearer pk_xxx" \
+  https://prezentit.net/api/v1/me/generation/cancel
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Generation tracking cancelled. You can start a new request.",
+  "_ai": {
+    "canStartNew": true,
+    "note": "Previous generation may still complete in background"
+  }
+}
+```
+
+---
+
 ### POST /api/v1/presentations/generate
 
 Generate a complete presentation.
 
 **⚠️ CRITICAL: Always include `"stream": false` for AI agents!**
+
+**Request Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| topic | string | Yes | What the presentation is about |
+| slideCount | number | No | Number of slides (3-50), required if no outline |
+| theme | string | No | Theme ID from /themes endpoint |
+| stream | boolean | Yes | Must be `false` for AI agents |
+| outline | object | No | External outline (skips outline generation) |
+| confirmPartial | boolean | No | Set `true` to accept partial generation |
+
+**Partial Generation Flow:**
+
+If user doesn't have enough credits for full generation, you'll get:
+
+```json
+{
+  "status": "confirmation_required",
+  "code": "PARTIAL_GENERATION_AVAILABLE",
+  "plan": {
+    "willGenerate": { "outlines": 5, "designs": 4 },
+    "willSkip": { "designs": 1 },
+    "creditsToSpend": 65,
+    "creditsRemaining": 0
+  },
+  "_ai": {
+    "askUserForConfirmation": true,
+    "userMessage": "You have 65 credits. I can make 5 outlines and 4 designs, but 1 slide won't have a design. Proceed?",
+    "nextSteps": [
+      "Tell user what will happen",
+      "If they agree: Resubmit with confirmPartial: true",
+      "If they decline: Offer fewer slides"
+    ]
+  }
+}
+```
+
+To proceed after confirmation:
+```json
+{
+  "topic": "...",
+  "slideCount": 5,
+  "stream": false,
+  "confirmPartial": true
+}
+```
 
 **Request:**
 ```bash

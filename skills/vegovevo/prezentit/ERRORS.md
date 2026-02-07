@@ -6,16 +6,71 @@ This document explains how to handle every error from the Prezentit API.
 
 | HTTP Code | Error Code | Meaning | What to Do |
 |-----------|------------|---------|------------|
+| 200 | PARTIAL_GENERATION_AVAILABLE | Can only do partial generation | Ask user for confirmation |
 | 400 | MISSING_TOPIC | No topic provided | Ask user what the presentation should be about |
 | 400 | INVALID_SLIDE_COUNT | Slides not 3-50 | Adjust slide count within range |
 | 400 | INVALID_OUTLINE | Outline validation failed | See outline errors section |
 | 401 | - | Invalid API key | Check API key configuration |
-| 402 | - | Not enough credits | Direct user to buy credits |
+| 402 | INSUFFICIENT_CREDITS | Not enough credits | Direct user to buy credits |
+| 409 | GENERATION_IN_PROGRESS | Already generating | Wait or check status |
 | 429 | RATE_LIMITED | Too many requests | Wait and retry (see retryAfter) |
 | 429 | DUPLICATE_REQUEST | Same request sent twice | Wait or modify request |
 | 500 | - | Server error | Wait 30 seconds and retry |
 
 ## Detailed Error Handling
+
+### 200 Partial Generation Available (CONFIRMATION REQUIRED)
+
+```json
+{
+  "status": "confirmation_required",
+  "code": "PARTIAL_GENERATION_AVAILABLE",
+  "plan": {
+    "willGenerate": { "outlines": 5, "designs": 4 },
+    "willSkip": { "designs": 1 },
+    "creditsToSpend": 65
+  }
+}
+```
+
+**This is NOT an error** - it's asking for confirmation!
+
+**What to do:**
+1. Tell user exactly what will happen
+2. Ask if they want to proceed
+3. If yes: Resubmit with `"confirmPartial": true`
+4. If no: Offer alternatives
+
+**Response to user:**
+> "You have 65 credits. I can generate 5 outlines and 4 designs, but 1 slide won't have a design. Should I proceed, or would you prefer a 4-slide presentation with full designs?"
+
+---
+
+### 409 Conflict - Generation Already In Progress
+
+```json
+{
+  "error": "A generation is already in progress",
+  "code": "GENERATION_IN_PROGRESS",
+  "activeGeneration": {
+    "topic": "Previous Topic",
+    "progress": 45,
+    "designsCompleted": 2,
+    "designsTotal": 5
+  }
+}
+```
+
+**What to do:**
+1. DO NOT start another generation
+2. Tell user about the ongoing generation
+3. Check status: `GET /api/v1/me/generation/status`
+4. Wait for completion or offer to cancel
+
+**Response to user:**
+> "You already have a presentation being generated ('Previous Topic'). It's 45% complete. Would you like me to check on its progress, or should we wait?"
+
+---
 
 ### 401 Unauthorized - Invalid API Key
 
@@ -30,9 +85,6 @@ This document explains how to handle every error from the Prezentit API.
 2. Verify the key starts with `pk_`
 3. Tell user to get a new key at https://prezentit.net/api-keys
 
-**Response to user:**
-> "I couldn't connect to Prezentit. Please make sure your API key is configured correctly. You can get one at https://prezentit.net/api-keys"
-
 ---
 
 ### 402 Payment Required - Insufficient Credits
@@ -40,21 +92,19 @@ This document explains how to handle every error from the Prezentit API.
 ```json
 {
   "error": "Insufficient credits",
+  "code": "INSUFFICIENT_CREDITS",
   "required": 75,
-  "available": 20,
-  "purchaseUrl": "https://prezentit.net/buy-credits"
+  "available": 20
 }
 ```
 
 **What to do:**
-1. Tell user exactly how many credits they need
-2. Share the purchase link
+1. Check if partial generation is possible (see plan in response)
+2. If not, tell user to buy credits
 3. Offer to reduce slide count if possible
 
 **Response to user:**
-> "You need 75 credits but only have 20. You can:
-> - Buy more at https://prezentit.net/buy-credits
-> - Reduce to X slides (would cost Y credits)"
+> "You need 75 credits but only have 20. You can buy more at https://prezentit.net/buy-credits"
 
 ---
 
@@ -62,7 +112,7 @@ This document explains how to handle every error from the Prezentit API.
 
 ```json
 {
-  "error": "Rate limit exceeded: too many requests per minute",
+  "error": "Rate limit exceeded",
   "retryAfter": 60
 }
 ```
@@ -71,9 +121,6 @@ This document explains how to handle every error from the Prezentit API.
 1. DO NOT retry immediately
 2. Wait the specified `retryAfter` seconds
 3. Then retry the same request
-
-**Response to user:**
-> "I'm generating too fast. Let me wait a minute and try again."
 
 ---
 
@@ -92,9 +139,6 @@ This document explains how to handle every error from the Prezentit API.
 2. Wait for the original request to complete
 3. Or modify the request parameters
 
-**Response to user:**
-> "I already submitted this request. Let me wait for it to complete."
-
 ---
 
 ### 400 Invalid Outline
@@ -103,15 +147,7 @@ This document explains how to handle every error from the Prezentit API.
 {
   "error": "Invalid outline format",
   "code": "INVALID_OUTLINE",
-  "validationErrors": [
-    {
-      "slide": 1,
-      "field": "title",
-      "error": "Title must be at least 3 characters",
-      "value": "ML",
-      "fix": "Expand the title to at least 3 characters"
-    }
-  ]
+  "validationErrors": [...]
 }
 ```
 
@@ -120,38 +156,39 @@ This document explains how to handle every error from the Prezentit API.
 2. Apply the fix suggestion
 3. Resubmit the corrected outline
 
-**IMPORTANT:** Before creating outlines, always check the current constraints:
-```bash
-GET /api/v1/docs/outline-format
-```
-
 ---
 
 ### 500 Server Error
-
-```json
-{
-  "error": "Generation failed",
-  "success": false
-}
-```
 
 **What to do:**
 1. Wait 30 seconds
 2. Retry the request once
 3. If it fails again, tell user to try later
 
-**Response to user:**
-> "There was a server issue. Let me try again..."
-> (after retry fails)
-> "The service is having issues. Please try again in a few minutes or visit https://prezentit.net directly."
+## Status Endpoint
+
+Use `GET /api/v1/me/generation/status` to check progress:
+
+```json
+{
+  "hasActiveGeneration": true,
+  "generation": {
+    "stage": "design_progress",
+    "progress": 65,
+    "designsCompleted": 3,
+    "designsTotal": 5,
+    "estimatedRemainingSeconds": 90
+  }
+}
+```
+
+Check every 30-60 seconds while waiting.
 
 ## Anti-Spam Protection
 
 The API has built-in spam protection:
 
-1. **5-second cooldown** between any generation requests
-2. **30-second duplicate detection** - identical requests are blocked
-3. **Per-minute and per-day rate limits** on your API key
-
-**Best practice:** Never make the same request twice. If you need to retry, wait for the `retryAfter` period.
+1. **One generation at a time** - can't start new while one is running
+2. **5-second cooldown** between any generation requests
+3. **30-second duplicate detection** - identical requests are blocked
+4. **Per-minute and per-day rate limits** on your API key

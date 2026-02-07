@@ -3,11 +3,16 @@
   "slug": "prezentit",
   "displayName": "Prezentit",
   "latest": {
-    "version": "1.0.9",
-    "publishedAt": 1770287918349,
-    "commit": "https://github.com/clawdbot/skills/commit/64989e748cdae39dac2941dbae596eb45d2f802c"
+    "version": "1.0.10",
+    "publishedAt": 1770408992121,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.9",
+      "publishedAt": 1770287918349,
+      "commit": "https://github.com/clawdbot/skills/commit/64989e748cdae39dac2941dbae596eb45d2f802c"
+    },
     {
       "version": "1.0.8",
       "publishedAt": 1769657491539,
