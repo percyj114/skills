@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
 Clean up old credential files after migration.
+
+ENFORCES: Consolidation Rule - All credentials in ~/.openclaw/.env ONLY.
+Removes scattered .env files from workspace, skills, and scripts directories.
+See CONSOLIDATION-RULE.md for details.
 """
 
 import argparse

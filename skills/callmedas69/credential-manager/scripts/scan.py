@@ -16,6 +16,11 @@ CREDENTIAL_PATTERNS = [
     "~/.config/*/*.credentials.json",
     "~/.openclaw/workspace/memory/*-creds.json",
     "~/.openclaw/workspace/memory/*credentials*.json",
+    "~/.openclaw/workspace/.env",
+    "~/.openclaw/workspace/.env.*",
+    "~/.openclaw/workspace/skills/*/.env",
+    "~/.openclaw/workspace/skills/*/repo/.env",
+    "~/.openclaw/workspace/scripts/.env",
     "~/.local/share/*/credentials.json",
     "~/.*rc",  # .bashrc, .zshrc, etc may contain exports
 ]

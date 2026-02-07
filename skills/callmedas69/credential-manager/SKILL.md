@@ -13,7 +13,11 @@ Consolidate scattered API keys and credentials into a secure, centralized `.env`
 
 Centralized `.env` credential management is a **core requirement** for OpenClaw security. If your credentials are scattered across multiple files, **stop and consolidate them now**.
 
-See [CORE-PRINCIPLE.md](CORE-PRINCIPLE.md) for why this is non-negotiable.
+**THE RULE:** All credentials MUST be in `~/.openclaw/.env` ONLY. No workspace, no skills, no scripts directories.
+
+See:
+- [CORE-PRINCIPLE.md](CORE-PRINCIPLE.md) - Why this is non-negotiable
+- [CONSOLIDATION-RULE.md](CONSOLIDATION-RULE.md) - The single source principle
 
 ## The Foundation
 
