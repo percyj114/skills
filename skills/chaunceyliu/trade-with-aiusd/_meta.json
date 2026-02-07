@@ -3,9 +3,15 @@
   "slug": "trade-with-aiusd",
   "displayName": "trade-with-aiusd",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770289152112,
-    "commit": "https://github.com/clawdbot/skills/commit/7c320a421e254d83465d080d51ab74c2baced295"
+    "version": "1.0.1",
+    "publishedAt": 1770426252363,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770289152112,
+      "commit": "https://github.com/clawdbot/skills/commit/7c320a421e254d83465d080d51ab74c2baced295"
+    }
+  ]
 }
