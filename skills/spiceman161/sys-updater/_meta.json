@@ -1,0 +1,11 @@
+{
+  "owner": "spiceman161",
+  "slug": "sys-updater",
+  "displayName": "System Updater",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770559828754,
+    "commit": null
+  },
+  "history": []
+}
