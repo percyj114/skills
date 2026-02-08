@@ -1,0 +1,11 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-launchbot",
+  "displayName": "LaunchBot",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1770580786733,
+    "commit": null
+  },
+  "history": []
+}
