@@ -214,11 +214,11 @@ Take things one step at a time today—you've got this.
 ### Reminders not showing
 
 - Install `remindctl`: `brew install steipete/tap/remindctl`
-- Grant Reminders permission to DailyBriefingAgent.app
+- Grant Reminders permission to Terminal.app
 
 ### Birthdays not showing
 
-- Grant Contacts permission to DailyBriefingAgent.app
+- Grant Contacts permission to Terminal.app
 - For Google: Ensure `gog` is authenticated
 
 ### Emails not showing

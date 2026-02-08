@@ -101,7 +101,9 @@ if [[ -z "$TIMEZONE" ]]; then
 fi
 
 # Get current time info
+# Remove leading zero from hour to ensure valid JSON number format
 CURRENT_HOUR=$(TZ="$TIMEZONE" date +%H 2>/dev/null || date +%H)
+CURRENT_HOUR=$((10#$CURRENT_HOUR))
 LOCAL_TIME=$(TZ="$TIMEZONE" date +%Y-%m-%dT%H:%M:%S 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
 TODAY=$(TZ="$TIMEZONE" date +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)
 
@@ -704,7 +706,7 @@ echo "\"quote\": $ESCAPED_QUOTE"
 
 echo "}"
 
-} >"$OUT" 2>&1
+} >"$OUT" 2>/dev/null
 
 # Atomic publish
 cp -f "$OUT" "${CANON}.tmp" && mv -f "${CANON}.tmp" "$CANON"
