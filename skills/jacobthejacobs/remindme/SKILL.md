@@ -13,7 +13,7 @@ metadata:
 user-invocable: true
 command-dispatch: tool
 command_tool: exec
-command_template: "node --import tsx skills/remindme/src/index.ts {args}"
+command_template: "node --import tsx skills/remindme/src/index.ts --chat-id {chatId} {args}"
 ---
 
 # ⏰ Remind Me
