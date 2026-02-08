@@ -58,11 +58,11 @@ Visit [faucet.circle.com](https://faucet.circle.com) — 20 USDC per address per
 
 ## Supported Chains (Testnet)
 
-| Chain | Network | Domain ID |
-|---|---|---|
-| Ethereum | Sepolia | 0 |
-| Avalanche | Fuji | 1 |
-| Base | Sepolia | 6 |
+| Chain | Network | Domain ID | Notes |
+|---|---|---|---|
+| Ethereum | Sepolia | 0 | ~20 min finality |
+| Base | Sepolia | 6 | ~13-19 min finality |
+| Arc | Testnet | 26 | ~0.5s finality, USDC-native gas |
 
 ## Files
 
@@ -81,6 +81,7 @@ Visit [faucet.circle.com](https://faucet.circle.com) — 20 USDC per address per
 ## Circle Products Used
 
 - **[Circle Gateway](https://developers.circle.com/gateway)** — Unified crosschain USDC balance
+- **[Arc L1](https://docs.arc.network)** — Circle's purpose-built blockchain where USDC is the native gas token
 - **[USDC](https://www.circle.com/usdc)** — Native stablecoin on all supported chains
 - **[Circle Faucet](https://faucet.circle.com)** — Testnet USDC
 

@@ -1,4 +1,4 @@
-import { account, ethereum, base, avalanche } from "./setup-gateway.js";
+import { account, ethereum, base, arc } from "./setup-gateway.js";
 
 ///////////////////////////////////////////////////////////////////////////////
 // Deposit USDC into Circle Gateway
@@ -16,7 +16,7 @@ console.log("══════════════════════�
 console.log(`Account: ${account.address}`);
 console.log(`Deposit amount: ${Number(DEPOSIT_AMOUNT) / 1e6} USDC per chain\n`);
 
-for (const chain of [ethereum, avalanche]) {
+for (const chain of [ethereum, arc]) {
   console.log(`\n🔗 ${chain.name} (Domain ${chain.domain})`);
   console.log("─".repeat(40));
 
@@ -63,7 +63,7 @@ for (const chain of [ethereum, avalanche]) {
 
 console.log("\n═══════════════════════════════════════════════");
 console.log("✅ Deposits complete!");
-console.log("   Avalanche: finality is instant");
+console.log("   Arc: finality is ~0.5 seconds (1 block)");
 console.log("   Ethereum: wait ~20 min for finality");
 console.log("   Then run: node check-balance.js");
 console.log("═══════════════════════════════════════════════");

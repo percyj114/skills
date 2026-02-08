@@ -1,4 +1,4 @@
-import { account, ethereum, base, avalanche } from "./setup-gateway.js";
+import { account, ethereum, base, arc } from "./setup-gateway.js";
 import { GatewayClient } from "./gateway-client.js";
 import { burnIntent, burnIntentTypedData } from "./typed-data.js";
 
@@ -38,17 +38,17 @@ for (const balance of balances) {
 
 // Amounts to transfer from each source chain
 const fromEthereumAmount = 2;
-const fromAvalancheAmount = 3;
+const fromArcAmount = 3;
 
 // Verify balances are sufficient
-const avalancheBalance = balances.find(
-  (b) => b.domain === GatewayClient.DOMAINS.avalanche
+const arcBalance = balances.find(
+  (b) => b.domain === GatewayClient.DOMAINS.arc
 )?.balance;
-if (!avalancheBalance || parseFloat(avalancheBalance) < fromAvalancheAmount) {
-  console.error("\n❌ Avalanche balance insufficient. Wait for deposit finality.");
+if (!arcBalance || parseFloat(arcBalance) < fromArcAmount) {
+  console.error("\n❌ Arc balance insufficient. Wait for deposit finality (~0.5s).");
   process.exit(1);
 }
-console.log("\n   ✅ Avalanche deposit confirmed");
+console.log("\n   ✅ Arc deposit confirmed");
 
 const ethereumBalance = balances.find(
   (b) => b.domain === GatewayClient.DOMAINS.ethereum
@@ -62,7 +62,7 @@ console.log("   ✅ Ethereum deposit confirmed");
 // Step 3: Construct burn intents
 console.log("\n🔥 Constructing burn intents...");
 console.log(`   • ${fromEthereumAmount} USDC from Ethereum → Base`);
-console.log(`   • ${fromAvalancheAmount} USDC from Avalanche → Base`);
+console.log(`   • ${fromArcAmount} USDC from Arc → Base`);
 
 const burnIntents = [
   burnIntent({
@@ -74,9 +74,9 @@ const burnIntents = [
   }),
   burnIntent({
     account,
-    from: avalanche,
+    from: arc,
     to: base,
-    amount: fromAvalancheAmount,
+    amount: fromArcAmount,
     recipient: account.address,
   }),
 ];
@@ -119,8 +119,8 @@ console.log(`   ✅ Minted! Transaction: ${mintTx}`);
 console.log(`   🔗 Explorer: https://sepolia.basescan.org/tx/${mintTx}`);
 
 console.log("\n═══════════════════════════════════════════════");
-console.log(`✅ Successfully transferred ${fromEthereumAmount + fromAvalancheAmount} USDC to Base Sepolia!`);
-console.log("   Source: Ethereum (2 USDC) + Avalanche (3 USDC)");
+console.log(`✅ Successfully transferred ${fromEthereumAmount + fromArcAmount} USDC to Base Sepolia!`);
+console.log("   Source: Ethereum (2 USDC) + Arc (3 USDC)");
 console.log("   Destination: Base Sepolia");
 console.log(`   Attestation latency: ${elapsed.toFixed(2)}ms`);
 console.log("═══════════════════════════════════════════════");

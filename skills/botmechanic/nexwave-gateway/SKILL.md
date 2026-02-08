@@ -28,8 +28,10 @@ This is fundamentally different from bridging. There are no liquidity pools, no 
 | Chain | Domain ID | USDC Address |
 |---|---|---|
 | Ethereum Sepolia | 0 | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` |
-| Avalanche Fuji | 1 | `0x5425890298aed601595a70ab815c96711a31bc65` |
 | Base Sepolia | 6 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+| Arc Testnet | 26 | `0x3600000000000000000000000000000000000000` |
+
+**Note:** Arc is Circle's purpose-built L1 blockchain where USDC is the native gas token. No separate gas token needed — USDC covers everything. Arc has the fastest Gateway finality at ~0.5 seconds.
 
 **Gateway Contracts (same address on all EVM chains):**
 - Gateway Wallet: `0x0077777d7EBA4688BDeF3E311b846F25870A19B9`
@@ -41,7 +43,7 @@ This is fundamentally different from bridging. There are no liquidity pools, no 
 
 1. An Ethereum-compatible private key set as `PRIVATE_KEY` in your environment
 2. Testnet USDC from https://faucet.circle.com (20 USDC per address per chain, every 2 hours)
-3. Testnet native tokens for gas (ETH on Sepolia/Base Sepolia, AVAX on Fuji)
+3. Testnet native tokens for gas: ETH on Sepolia/Base Sepolia (use chain faucets), USDC on Arc (same faucet — USDC is the native gas token on Arc)
 4. Node.js installed with the `viem` and `dotenv` packages
 
 ## How To Use This Skill
@@ -70,7 +72,7 @@ This queries the Gateway API for supported chains and shows your unified USDC ba
 node deposit.js
 ```
 
-This deposits USDC into the Gateway Wallet contract on Ethereum Sepolia and Avalanche Fuji. After deposit and chain finality, your unified balance is credited. Avalanche finalizes instantly; Ethereum may take up to 20 minutes.
+This deposits USDC into the Gateway Wallet contract on Ethereum Sepolia and Arc Testnet. After deposit and chain finality, your unified balance is credited. Arc finalizes in ~0.5 seconds; Ethereum may take up to 20 minutes.
 
 ### Step 4: Transfer USDC Crosschain Instantly
 
@@ -124,9 +126,9 @@ USDC minted on Chain B for recipient
 
 ## Troubleshooting
 
-- **"Insufficient balance"**: Wait for chain finality after depositing. Ethereum takes ~20 min, Avalanche is instant.
+- **"Insufficient balance"**: Wait for chain finality after depositing. Ethereum takes ~20 min, Arc is ~0.5 seconds.
 - **"Gateway deposit not yet picked up"**: The Gateway API waits for block confirmations. Be patient on Ethereum.
-- **Gas errors**: Ensure you have testnet native tokens (ETH/AVAX) for gas fees. Use chain-specific faucets.
+- **Gas errors**: On Ethereum/Base you need testnet ETH for gas. On Arc, USDC is the gas token — same faucet covers everything.
 - **Faucet limits**: You can get 20 USDC per address per chain every 2 hours from faucet.circle.com.
 
 ## References
