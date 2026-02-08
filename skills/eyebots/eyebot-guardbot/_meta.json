@@ -1,0 +1,11 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-guardbot",
+  "displayName": "GuardBot",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1770580818509,
+    "commit": null
+  },
+  "history": []
+}

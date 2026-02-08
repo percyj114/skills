@@ -1,0 +1,126 @@
+{
+  "agent_id": "guardbot",
+  "name": "GuardBot",
+  "version": "1.0.0",
+  "description": "Security monitoring - watches wallets, contracts, and alerts on threats",
+  "enabled": true,
+  "triggers": {
+    "keywords": [
+      "monitor",
+      "watch",
+      "guard",
+      "guardbot",
+      "security",
+      "alert",
+      "threat",
+      "suspicious",
+      "protect",
+      "revoke",
+      "emergency"
+    ],
+    "commands": ["/guard", "/monitor", "/watch", "/protect", "/revoke"],
+    "regex_patterns": [
+      "monitor.*wallet",
+      "watch.*contract",
+      "alert.*if",
+      "protect.*funds"
+    ]
+  },
+  "pricing": {
+    "payment_wallet": "0x4A9583c6B09154bD88dEE64F5249df0C5EC99Cf9",
+    "accepted_tokens": ["ETH"],
+    "plans": {
+      "trial": {
+        "duration_days": 2,
+        "price_eth": 0.017,
+        "display": "GuardBot: 0.017 ETH (2-day) | 5 ETH (lifetime)",
+        "features": ["basic_monitoring", "single_wallet", "email_alerts"]
+      },
+      "lifetime": {
+        "duration_days": -1,
+        "price_eth": 5.0,
+        "display": "GuardBot: 0.017 ETH (2-day) | 5 ETH (lifetime)",
+        "features": ["multi_wallet", "all_chains", "instant_alerts", "auto_revoke", "exploit_detection", "emergency_actions"]
+      }
+    }
+  },
+  "chains": {
+    "ethereum": {
+      "chain_id": 1,
+      "enabled": true,
+      "rpc_env": "ETH_RPC_URL"
+    },
+    "base": {
+      "chain_id": 8453,
+      "enabled": true,
+      "rpc_env": "BASE_RPC_URL"
+    },
+    "polygon": {
+      "chain_id": 137,
+      "enabled": true,
+      "rpc_env": "POLYGON_RPC_URL"
+    },
+    "arbitrum": {
+      "chain_id": 42161,
+      "enabled": true,
+      "rpc_env": "ARBITRUM_RPC_URL"
+    },
+    "optimism": {
+      "chain_id": 10,
+      "enabled": true,
+      "rpc_env": "OPTIMISM_RPC_URL"
+    }
+  },
+  "monitoring": {
+    "wallet": {
+      "enabled": true,
+      "track_balances": true,
+      "track_transactions": true,
+      "track_approvals": true
+    },
+    "contract": {
+      "enabled": true,
+      "ownership_changes": true,
+      "proxy_upgrades": true,
+      "function_calls": true
+    },
+    "market": {
+      "enabled": true,
+      "rug_detection": true,
+      "liquidity_removal": true,
+      "large_sells": true
+    }
+  },
+  "alerts": {
+    "types": [
+      "large_transfer",
+      "suspicious_approval",
+      "ownership_change",
+      "liquidity_removal",
+      "contract_upgrade",
+      "exploit_detected"
+    ],
+    "channels": ["telegram", "discord", "webhook", "email"],
+    "priority_levels": ["info", "warning", "critical", "emergency"]
+  },
+  "emergency_actions": {
+    "auto_revoke": {
+      "enabled": true,
+      "trigger_threshold": "critical"
+    },
+    "transfer_funds": {
+      "enabled": true,
+      "safe_address_required": true
+    }
+  },
+  "automation": {
+    "scan_interval_seconds": 10,
+    "alert_cooldown_seconds": 300,
+    "batch_alerts": true
+  },
+  "limits": {
+    "max_wallets_per_user": 50,
+    "max_contracts_per_user": 100,
+    "alert_history_days": 90
+  }
+}
