@@ -1,11 +1,17 @@
 {
   "owner": "cburnette",
   "slug": "deaddrop",
-  "displayName": "DeadDrop",
+  "displayName": "Deaddrop",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770613075288,
-    "commit": "https://github.com/openclaw/skills/commit/9adf4936b1fb86865fcad8325d1799010d2b40d9"
+    "version": "1.0.0",
+    "publishedAt": 1770669475648,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770613075288,
+      "commit": "https://github.com/openclaw/skills/commit/9adf4936b1fb86865fcad8325d1799010d2b40d9"
+    }
+  ]
 }
