@@ -3,9 +3,15 @@
   "slug": "eachlabs-video-edit",
   "displayName": "Eachlabs Video Edit",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770603541539,
-    "commit": "https://github.com/openclaw/skills/commit/267c192cfc97880adaba9be821b79881f3ee6169"
+    "version": "0.1.1",
+    "publishedAt": 1770607508749,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770603541539,
+      "commit": "https://github.com/openclaw/skills/commit/267c192cfc97880adaba9be821b79881f3ee6169"
+    }
+  ]
 }
