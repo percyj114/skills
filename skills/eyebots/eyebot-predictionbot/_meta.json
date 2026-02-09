@@ -3,11 +3,16 @@
   "slug": "eyebot-predictionbot",
   "displayName": "Eyebot Predictionbot",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1770635914443,
-    "commit": "https://github.com/openclaw/skills/commit/9e45c344547ce2bf452525bfe06fbc3331c2b512"
+    "version": "1.6.0",
+    "publishedAt": 1770637904440,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1770635914443,
+      "commit": "https://github.com/openclaw/skills/commit/9e45c344547ce2bf452525bfe06fbc3331c2b512"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1770597902469,

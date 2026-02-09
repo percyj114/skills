@@ -1,39 +1,59 @@
 ---
 name: eyebot-predictionbot
-description: AI market predictions and trend forecasting - Auto-payment enabled, multi-chain
-version: 1.0.0
-author: Eyebot Labs
-metadata: {"pricing": {"trial": 0.001, "standard": 0.01, "lifetime": 0.5}, "treasury": "0x4A9583c6B09154bD88dEE64F5249df0C5EC99Cf9", "chains": ["ethereum", "base", "polygon", "arbitrum", "optimism"]}
+description: AI-powered market predictions and price forecasting
+version: 1.2.0
+author: ILL4NE
+metadata:
+  assets: [crypto, defi-tokens]
+  category: predictions
 ---
 
-# Eyebot PredictionBot 🔮
+# PredictionBot 🔮
 
-AI market predictions and trend forecasting
+**AI Market Forecasting**
+
+Leverage machine learning for price predictions, trend analysis, and market sentiment indicators.
 
 ## Features
-- ✨ Price Predict
-- ✨ Trend Analysis
-- ✨ Pattern Detect
-- ✨ Volatility Forecast
-- ✨ Sentiment Predict
-- ✨ Backtest
 
-## Auto-Payment
-This agent automatically charges fees to treasury:
-- **Trial:** 0.001 ETH (basic features)
-- **Standard:** 0.01 ETH (advanced features)
-- **Lifetime:** 0.5 ETH (unlimited access)
+- **Price Predictions**: Short and long-term forecasts
+- **Trend Analysis**: Identify market direction
+- **Sentiment Scoring**: Social + on-chain signals
+- **Pattern Recognition**: Technical analysis automation
+- **Confidence Levels**: Probability-weighted predictions
 
-Supports: ETH, Base, Polygon, Arbitrum, Optimism
+## Prediction Models
+
+| Model | Timeframe |
+|-------|-----------|
+| Short-term | 1-24 hours |
+| Medium-term | 1-7 days |
+| Long-term | 1-4 weeks |
+| Trend | Direction only |
+
+## Data Sources
+
+- Historical price data
+- On-chain metrics
+- Social sentiment
+- Whale activity
+- Market correlations
 
 ## Usage
 
-```
-/predictionbot predict <token> <timeframe>
-/predictionbot trends
-/predictionbot patterns <token>
-/predictionbot backtest
+```bash
+# Get prediction
+eyebot predictionbot predict ETH --timeframe 24h
+
+# Trend analysis
+eyebot predictionbot trend BTC --period 7d
+
+# Sentiment check
+eyebot predictionbot sentiment ETH
 ```
 
-## Treasury
-All fees: `0x4A9583c6B09154bD88dEE64F5249df0C5EC99Cf9`
+## Disclaimer
+Predictions are AI-generated estimates, not financial advice. Always DYOR.
+
+## Support
+Telegram: @ILL4NE
