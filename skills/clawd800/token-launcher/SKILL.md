@@ -1,3 +1,10 @@
+---
+name: pumpclaw
+version: 1.1.0
+description: Free token launcher for AI agents on Base. Create ERC20 tokens with instant Uniswap V4 liquidity — 80% trading fees to creator, LP locked forever, zero ETH cost to launch. Use when an agent wants its own token, meme coin, or token-gated economy. Commands: create, list, buy, sell, claim fees, set-image, set-website.
+author: clawd
+---
+
 # PumpClaw Skill
 
 Launch tokens with instant liquidity on Base via Uniswap V4.
@@ -63,6 +70,15 @@ npx tsx pumpclaw.ts claim <token_address>
 ```bash
 npx tsx pumpclaw.ts buy <token_address> --eth 0.01
 npx tsx pumpclaw.ts sell <token_address> --amount 1000000
+```
+
+### Update image/website (creator only)
+```bash
+# Set token image
+npx tsx pumpclaw.ts set-image <token_address> --url "https://example.com/image.png"
+
+# Set token website  
+npx tsx pumpclaw.ts set-website <token_address> --url "https://mytoken.com"
 ```
 
 ### Tokens by creator
