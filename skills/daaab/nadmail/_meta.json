@@ -1,13 +1,18 @@
 {
   "owner": "daaab",
   "slug": "nadmail",
-  "displayName": "NadMail",
+  "displayName": "Nadmail",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770651701290,
-    "commit": "https://github.com/openclaw/skills/commit/002d1e5293e97a9f40f22df27657afb0e842dda2"
+    "version": "1.0.4",
+    "publishedAt": 1770654004998,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770651701290,
+      "commit": "https://github.com/openclaw/skills/commit/002d1e5293e97a9f40f22df27657afb0e842dda2"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770605385155,
