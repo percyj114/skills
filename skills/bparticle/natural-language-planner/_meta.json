@@ -1,0 +1,11 @@
+{
+  "owner": "bparticle",
+  "slug": "natural-language-planner",
+  "displayName": "Natural Language Planner",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770645538160,
+    "commit": null
+  },
+  "history": []
+}
