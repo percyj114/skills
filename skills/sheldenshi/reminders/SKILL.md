@@ -22,7 +22,7 @@ Use this skill **proactively**, not only when the user explicitly asks:
 All commands use the `reminders` script in this skill's `references/` directory. Determine the path relative to this SKILL.md file:
 
 ```bash
-REMINDERS="$(dirname "<path-to-this-SKILL.md>")/references/reminders"
+REMINDERS="$(dirname "<path-to-this-SKILL.md>")/references/reminders.sh"
 ```
 
 On first run, macOS will prompt for Reminders access — click **Allow**.
