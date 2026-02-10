@@ -139,15 +139,19 @@ Navigates to a URL. This is how you load pages.
 
 **Note:** If a page loader matches the URL (see Page Loaders section), the loader's steps execute instead of the default navigation. The response will include `"loader": "loader name"` when this happens.
 
-#### back / forward / refresh
+#### refresh
 
-Standard browser navigation. No parameters needed.
+Reloads the current page.
 
 ```json
-{"action": "back"}
-{"action": "forward"}
 {"action": "refresh"}
+{"action": "refresh", "wait_until": "networkidle"}
 ```
+
+**Parameters:**
+- `wait_until` (optional, default `"domcontentloaded"`): Same options as `goto`.
+
+**Response data:** `{"url": "https://example.com/current-page", "title": "Current Page"}`
 
 ### System Input (Undetectable)
 
@@ -347,7 +351,9 @@ Scans the page and returns every interactive element (buttons, links, inputs, se
   "count": 5,
   "elements": [
     {
+      "i": 0,
       "tag": "button",
+      "id": "submit-btn",
       "text": "Submit",
       "selector": "#submit-btn",
       "x": 400,
@@ -357,7 +363,9 @@ Scans the page and returns every interactive element (buttons, links, inputs, se
       "visible": true
     },
     {
+      "i": 1,
       "tag": "input",
+      "id": null,
       "text": "",
       "selector": "input[name='email']",
       "x": 300,
@@ -543,11 +551,11 @@ Closes a tab. After closing, the last remaining tab becomes active.
 
 ### Dialog Handling
 
-Browsers have modal dialogs (alert, confirm, prompt) that block the page until dismissed. You must handle these proactively.
+Browsers have modal dialogs (alert, confirm, prompt). By default, dialogs are auto-accepted (clicks OK). Use `handle_dialog` if you need to dismiss a dialog or provide text for a prompt.
 
 #### handle_dialog
 
-**Must be called BEFORE the action that triggers the dialog.** This pre-configures how the next dialog will be handled. If you don't call this before a dialog appears, the page will hang.
+**Call BEFORE the action that triggers the dialog** if you want to dismiss it or provide prompt text. If you don't call this, the dialog is auto-accepted (clicks OK).
 
 ```json
 {"action": "handle_dialog", "accept": true}
@@ -934,55 +942,116 @@ docker run -d -p 8080:8080 -v ./profile:/userdata psyb0t/stealthy-auto-browse
 docker run -d -p 8080:8080 psyb0t/stealthy-auto-browse https://example.com
 ```
 
-## Page Loaders
+## Page Loaders (URL-Triggered Automation)
 
-Loaders let you define automated sequences that run when `goto` navigates to a matching URL. They're YAML files mounted to `/loaders`. Think of them like Greasemonkey scripts — when the URL matches, the loader's steps execute instead of the default navigation.
+Page loaders are like **Greasemonkey/Tampermonkey userscripts** but for the HTTP API. You define a set of actions that automatically run whenever the browser navigates to a matching URL. Instead of manually sending a sequence of commands every time you visit a site, you write it once as a YAML file and the container handles it.
+
+This is useful for things like: removing cookie popups, dismissing overlays, waiting for dynamic content, cleaning up pages before scraping, or any repetitive setup you'd otherwise do manually every time.
+
+### How They Work
+
+1. You create YAML files that define URL patterns and a list of steps
+2. Mount those files into the container at `/loaders`
+3. Whenever `goto` navigates to a URL that matches a loader's pattern, the loader's steps run automatically instead of the default navigation
+
+**The steps are the exact same actions as the HTTP API.** Every action you can send via `POST /` (goto, eval, click, system_click, sleep, scroll, wait_for_element, etc.) works as a loader step. Same names, same parameters.
+
+### Setup
 
 ```bash
-docker run -d -p 8080:8080 -v ./my-loaders:/loaders psyb0t/stealthy-auto-browse
+docker run -d -p 8080:8080 -p 5900:5900 \
+  -v ./my-loaders:/loaders \
+  psyb0t/stealthy-auto-browse
 ```
 
-### Loader format
+### Loader Format
 
 ```yaml
-name: Clean Up Example.com
+name: Human-readable name for this loader
 match:
-  domain: example.com       # Exact hostname match (www. is stripped automatically)
-  path_prefix: /articles    # URL path must start with this
-  regex: "article/\\d+"     # Full URL must match this regex
+  domain: example.com         # Exact hostname match (www. is stripped automatically)
+  path_prefix: /articles      # URL path must start with this
+  regex: "article/\\d+"       # Full URL must match this regex
 steps:
-  - action: goto
-    url: "${url}"            # ${url} is replaced with the original URL
+  - action: goto              # Same actions as the HTTP API
+    url: "${url}"             # ${url} is replaced with the original URL
     wait_until: networkidle
-  - action: sleep
-    duration: 1
   - action: eval
     expression: "document.querySelector('.cookie-banner')?.remove()"
-  - action: eval
-    expression: "document.querySelector('.popup-overlay')?.remove()"
+  - action: wait_for_element
+    selector: "#main-content"
+    timeout: 10
 ```
 
-### Match rules
+### Match Rules
 
-All match fields are optional, but at least one is required. If multiple fields are specified, ALL must match for the loader to trigger:
+All match fields are **optional**, but at least one is required. If you specify multiple fields, **all** of them must match for the loader to trigger:
 
-- **`domain`**: Exact hostname match. `www.` is stripped from both the loader's domain and the URL's hostname before comparing.
-- **`path_prefix`**: The URL path must start with this string.
-- **`regex`**: The full URL must match this regular expression.
+- **`domain`**: Exact hostname. `www.` is stripped from both sides before comparing, so `domain: example.com` matches `www.example.com` too.
+- **`path_prefix`**: The URL path must start with this string. `path_prefix: /blog` matches `/blog`, `/blog/post-1`, `/blog/archive`, etc.
+- **`regex`**: The full URL is tested against this regular expression.
 
-### What happens when a loader matches
+### The `${url}` Placeholder
 
-When `goto` is called and a loader matches the URL, the loader's steps execute sequentially as regular API actions. Each step is a JSON command (same as what you'd POST to the API). The `${url}` placeholder in any string value is replaced with the original URL.
+In any string value within a step, `${url}` is replaced with the original URL that was passed to `goto`. This lets you navigate to the URL with custom wait settings, or pass it to JavaScript:
 
-The response from a loader-matched `goto` includes the loader name:
+```yaml
+steps:
+  - action: goto
+    url: "${url}"
+    wait_until: networkidle
+  - action: eval
+    expression: "console.log('Loaded:', '${url}')"
+```
+
+### Practical Example: Clean Scraping
+
+Say you're scraping a news site that has cookie popups, newsletter modals, and lazy-loaded content. Without a loader, you'd send 5+ commands after every `goto`. With a loader:
+
+```yaml
+# loaders/news_site.yaml
+name: News Site Cleanup
+match:
+  domain: news-site.com
+steps:
+  # Navigate with full network wait so everything loads
+  - action: goto
+    url: "${url}"
+    wait_until: networkidle
+
+  # Wait for the main content to be there
+  - action: wait_for_element
+    selector: "article"
+    timeout: 10
+
+  # Kill the cookie popup
+  - action: eval
+    expression: "document.querySelector('.cookie-consent')?.remove()"
+
+  # Kill the newsletter modal
+  - action: eval
+    expression: "document.querySelector('.newsletter-overlay')?.remove()"
+
+  # Scroll to trigger lazy-loaded images
+  - action: scroll_to_bottom
+    delay: 0.3
+
+  # Small pause for everything to settle
+  - action: sleep
+    duration: 1
+```
+
+Now when you `goto` any URL on `news-site.com`, all of this happens automatically. Your response includes `"loader": "News Site Cleanup"` so you know it triggered.
+
+### Response When a Loader Triggers
 
 ```json
 {
   "success": true,
   "data": {
-    "loader": "Clean Up Example.com",
-    "steps_executed": 4,
-    "last_result": { ... }
+    "loader": "News Site Cleanup",
+    "steps_executed": 6,
+    "last_result": { "success": true, "timestamp": 1234567890.456, "data": { "slept": 1 } }
   }
 }
 ```
@@ -1051,6 +1120,6 @@ curl -s -X POST $API -H 'Content-Type: application/json' \
 5. **Resize screenshots with `?whLargest=512`** — full resolution is unnecessarily large
 6. **Mount `/userdata`** for persistent sessions — cookies, fingerprint, and profile survive restarts
 7. **Use wait conditions instead of `sleep`** — `wait_for_element`, `wait_for_text`, `wait_for_url`
-8. **Call `handle_dialog` BEFORE the action that triggers it** — or the page hangs
+8. **Call `handle_dialog` BEFORE the action that triggers it** — if you need to dismiss or provide prompt text (dialogs are auto-accepted otherwise)
 9. **Call `calibrate` after fullscreen changes** — coordinate mapping shifts
 10. **Add slight delays between actions for realism** — `sleep` with 0.5-1.5s between clicks looks more human
