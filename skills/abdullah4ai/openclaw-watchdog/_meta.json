@@ -3,9 +3,15 @@
   "slug": "openclaw-watchdog",
   "displayName": "OpenClaw Watch Dog",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770743692443,
-    "commit": "https://github.com/openclaw/skills/commit/e3162c3ce6d9ccfbeaaf92f46375b7c59fa7afd6"
+    "version": "1.0.5",
+    "publishedAt": 1770755399488,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770743692443,
+      "commit": "https://github.com/openclaw/skills/commit/e3162c3ce6d9ccfbeaaf92f46375b7c59fa7afd6"
+    }
+  ]
 }

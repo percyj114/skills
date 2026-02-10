@@ -31,9 +31,10 @@ openclaw gateway status
 
 Watch Dog attempts fixes in this order:
 1. `openclaw gateway restart` (attempts 1-2)
-2. `pkill -f openclaw` + `openclaw gateway start` (attempt 3)
-3. `npm install -g openclaw` + start (attempts 4-5)
+2. Sends Telegram alert asking for reinstall permission (attempt 3)
+3. If user approves (`touch ~/.openclaw/watchdog/approve-reinstall`): runs `npm install -g openclaw` + start (attempts 4-5)
 4. After 5 failed attempts → stops and alerts for manual intervention
+5. Without user approval, no reinstall happens — only notifications
 
 ### Service management
 
