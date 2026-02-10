@@ -1,0 +1,11 @@
+{
+  "owner": "ivangdavila",
+  "slug": "timescaledb",
+  "displayName": "TimescaleDB",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770727345054,
+    "commit": null
+  },
+  "history": []
+}
