@@ -1,0 +1,11 @@
+{
+  "owner": "arc-claw-bot",
+  "slug": "arc-shield",
+  "displayName": "Arc Shield",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770642853017,
+    "commit": null
+  },
+  "history": []
+}
