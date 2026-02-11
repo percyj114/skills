@@ -8,6 +8,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # MailerLite
@@ -746,9 +751,7 @@ data = response.json()
 | 429 | Rate limited (120 req/min) |
 | 4xx/5xx | Passthrough error from MailerLite API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -767,9 +770,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `mailerlite`. For example:
+
+- Correct: `https://gateway.maton.ai/mailerlite/api/subscribers`
+- Incorrect: `https://gateway.maton.ai/api/subscribers`
+
 ## Resources
 
 - [MailerLite API Documentation](https://developers.mailerlite.com/docs/)
 - [MailerLite Subscribers API](https://developers.mailerlite.com/docs/subscribers.html)
 - [MailerLite Groups API](https://developers.mailerlite.com/docs/groups.html)
 - [MailerLite Campaigns API](https://developers.mailerlite.com/docs/campaigns.html)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)
