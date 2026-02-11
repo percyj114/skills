@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AIP Identity Tool — Register, verify, vouch, and sign with Agent Identity Protocol.
+AIP Identity Tool — Register, verify, vouch, sign, message, and manage keys with Agent Identity Protocol.
 Usage: python3 aip.py <command> [options]
 """
 
@@ -27,12 +27,19 @@ def _sign_nacl(message: bytes, private_key_b64: str) -> str:
     signed = sk.sign(message)
     return base64.b64encode(signed.signature).decode()
 
+def _encrypt_nacl(plaintext: bytes, recipient_pub_b64: str, sender_priv_b64: str) -> str:
+    import nacl.public
+    sender_sk = nacl.public.PrivateKey(base64.b64decode(sender_priv_b64)[:32])
+    recipient_pk = nacl.public.PublicKey(base64.b64decode(recipient_pub_b64))
+    box = nacl.public.Box(sender_sk, recipient_pk)
+    encrypted = box.encrypt(plaintext)
+    return base64.b64encode(encrypted).decode()
+
 def generate_keypair():
     try:
         return _generate_keypair_nacl()
     except ImportError:
         pass
-    # Fallback: use hashlib-based Ed25519 via subprocess
     import subprocess, tempfile
     with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as f:
         kf = f.name
@@ -41,7 +48,6 @@ def generate_keypair():
                        check=True, capture_output=True)
         raw = subprocess.run(["openssl", "pkey", "-in", kf, "-outform", "DER"],
                              check=True, capture_output=True).stdout
-        # Ed25519 DER private key: last 32 bytes are the seed
         seed = raw[-32:]
         pub_raw = subprocess.run(
             ["openssl", "pkey", "-in", kf, "-pubout", "-outform", "DER"],
@@ -58,7 +64,6 @@ def sign_message(message: bytes, private_key_b64: str) -> str:
         pass
     import subprocess, tempfile, textwrap
     seed = base64.b64decode(private_key_b64)
-    # Build PEM-encoded Ed25519 private key
     der_prefix = bytes.fromhex("302e020100300506032b657004220420")
     der = der_prefix + seed
     b64 = base64.b64encode(der).decode()
@@ -102,7 +107,7 @@ def api(method, path, data=None):
 def load_creds(path):
     p = path or DEFAULT_CREDS
     if not os.path.exists(p):
-        print(f"Credentials not found: {p}\nRun 'aip.py register' first.", file=sys.stderr)
+        print(f"Credentials not found: {p}\nRun 'aip.py register --secure' first.", file=sys.stderr)
         sys.exit(1)
     with open(p) as f:
         return json.load(f)
@@ -115,27 +120,56 @@ def cmd_register(args):
         print("--platform and --username required", file=sys.stderr)
         sys.exit(1)
 
-    result = api("POST", "/register/easy", {
-        "platform": args.platform,
-        "username": args.username,
-    })
-
-    creds = {
-        "did": result["did"],
-        "public_key": result["public_key"],
-        "private_key": result["private_key"],
-        "platform": args.platform,
-        "username": args.username,
-        "registered_at": datetime.now(timezone.utc).isoformat(),
-    }
     out = args.credentials or DEFAULT_CREDS
+
+    if args.secure:
+        # Recommended: generate keypair locally, register with /register
+        priv_b64, pub_b64 = generate_keypair()
+        did = "did:aip:" + hashlib.sha256(base64.b64decode(pub_b64)).hexdigest()[:40]
+
+        result = api("POST", "/register", {
+            "did": did,
+            "public_key": pub_b64,
+            "platform": args.platform,
+            "username": args.username,
+        })
+
+        creds = {
+            "did": did,
+            "public_key": pub_b64,
+            "private_key": priv_b64,
+            "platform": args.platform,
+            "username": args.username,
+            "registered_at": datetime.now(timezone.utc).isoformat(),
+        }
+    else:
+        # Deprecated easy mode
+        print("⚠️  WARNING: /register/easy is DEPRECATED. The server generates your private key.", file=sys.stderr)
+        print("   Use --secure to generate keys locally (recommended).", file=sys.stderr)
+
+        result = api("POST", "/register/easy", {
+            "platform": args.platform,
+            "username": args.username,
+        })
+
+        if result.get("security_warning"):
+            print(f"⚠️  Server warning: {result['security_warning']}", file=sys.stderr)
+
+        creds = {
+            "did": result["did"],
+            "public_key": result["public_key"],
+            "private_key": result["private_key"],
+            "platform": args.platform,
+            "username": args.username,
+            "registered_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     with open(out, "w") as f:
         json.dump(creds, f, indent=2)
 
     print(f"✅ Registered successfully!")
-    print(f"   DID: {result['did']}")
+    print(f"   DID: {creds['did']}")
     print(f"   Credentials saved to: {out}")
-    print(f"   ⚠️  SAVE YOUR PRIVATE KEY — it cannot be recovered!")
     print(f"   ⚠️  Back up {out} — private key cannot be recovered!")
 
 
@@ -143,7 +177,8 @@ def cmd_verify(args):
     if args.did:
         result = api("GET", f"/verify?did={args.did}")
     elif args.username:
-        result = api("GET", f"/verify?platform=moltbook&username={args.username}")
+        platform = args.platform or "moltbook"
+        result = api("GET", f"/verify?platform={platform}&username={args.username}")
     else:
         print("--username or --did required", file=sys.stderr)
         sys.exit(1)
@@ -156,10 +191,10 @@ def cmd_verify(args):
     print(f"   DID: {result.get('did')}")
     platforms = result.get("platforms", [])
     for p in platforms:
-        print(f"   Platform: {p.get('platform')} / {p.get('username')}")
+        verified_mark = " ✓" if p.get("verified") else ""
+        print(f"   Platform: {p.get('platform')} / {p.get('username')}{verified_mark}")
         print(f"   Registered: {p.get('registered_at')}")
 
-    # Fetch trust graph for vouches
     try:
         graph = api("GET", f"/trust-graph?did={result['did']}")
         received = graph.get("vouched_by", graph.get("vouches_received", []))
@@ -180,7 +215,7 @@ def cmd_vouch(args):
         print("--target-did required", file=sys.stderr)
         sys.exit(1)
 
-    scope = args.category or "GENERAL"
+    scope = args.scope or "GENERAL"
     statement = args.statement or ""
     msg = f"{creds['did']}|{args.target_did}|{scope}|{statement}"
     sig = sign_message(msg.encode(), creds["private_key"])
@@ -194,6 +229,8 @@ def cmd_vouch(args):
     })
 
     print(f"✅ Vouched for {args.target_did} [{scope}]")
+    if result.get("vouch_id"):
+        print(f"   Vouch ID: {result['vouch_id']}")
 
 
 def cmd_sign(args):
@@ -201,12 +238,12 @@ def cmd_sign(args):
     content = args.content
     if args.file:
         with open(args.file, "rb") as f:
-            content = hashlib.sha256(f.read()).hexdigest()
+            content = f.read().decode(errors="replace")
     if not content:
         print("--content or --file required", file=sys.stderr)
         sys.exit(1)
 
-    content_hash = hashlib.sha256(content.encode()).hexdigest() if not content.startswith("sha256:") else content
+    content_hash = hashlib.sha256(content.encode()).hexdigest()
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     msg = f"{creds['did']}|sha256:{content_hash}|{ts}"
     sig = sign_message(msg.encode(), creds["private_key"])
@@ -221,6 +258,87 @@ def cmd_sign(args):
     print(f"   Hash: sha256:{content_hash}")
     if result.get("signature_block"):
         print(f"   Signature block:\n{result['signature_block']}")
+
+
+def cmd_message(args):
+    creds = load_creds(args.credentials)
+    if not args.recipient_did or not args.text:
+        print("--recipient-did and --text required", file=sys.stderr)
+        sys.exit(1)
+
+    # Look up recipient public key
+    recipient = api("GET", f"/lookup/{args.recipient_did}")
+    if not recipient or not recipient.get("public_key"):
+        print(f"❌ Could not find public key for {args.recipient_did}", file=sys.stderr)
+        sys.exit(1)
+
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Encrypt content
+    try:
+        encrypted = _encrypt_nacl(args.text.encode(), recipient["public_key"], creds["private_key"])
+    except ImportError:
+        print("❌ nacl library required for encryption. Install: pip install pynacl", file=sys.stderr)
+        sys.exit(1)
+
+    msg = f"{creds['did']}|{args.recipient_did}|{ts}|{encrypted}"
+    sig = sign_message(msg.encode(), creds["private_key"])
+
+    result = api("POST", "/message", {
+        "sender_did": creds["did"],
+        "recipient_did": args.recipient_did,
+        "encrypted_content": encrypted,
+        "timestamp": ts,
+        "signature": sig,
+    })
+
+    print(f"✅ Message sent to {args.recipient_did}")
+
+
+def cmd_rotate_key(args):
+    creds = load_creds(args.credentials)
+    new_priv_b64, new_pub_b64 = generate_keypair()
+
+    msg = f"rotate:{new_pub_b64}"
+    sig = sign_message(msg.encode(), creds["private_key"])
+
+    result = api("POST", "/rotate-key", {
+        "did": creds["did"],
+        "new_public_key": new_pub_b64,
+        "signature": sig,
+    })
+
+    # Update credentials file
+    creds["private_key"] = new_priv_b64
+    creds["public_key"] = new_pub_b64
+    creds["key_rotated_at"] = datetime.now(timezone.utc).isoformat()
+
+    out = args.credentials or DEFAULT_CREDS
+    with open(out, "w") as f:
+        json.dump(creds, f, indent=2)
+
+    print(f"✅ Key rotated successfully!")
+    print(f"   New public key: {new_pub_b64[:20]}...")
+    print(f"   Credentials updated in: {out}")
+
+
+def cmd_badge(args):
+    if not args.did:
+        creds = load_creds(args.credentials)
+        did = creds["did"]
+    else:
+        did = args.did
+
+    url = f"{AIP_BASE}/badge/{did}"
+    print(f"🏷️  Badge URL: {url}")
+    print(f"   Embed: ![AIP Badge]({url})")
+
+    # Also fetch trust status
+    try:
+        status = api("GET", f"/trust/{did}")
+        print(f"   Trust level: {status.get('level', 'unknown')}")
+    except Exception:
+        pass
 
 
 def cmd_whoami(args):
@@ -256,26 +374,41 @@ def main():
     parser = argparse.ArgumentParser(description="AIP Identity Tool")
     sub = parser.add_subparsers(dest="command")
 
-    p_reg = sub.add_parser("register", help="Register a new DID")
+    p_reg = sub.add_parser("register", help="Register a new DID (use --secure, recommended)")
     p_reg.add_argument("--platform", default="moltbook")
     p_reg.add_argument("--username", required=True)
+    p_reg.add_argument("--secure", action="store_true",
+                       help="Generate keys locally (recommended). Without this, uses deprecated /register/easy.")
     p_reg.add_argument("--credentials", default=DEFAULT_CREDS)
 
     p_ver = sub.add_parser("verify", help="Verify an agent")
     p_ver.add_argument("--username")
+    p_ver.add_argument("--platform", default=None, help="Platform name (default: moltbook)")
     p_ver.add_argument("--did")
 
     p_vouch = sub.add_parser("vouch", help="Vouch for an agent")
     p_vouch.add_argument("--target-did", required=True)
-    p_vouch.add_argument("--category", default="GENERAL", choices=["IDENTITY", "CODE_SIGNING", "COMMUNICATION", "GENERAL"])
+    p_vouch.add_argument("--scope", default="GENERAL",
+                         choices=["GENERAL", "IDENTITY", "CODE_SIGNING", "FINANCIAL", "INFORMATION", "COMMUNICATION"])
     p_vouch.add_argument("--statement", default="", help="Optional trust statement")
     p_vouch.add_argument("--credentials", default=DEFAULT_CREDS)
 
     p_sign = sub.add_parser("sign", help="Sign content or a file")
-    p_sign.add_argument("--content", help="Hash or content to sign")
+    p_sign.add_argument("--content", help="Content to sign")
     p_sign.add_argument("--file", help="File to hash and sign")
-    p_sign.add_argument("--name", help="Skill/content name")
     p_sign.add_argument("--credentials", default=DEFAULT_CREDS)
+
+    p_msg = sub.add_parser("message", help="Send an encrypted message")
+    p_msg.add_argument("--recipient-did", required=True)
+    p_msg.add_argument("--text", required=True, help="Message text")
+    p_msg.add_argument("--credentials", default=DEFAULT_CREDS)
+
+    p_rot = sub.add_parser("rotate-key", help="Rotate your Ed25519 keypair")
+    p_rot.add_argument("--credentials", default=DEFAULT_CREDS)
+
+    p_badge = sub.add_parser("badge", help="Get AIP trust badge for a DID")
+    p_badge.add_argument("--did", help="DID to get badge for (default: your own)")
+    p_badge.add_argument("--credentials", default=DEFAULT_CREDS)
 
     p_who = sub.add_parser("whoami", help="Show your identity")
     p_who.add_argument("--credentials", default=DEFAULT_CREDS)
@@ -285,8 +418,12 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    {"register": cmd_register, "verify": cmd_verify, "vouch": cmd_vouch,
-     "sign": cmd_sign, "whoami": cmd_whoami}[args.command](args)
+    cmds = {
+        "register": cmd_register, "verify": cmd_verify, "vouch": cmd_vouch,
+        "sign": cmd_sign, "whoami": cmd_whoami, "message": cmd_message,
+        "rotate-key": cmd_rotate_key, "badge": cmd_badge,
+    }
+    cmds[args.command](args)
 
 
 if __name__ == "__main__":
