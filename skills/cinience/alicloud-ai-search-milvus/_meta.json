@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-ai-search-milvus",
+  "displayName": "Alicloud Ai Search Milvus",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770768443396,
+    "commit": null
+  },
+  "history": []
+}
