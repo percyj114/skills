@@ -1,11 +1,11 @@
 ---
 name: youtube-editor
 description: Automate YouTube video editing workflow: Download -> Transcribe (Whisper) -> Analyze (GPT-4) -> High-Quality Thumbnail (Korean & Character Consistency).
-version: 1.0.12
+version: 1.0.13
 author: Flux
 ---
 
-# 🎬 YouTube AI Editor (v1.0.10)
+# 🎬 YouTube AI Editor (v1.0.13)
 
 **Turn raw videos into YouTube-ready content in minutes.**
 
@@ -30,29 +30,19 @@ This skill automates the boring parts of video production, now with **Full Korea
 
 ---
 
-## 🛠️ Prerequisites
-
-Before running this skill, you need a few things:
+## 🛠️ Dependencies
 
 ### 1. System Tools
-You must have **FFmpeg** installed on your system.
+Requires **FFmpeg** (install via your package manager).
 
-- **Ubuntu/Debian:** `sudo apt install ffmpeg`
-- **macOS:** `brew install ffmpeg`
-- **Windows:** Download from ffmpeg.org and add to PATH.
+### 2. Python Packages (optional)
+For advanced thumbnail features, install:
+- `playwright` + `rembg[cpu]`
 
-### 2. Python Packages
-The skill installs basic deps automatically. For advanced thumbnail features:
-
-```bash
-pip install playwright rembg[cpu]
-playwright install chromium
-```
-
-### 3. API Keys
-Add these to your `.env` file:
-- **`OPENAI_API_KEY`**: For Whisper & GPT-4.
-- **`NANO_BANANA_KEY`**: For AI character generation.
+### 3. API Keys (environment variables)
+Set these before running:
+- `OPENAI_API_KEY` - For Whisper & GPT-4
+- `NANO_BANANA_KEY` - For AI character generation
 
 ---
 
@@ -62,14 +52,15 @@ Add these to your `.env` file:
 The AI will generate a **Pirate Lobster character** doing something related to your video, while keeping the original character design consistent.
 
 ```bash
-uv run ~/.openclaw/workspace/skills/youtube-editor/scripts/process_video.py --url "https://youtube.com/watch?v=YOUR_VIDEO_ID"
+# Run from skills/youtube-editor/
+uv run scripts/process_video.py --url "https://youtube.com/watch?v=YOUR_VIDEO_ID"
 ```
 
 ### Option 2: Custom Branding (Your Face)
 Use your own photo as the base avatar. The AI will generate **"You" doing different actions**!
 
 ```bash
-uv run ~/.openclaw/workspace/skills/youtube-editor/scripts/process_video.py \
+uv run scripts/process_video.py \
   --input "video.mp4" \
   --author "My Awesome Channel" \
   --avatar "/path/to/my_face.jpg"
