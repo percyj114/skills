@@ -182,22 +182,35 @@ def get_text(element: ET.Element, path: str) -> Optional[str]:
     return child.text.strip() if child is not None and child.text else None
 
 
-def format_phone(phone: str) -> str:
-    """Format phone number for display."""
+def format_phone(phone: str, clickable: bool = True) -> str:
+    """Format phone number for display with optional clickable tel: link."""
     # Remove non-digits except +
     digits = "".join(c for c in phone if c.isdigit() or c == "+")
     
-    # Format Swiss numbers
-    if digits.startswith("+41") and len(digits) == 12:
-        return f"+41 {digits[3:5]} {digits[5:8]} {digits[8:10]} {digits[10:12]}"
-    elif digits.startswith("0") and len(digits) == 10:
-        return f"{digits[0:3]} {digits[3:6]} {digits[6:8]} {digits[8:10]}"
+    # Normalize to international format for tel: link
+    if digits.startswith("0") and len(digits) == 10:
+        tel_digits = "+41" + digits[1:]
+    elif digits.startswith("+"):
+        tel_digits = digits
+    else:
+        tel_digits = "+41" + digits
     
-    return phone
+    # Format display number
+    if digits.startswith("+41") and len(digits) == 12:
+        display = f"+41 {digits[3:5]} {digits[5:8]} {digits[8:10]} {digits[10:12]}"
+    elif digits.startswith("0") and len(digits) == 10:
+        display = f"{digits[0:3]} {digits[3:6]} {digits[6:8]} {digits[8:10]}"
+    else:
+        display = phone
+    
+    # Return clickable markdown link or plain number
+    if clickable:
+        return f"[{display}](tel:{tel_digits})"
+    return display
 
 
-def print_results(results: list[dict], verbose: bool = False):
-    """Print search results in a readable format."""
+def print_results(results: list[dict], verbose: bool = False, clickable: bool = True):
+    """Print search results in a readable format with clickable phone links."""
     if not results:
         print("🔍 Keine Treffer gefunden.")
         return
@@ -224,11 +237,13 @@ def print_results(results: list[dict], verbose: bool = False):
         if addr_parts:
             print(f"   📍 {', '.join(addr_parts)}")
         
-        # Contact
+        # Contact - phone numbers with clickable tel: links
         if r.get("phone"):
-            print(f"   📞 {r['phone']}")
+            phone_display = format_phone(r['phone'], clickable=clickable) if clickable else r['phone']
+            print(f"   📞 {phone_display}")
         if r.get("fax"):
-            print(f"   📠 {r['fax']}")
+            fax_display = format_phone(r['fax'], clickable=clickable) if clickable else r['fax']
+            print(f"   📠 {fax_display}")
         if r.get("email"):
             print(f"   ✉️  {r['email']}")
         if r.get("website"):
@@ -268,6 +283,8 @@ Examples:
                                default="de", help="Output language (default: de)")
     search_parser.add_argument("-v", "--verbose", action="store_true",
                                help="Show categories and extra details")
+    search_parser.add_argument("--no-clickable", action="store_true",
+                               help="Disable clickable tel: links in phone numbers")
     search_parser.add_argument("--json", action="store_true",
                                help="Output raw JSON")
     
@@ -286,7 +303,7 @@ Examples:
             import json
             print(json.dumps(results, ensure_ascii=False, indent=2))
         else:
-            print_results(results, verbose=args.verbose)
+            print_results(results, verbose=args.verbose, clickable=not args.no_clickable)
 
 
 if __name__ == "__main__":
