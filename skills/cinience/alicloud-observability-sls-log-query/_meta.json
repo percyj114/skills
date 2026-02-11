@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-observability-sls-log-query",
+  "displayName": "Alicloud Observability Sls Log Query",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770768566155,
+    "commit": null
+  },
+  "history": []
+}
