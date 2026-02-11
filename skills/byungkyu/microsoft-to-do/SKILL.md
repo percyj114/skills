@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Microsoft To Do
@@ -484,9 +489,7 @@ data = response.json()
 | 429 | Rate limited |
 | 4xx/5xx | Passthrough error from Microsoft Graph API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -505,6 +508,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `microsoft-to-do`. For example:
+
+- Correct: `https://gateway.maton.ai/microsoft-to-do/v1.0/me/todo/lists`
+- Incorrect: `https://gateway.maton.ai/v1.0/me/todo/lists`
+
 ## Resources
 
 - [Microsoft To Do API Overview](https://learn.microsoft.com/en-us/graph/api/resources/todo-overview)
@@ -512,3 +522,5 @@ EOF
 - [todoTask Resource](https://learn.microsoft.com/en-us/graph/api/resources/todotask)
 - [checklistItem Resource](https://learn.microsoft.com/en-us/graph/api/resources/checklistitem)
 - [linkedResource Resource](https://learn.microsoft.com/en-us/graph/api/resources/linkedresource)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)
