@@ -25,9 +25,9 @@ sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
 
-DEPLOYMENT_ID = "79324c61-6bd4-4218-a438-73f1b28c24a7"
+DEPLOYMENT_ID = "1e16994d-da67-4f30-9ade-250f964b2abc"
 API_BASE = "https://api.comfydeploy.com/api"
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyBCa0WCDlc6XYU6ZlwbqLB5D0hyeIuGmqA")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyALsNu1lZ6F9NFvRe1Hgb59QGZWpVRttcs")
 
 
 def get_api_key(provided_key: str | None) -> str | None:
@@ -99,7 +99,7 @@ def queue_run(client: httpx.Client, api_key: str, inputs: dict) -> str:
     return run_id
 
 
-def poll_run(client: httpx.Client, api_key: str, run_id: str, timeout: int = 300) -> dict:
+def poll_run(client: httpx.Client, api_key: str, run_id: str, timeout: int = 600) -> dict:
     """Poll for run completion."""
     start_time = time.time()
     

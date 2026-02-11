@@ -59,7 +59,7 @@ Morpheus Fashion Design is a comprehensive AI workflow for creating high-quality
 ## API Details
 
 **Endpoint:** `https://api.comfydeploy.com/api/run/deployment/queue`
-**Deployment ID:** `79324c61-6bd4-4218-a438-73f1b28c24a7`
+**Deployment ID:** `1e16994d-da67-4f30-9ade-250f964b2abc` (production)
 
 ## Required Inputs
 
