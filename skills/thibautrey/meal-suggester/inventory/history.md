@@ -30,3 +30,6 @@ Each entry: date | recipe | who made it | feedback | would repeat? | learnings
 
 ### Feb 02, 2026 — Suggested:
 **Poireaux à la Béchamel** — Ready to feedback when done!
+
+### Feb 10, 2026 — Suggested:
+**Omelette aux Légumes** — Ready to feedback when done!

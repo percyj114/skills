@@ -21,8 +21,8 @@ Suggest quick dinner recipes (≤25 min) tailored to your household's tastes and
 
 - `SKILL.md` — this file
 - `README.md` — setup & usage
-- `preferences/thibaut.md` — your taste profile
-- `preferences/partner.md` — partner's taste profile
+- `preferences/user1.md` — first person's taste profile
+- `preferences/user2.md` — second person's taste profile
 - `inventory/stock.md` — current kitchen ingredients
 - `inventory/history.md` — past suggestions & feedback
 - `inventory/shopping-list.md` — suggested shopping list based on usage patterns
@@ -49,7 +49,7 @@ Edit `inventory/history.md` with what you cooked + feedback (liked/disliked/woul
 Check `inventory/shopping-list.md` for items that are running low or needed.
 
 ### View profiles
-Check `preferences/thibaut.md` and `preferences/partner.md` to see what the system knows about you.
+Check `preferences/user1.md` and `preferences/user2.md` to see what the system knows about each user.
 
 ## How It Works
 

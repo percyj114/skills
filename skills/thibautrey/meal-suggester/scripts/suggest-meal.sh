@@ -6,8 +6,8 @@ SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Read inventory
 INVENTORY="$SKILL_DIR/inventory/stock.md"
-THIBAUT_PREFS="$SKILL_DIR/preferences/thibaut.md"
-PARTNER_PREFS="$SKILL_DIR/preferences/partner.md"
+USER1_PREFS="$SKILL_DIR/preferences/user1.md"
+USER2_PREFS="$SKILL_DIR/preferences/user2.md"
 HISTORY="$SKILL_DIR/inventory/history.md"
 SHOPPING="$SKILL_DIR/inventory/shopping-list.md"
 

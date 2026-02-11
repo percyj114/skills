@@ -1,10 +1,10 @@
-# Thibaut's Taste Profile
+# User 1 Taste Profile
 
 ## Preferences
 - (À découvrir au fil du temps)
 
 ## Dislikes
-- **Allergies:** Tous les fruits de mer (poissons, crustacés, fruits de mer)
+- **Allergies:** Fruits de mer (poissons, crustacés)
   - Les algues sont OK ✓
 
 ## Dietary Notes

@@ -17,14 +17,14 @@ meal-suggester/
 ├── SKILL.md                      # Documentation
 ├── README.md                     # Ce fichier
 ├── preferences/
-│   ├── thibaut.md               # Tes goûts, dislikes, favoris
-│   └── partner.md               # Goûts de ta compagne
+│   ├── user1.md                  # First person's tastes, dislikes, favorites
+│   └── user2.md                  # Second person's tastes, dislikes, favorites
 ├── inventory/
-│   ├── stock.md                 # Ingrédients en stock (mise à jour régulière)
-│   ├── history.md               # Historique des recettes essayées + feedback
-│   └── shopping-list.md         # Ingrédients à acheter (auto-généré)
+│   ├── stock.md                  # Ingrédients en stock (mise à jour régulière)
+│   ├── history.md                # Historique des recettes essayées + feedback
+│   └── shopping-list.md          # Ingrédients à acheter (auto-généré)
 └── scripts/
-    └── suggest-meal.sh          # Script qui génère les suggestions
+    └── suggest-meal.sh           # Script qui génère les suggestions
 ```
 
 ## 🍳 Comment ça marche
@@ -58,8 +58,8 @@ Je mets à jour `inventory/stock.md` et les suggestions tiennent compte du nouve
 - Suggestions prioritaires
 
 ### Consulter ce que je sais de vous
-- `preferences/thibaut.md` — Je sais que tu: aimes ça, détestes ça, allergies
-- `preferences/partner.md` — Et ta compagne: préfère ça, déteste ça
+- `preferences/user1.md` — First person's tastes, dislikes, allergies
+- `preferences/user2.md` — Second person's tastes, dislikes, allergies
 - `inventory/stock.md` — En ce moment vous avez...
 - `inventory/shopping-list.md` — Vous devriez acheter...
 

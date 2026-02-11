@@ -1,4 +1,4 @@
-# Partner's Taste Profile
+# User 2 Taste Profile
 
 ## Preferences
 - Préfère les repas sans viande (ou peu de viande) en semaine
@@ -8,10 +8,10 @@
 - (À découvrir)
 
 ## Dietary Notes
-- Mange déjà de la viande au travail → préfère légère/végé le soir en semaine
+- Préfère légère/végé le soir en semaine
 
 ## Favorites
 - (À découvrir)
 
 ---
-*Updated: Feb 2, 2026 — préférences carnées enregistrées*
+*Updated: Feb 2, 2026*
