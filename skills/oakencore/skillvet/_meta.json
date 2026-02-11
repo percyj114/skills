@@ -3,11 +3,16 @@
   "slug": "skillvet",
   "displayName": "Skillvet",
   "latest": {
-    "version": "2.0.7",
-    "publishedAt": 1770316726774,
-    "commit": "https://github.com/openclaw/skills/commit/6e9905b0517fa4e508256599d5289a5630a90519"
+    "version": "2.0.8",
+    "publishedAt": 1770741290978,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.7",
+      "publishedAt": 1770316726774,
+      "commit": "https://github.com/openclaw/skills/commit/6e9905b0517fa4e508256599d5289a5630a90519"
+    },
     {
       "version": "2.0.5",
       "publishedAt": 1770316224800,
