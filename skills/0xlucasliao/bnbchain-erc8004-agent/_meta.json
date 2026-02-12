@@ -1,13 +1,18 @@
 {
   "owner": "0xlucasliao",
   "slug": "bnbchain-erc8004-agent",
-  "displayName": "BNB Chain ERC-8004 Agent Identity",
+  "displayName": "BNB Chain ERC-8004 Agent Registration",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770782972612,
-    "commit": "https://github.com/openclaw/skills/commit/fe5b5f5ae88614ef13f7b8a5d7ed6d8faf98d827"
+    "version": "1.0.3",
+    "publishedAt": 1770783820956,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770782972612,
+      "commit": "https://github.com/openclaw/skills/commit/fe5b5f5ae88614ef13f7b8a5d7ed6d8faf98d827"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770396546958,
