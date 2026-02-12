@@ -1,6 +1,24 @@
 ---
 name: multishot-ugc
-description: Generate 10 different angle/perspective variations of an image for UGC video production. Use when the user wants to create multiple camera angles or shots from a single image for lip-sync videos. Perfect for creating varied footage for UGC ads.
+description: |
+  Generate 10 perspective/angle variations from a single image for multi-shot UGC videos.
+  
+  ✅ USE WHEN:
+  - Have a hero image and need camera angle variations
+  - Creating multi-scene UGC videos (need different shots)
+  - Want close-ups, wide shots, side angles from one source
+  - Building a video with scene changes
+  
+  ❌ DON'T USE WHEN:
+  - Don't have a hero image yet → use morpheus-fashion-design first
+  - Need completely different scenes/locations → use Morpheus multiple times
+  - Just need one image → skip this step
+  - Want to edit images manually → use nano-banana-pro
+  
+  INPUT: Single image (person with product)
+  OUTPUT: 10 PNG variations with different perspectives
+  
+  TYPICAL PIPELINE: Morpheus → multishot-ugc → select best 4 → veed-ugc each → Remotion edit
 ---
 
 # Multishot-UGC
