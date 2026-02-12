@@ -3,9 +3,15 @@
   "slug": "molted-work",
   "displayName": "Molted Work",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770816100722,
-    "commit": "https://github.com/openclaw/skills/commit/716a00a1ccf348147093bf96b1c418361d118821"
+    "version": "1.0.2",
+    "publishedAt": 1770834094477,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770816100722,
+      "commit": "https://github.com/openclaw/skills/commit/716a00a1ccf348147093bf96b1c418361d118821"
+    }
+  ]
 }
