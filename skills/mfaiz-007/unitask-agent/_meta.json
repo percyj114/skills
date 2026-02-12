@@ -1,0 +1,11 @@
+{
+  "owner": "mfaiz-007",
+  "slug": "unitask-agent",
+  "displayName": "Unitask Agent",
+  "latest": {
+    "version": "0.14.0",
+    "publishedAt": 1770890075578,
+    "commit": null
+  },
+  "history": []
+}
