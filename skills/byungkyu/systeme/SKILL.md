@@ -1,8 +1,8 @@
 ---
 name: systeme
 description: |
-  Systeme.io API integration with managed OAuth. Manage contacts, tags, courses, communities, subscriptions, and webhooks.
-  Use this skill when users want to manage Systeme.io contacts, enroll students in courses, manage community memberships, handle subscriptions, or set up webhooks.
+  Systeme.io API integration with managed OAuth. Manage contacts, tags, courses, communities, and subscriptions.
+  Use this skill when users want to manage Systeme.io contacts, enroll students in courses, manage community memberships, or handle subscriptions.
   For other third party apps, use the api-gateway skill (https://clawhub.ai/byungkyu/api-gateway).
   Requires network access and valid Maton API key.
 metadata:
@@ -18,7 +18,7 @@ metadata:
 
 # Systeme.io
 
-Access the Systeme.io API with managed OAuth authentication. Manage contacts, tags, courses, communities, subscriptions, and webhooks.
+Access the Systeme.io API with managed OAuth authentication. Manage contacts, tags, courses, communities, and subscriptions.
 
 ## Quick Start
 
@@ -384,82 +384,6 @@ GET /systeme/api/payment/subscriptions
 POST /systeme/api/payment/subscriptions/{id}/cancel
 ```
 
-### Webhook Operations
-
-#### List Webhooks
-
-```bash
-GET /systeme/api/webhooks
-```
-
-#### Get Webhook
-
-```bash
-GET /systeme/api/webhooks/{id}
-```
-
-#### Create Webhook
-
-```bash
-POST /systeme/api/webhooks
-Content-Type: application/json
-
-{
-  "name": "My Webhook",
-  "url": "https://your-endpoint.com/webhook",
-  "secret": "your-secret-key",
-  "subscriptions": ["CONTACT_CREATED"]
-}
-```
-
-**Required Fields:**
-- `name` - Name for the webhook
-- `url` - Endpoint URL where notifications will be sent
-- `secret` - Secret key for verifying webhook signatures
-- `subscriptions` - Array of event types to subscribe to
-
-**Available Events:**
-- `CONTACT_CREATED` - When a new contact is created
-- `CONTACT_TAG_ADDED` - When a tag is added to a contact
-- `CONTACT_TAG_REMOVED` - When a tag is removed from a contact
-- `CONTACT_OPT_IN` - When a contact opts in
-- `SALE_NEW` - When a new sale is made
-- `SALE_CANCELED` - When a sale is canceled
-
-**Response:**
-```json
-{
-  "id": "019c418b-0110-7910-9b3d-03f8790a7da3",
-  "name": "My Webhook",
-  "url": "https://your-endpoint.com/webhook",
-  "active": true,
-  "subscriptions": [
-    {
-      "id": "019c418b-0111-7f16-832e-e80f1a7bd4e9",
-      "event": "CONTACT_CREATED",
-      "disabledAt": null,
-      "disabledReason": null
-    }
-  ]
-}
-
-#### Update Webhook
-
-```bash
-PATCH /systeme/api/webhooks/{id}
-Content-Type: application/merge-patch+json
-
-{
-  "url": "https://new-endpoint.com/webhook"
-}
-```
-
-#### Delete Webhook
-
-```bash
-DELETE /systeme/api/webhooks/{id}
-```
-
 ## Pagination
 
 Systeme.io uses cursor-based pagination with the following parameters:
@@ -549,7 +473,6 @@ requests.post(
 - The gateway automatically handles auth header transformation
 - Use `application/merge-patch+json` content type for PATCH requests
 - Contact, tag, course, and enrollment IDs are numeric integers
-- Webhook IDs are UUIDs (e.g., `019c418b-0110-7910-9b3d-03f8790a7da3`)
 - Rate limits are enforced via `X-RateLimit-*` headers
 - Systeme.io validates email domains - only real email addresses with valid MX records are accepted
 - The subscriptions endpoint (`/api/payment/subscriptions`) may return 404 if payment features are not configured
