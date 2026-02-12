@@ -1,0 +1,11 @@
+{
+  "owner": "kclonts",
+  "slug": "shipp",
+  "displayName": "Shipp enables a faster way to create connections to real-time data. It's cost-effective, fast to run, and easy to start.",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770904023043,
+    "commit": null
+  },
+  "history": []
+}
