@@ -3,11 +3,16 @@
   "slug": "redpacket-claim",
   "displayName": "redpacket-claim",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1770863430074,
-    "commit": "https://github.com/openclaw/skills/commit/895918829a12e672fc3f4600b0a6aee4e5fa0684"
+    "version": "1.0.6",
+    "publishedAt": 1770867931103,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1770863430074,
+      "commit": "https://github.com/openclaw/skills/commit/895918829a12e672fc3f4600b0a6aee4e5fa0684"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770812708401,
