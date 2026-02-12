@@ -1,0 +1,11 @@
+{
+  "owner": "cyberash-dev",
+  "slug": "grok-image-cli",
+  "displayName": "Grok Image Cli",
+  "latest": {
+    "version": "0.1.2",
+    "publishedAt": 1770850133607,
+    "commit": null
+  },
+  "history": []
+}
