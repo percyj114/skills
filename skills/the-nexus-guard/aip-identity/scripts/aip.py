@@ -10,6 +10,19 @@ from datetime import datetime, timezone
 AIP_BASE = os.environ.get("AIP_SERVICE_URL", "https://aip-service.fly.dev")
 DEFAULT_CREDS = "aip_credentials.json"
 
+def _find_creds_file(filename=DEFAULT_CREDS):
+    """Search for credentials in multiple standard locations."""
+    candidates = [
+        filename,  # current directory
+        os.path.join("credentials", filename),  # credentials/ subdir
+        os.path.join(os.path.expanduser("~"), ".openclaw", "workspace", "credentials", filename),
+        os.path.join(os.path.expanduser("~"), ".openclaw", "workspace", filename),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return filename  # fallback to default (will error with helpful message)
+
 
 # --- Ed25519 helpers (try nacl, fall back to subprocess calling openssl) ---
 
@@ -105,7 +118,7 @@ def api(method, path, data=None):
         sys.exit(1)
 
 def load_creds(path):
-    p = path or DEFAULT_CREDS
+    p = _find_creds_file(path) if path else _find_creds_file()
     if not os.path.exists(p):
         print(f"Credentials not found: {p}\nRun 'aip.py register --secure' first.", file=sys.stderr)
         sys.exit(1)
@@ -125,7 +138,7 @@ def cmd_register(args):
     if args.secure:
         # Recommended: generate keypair locally, register with /register
         priv_b64, pub_b64 = generate_keypair()
-        did = "did:aip:" + hashlib.sha256(base64.b64decode(pub_b64)).hexdigest()[:40]
+        did = "did:aip:" + hashlib.sha256(base64.b64decode(pub_b64)).hexdigest()[:32]
 
         result = api("POST", "/register", {
             "did": did,
@@ -295,6 +308,74 @@ def cmd_message(args):
     print(f"✅ Message sent to {args.recipient_did}")
 
 
+def cmd_messages(args):
+    """Retrieve and optionally decrypt your messages."""
+    creds = load_creds(args.credentials)
+
+    # Step 1: Get challenge for auth
+    ch = api("POST", "/challenge", {"did": creds["did"]})
+    if not ch or not ch.get("challenge"):
+        print("❌ Challenge failed", file=sys.stderr)
+        sys.exit(1)
+    challenge = ch["challenge"]
+
+    # Step 2: Sign challenge
+    sig = sign_message(challenge.encode(), creds["private_key"])
+
+    # Step 3: Retrieve messages
+    data = api("POST", "/messages", {
+        "did": creds["did"],
+        "challenge": challenge,
+        "signature": sig,
+        "unread_only": getattr(args, 'unread', False),
+    })
+    if not data:
+        print("❌ Failed to retrieve messages", file=sys.stderr)
+        sys.exit(1)
+
+    messages = data.get("messages", [])
+    count = data.get("count", len(messages))
+
+    if count == 0:
+        print("📭 No messages.")
+        return
+
+    print(f"📬 {count} message(s):\n")
+
+    for i, msg in enumerate(messages, 1):
+        sender = msg.get("sender_did", "unknown")
+        ts = msg.get("created_at", msg.get("timestamp", "?"))
+        content = msg.get("encrypted_content", msg.get("content", ""))
+        encrypted = bool(msg.get("encrypted_content")) or msg.get("encrypted", False)
+        msg_id = msg.get("id", "?")
+
+        print(f"── Message {i} ──")
+        print(f"  From:    {sender}")
+        print(f"  Date:    {ts}")
+        print(f"  ID:      {msg_id}")
+
+        if encrypted and getattr(args, 'decrypt', True):
+            try:
+                import nacl.public
+                import nacl.signing
+                priv_bytes = base64.b64decode(creds["private_key"])
+                signing_key = nacl.signing.SigningKey(priv_bytes)
+                curve_priv = signing_key.to_curve25519_private_key()
+                sealed_box = nacl.public.SealedBox(curve_priv)
+                plaintext = sealed_box.decrypt(base64.b64decode(content))
+                print(f"  Content: {plaintext.decode()}")
+                print(f"  🔓 (decrypted)")
+            except ImportError:
+                print(f"  Content: [encrypted — pip install pynacl to decrypt]")
+            except Exception as e:
+                print(f"  Content: [decryption failed: {e}]")
+        elif encrypted:
+            print(f"  Content: [encrypted — use --decrypt]")
+        else:
+            print(f"  Content: {content}")
+        print()
+
+
 def cmd_rotate_key(args):
     creds = load_creds(args.credentials)
     new_priv_b64, new_pub_b64 = generate_keypair()
@@ -403,6 +484,12 @@ def main():
     p_msg.add_argument("--text", required=True, help="Message text")
     p_msg.add_argument("--credentials", default=DEFAULT_CREDS)
 
+    p_msgs = sub.add_parser("messages", help="Retrieve your messages")
+    p_msgs.add_argument("--unread", action="store_true", help="Only unread messages")
+    p_msgs.add_argument("--decrypt", action="store_true", default=True, help="Decrypt messages (default)")
+    p_msgs.add_argument("--no-decrypt", dest="decrypt", action="store_false")
+    p_msgs.add_argument("--credentials", default=DEFAULT_CREDS)
+
     p_rot = sub.add_parser("rotate-key", help="Rotate your Ed25519 keypair")
     p_rot.add_argument("--credentials", default=DEFAULT_CREDS)
 
@@ -421,7 +508,7 @@ def main():
     cmds = {
         "register": cmd_register, "verify": cmd_verify, "vouch": cmd_vouch,
         "sign": cmd_sign, "whoami": cmd_whoami, "message": cmd_message,
-        "rotate-key": cmd_rotate_key, "badge": cmd_badge,
+        "messages": cmd_messages, "rotate-key": cmd_rotate_key, "badge": cmd_badge,
     }
     cmds[args.command](args)
 

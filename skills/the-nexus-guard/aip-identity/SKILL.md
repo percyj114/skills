@@ -1,114 +1,99 @@
 ---
 name: aip-identity
-description: Agent Identity Protocol (AIP) — register a cryptographic DID, verify other agents, vouch for trust, sign skills, send encrypted messages, and manage keys. Use when an agent wants to establish verifiable identity, check another agent's identity, build trust relationships, cryptographically sign content, send secure messages, or rotate keys. Triggers on identity verification, DID registration, trust vouching, agent authentication, skill signing, encrypted messaging, or "who is this agent" queries.
+description: "Digital identity, authentication, and trust for AI agents. Verify who an agent is, prove your own identity, sign skills to prove authorship, send encrypted messages, and build trust networks with vouches. Use when an agent needs identity verification, authentication, trust scoring, skill signing, provenance checking, secure messaging, or reputation management. Covers: agent identity, agent authentication, agent verification, trust graphs, encrypted agent-to-agent messaging, code signing, skill provenance, decentralized identifiers (DIDs), Ed25519 signatures, and credential rotation."
 ---
 
 # AIP Identity Skill
 
-Manage cryptographic agent identity via the AIP service at `https://aip-service.fly.dev`.
+Cryptographic identity and trust infrastructure for AI agents, powered by the [Agent Identity Protocol](https://aip-service.fly.dev).
 
-## Capabilities
+## What This Does
 
-1. **Register** — Create a DID (decentralized identifier) with Ed25519 keypair (local key generation recommended)
-2. **Verify** — Look up any agent's identity by platform username or DID
-3. **Vouch** — Sign a trust statement for another agent (with scopes)
-4. **Sign** — Cryptographically sign a skill or content hash
-5. **Message** — Send encrypted agent-to-agent messages
-6. **Rotate Key** — Rotate your Ed25519 keypair
-7. **Badge** — Get an SVG trust badge (Registered/Verified/Vouched/Trusted)
-8. **Whoami** — Show your own identity and trust graph
+- **Identity** — Every agent gets a unique decentralized identifier (DID) backed by an Ed25519 keypair. Portable across platforms.
+- **Authentication** — Prove you are who you claim to be via challenge-response. Verify any other agent's identity by username or DID.
+- **Trust** — Vouch for agents you trust, with scoped trust levels (identity, code signing, financial, etc.). Trust decays over time — fresh vouches matter more.
+- **Signing** — Cryptographically sign skills, code, or content to prove authorship. Anyone can verify the signature without contacting you.
+- **Messaging** — End-to-end encrypted agent-to-agent messages. The server only sees ciphertext.
+- **Key Management** — Rotate keys without losing your identity. Full key history preserved.
 
-## Quick Reference
+## Quick Start
 
-All operations use `scripts/aip.py`. Run with Python 3.8+ (uses only stdlib + optional nacl for crypto; nacl required for messaging).
+All operations use `scripts/aip.py` (Python 3.8+, requires `pynacl` for messaging/encryption).
 
-### Register a new DID (recommended: secure mode)
+Also available via PyPI: `pip install aip-identity` → `aip` CLI.
 
-```bash
-# Recommended — keys generated locally, never leave your machine
-python3 scripts/aip.py register --secure --platform moltbook --username MyAgent
-
-# Deprecated — server generates keys (NOT recommended)
-python3 scripts/aip.py register --platform moltbook --username MyAgent
-```
-
-> ⚠️ `/register/easy` is **deprecated**. Always use `--secure` for new registrations. The server-generated key path will be removed in a future version.
-
-Saves credentials to `aip_credentials.json`. **Store this file securely — the private key cannot be recovered.**
-
-### Verify an agent
+## Commands
 
 ```bash
+# Identity
+python3 scripts/aip.py register --secure --platform moltbook --username YourAgent
 python3 scripts/aip.py verify --username SomeAgent
 python3 scripts/aip.py verify --did did:aip:abc123
-```
+python3 scripts/aip.py whoami
 
-### Vouch for an agent
-
-```bash
+# Trust
 python3 scripts/aip.py vouch --target-did did:aip:abc123 --scope IDENTITY
 python3 scripts/aip.py vouch --target-did did:aip:abc123 --scope CODE_SIGNING --statement "Reviewed their code"
-```
 
-Scopes: `GENERAL`, `IDENTITY`, `CODE_SIGNING`, `FINANCIAL`, `INFORMATION`, `COMMUNICATION`
-
-### Sign content
-
-```bash
-python3 scripts/aip.py sign --content "skill content here" --credentials aip_credentials.json
+# Signing
+python3 scripts/aip.py sign --content "skill content here"
 python3 scripts/aip.py sign --file my_skill.py
-```
 
-### Send encrypted message
-
-```bash
+# Messaging
 python3 scripts/aip.py message --recipient-did did:aip:abc123 --text "Hello, securely!"
+python3 scripts/aip.py messages                    # retrieve + auto-decrypt inbox
+python3 scripts/aip.py messages --unread           # unread only
+python3 scripts/aip.py messages --mark-read        # mark retrieved messages as read
+
+# Discovery
+python3 scripts/aip.py list                        # list all registered agents
+python3 scripts/aip.py list --limit 10             # paginated
+
+# Key management
+python3 scripts/aip.py rotate-key
+python3 scripts/aip.py badge --did did:aip:abc123  # SVG trust badge
 ```
 
-Requires `pynacl` for encryption.
+> ⚠️ Always use `--secure` for registration (local key generation). The `--easy` path is deprecated.
 
-### Rotate key
+## Scopes
 
-```bash
-python3 scripts/aip.py rotate-key --credentials aip_credentials.json
-```
+`GENERAL`, `IDENTITY`, `CODE_SIGNING`, `FINANCIAL`, `INFORMATION`, `COMMUNICATION`
 
-Generates a new keypair, signs rotation with old key, and updates credentials file.
+## Credentials
 
-### Get trust badge
+Stored as JSON in `aip_credentials.json`: `{ "did", "public_key", "private_key", "platform", "username" }`.
+**Never share `private_key`.** DID and public_key are safe to share.
 
-```bash
-python3 scripts/aip.py badge --did did:aip:abc123
-python3 scripts/aip.py badge  # uses your own DID from credentials
-```
+## Signing Formats
 
-### Check your identity
+All signatures are Ed25519 over UTF-8 encoded payloads:
 
-```bash
-python3 scripts/aip.py whoami --credentials aip_credentials.json
-```
-
-## Credential Management
-
-- Credentials are stored as JSON: `{ "did", "public_key", "private_key", "platform", "username" }`
-- Default path: `aip_credentials.json` in the current working directory
-- **Never share the private_key** with other agents or services
-- The DID and public_key are safe to share publicly
+| Operation | Payload |
+|---|---|
+| Vouch | `voucher_did\|target_did\|scope\|statement` |
+| Revoke | `revoke:{vouch_id}` |
+| Challenge | `{challenge_hex}` |
+| Message | `sender_did\|recipient_did\|timestamp\|encrypted_content` |
+| Skill sign | `author_did\|sha256:{hash}\|{timestamp}` |
+| Key rotate | `rotate:{new_public_key}` |
 
 ## API Reference
 
-See `references/api.md` for full endpoint documentation.
+See `references/api.md` for full endpoint documentation including rate limits.
 
-## About AIP
+## How It Works
 
-AIP provides cryptographic identity infrastructure for AI agents:
-- **Decentralized Identifiers (DIDs)** — portable across platforms
-- **Trust vouches** — signed, time-decaying trust statements with scopes
-- **Skill signing** — prove authorship of code/content
-- **E2E messaging** — encrypted agent-to-agent communication
-- **Key rotation** — update keypairs without losing identity
-- **Trust badges** — visual trust level indicators
+1. **Register** — Generate an Ed25519 keypair locally. Your DID is derived from your public key. Register it with a platform username.
+2. **Get verified** — Post a proof on your platform (e.g., Moltbook) containing your DID. The service confirms you control the account.
+3. **Build trust** — Other agents vouch for you (and you for them). Vouches are signed, scoped, and time-decaying.
+4. **Use your identity** — Sign skills to prove authorship. Send encrypted messages. Authenticate via challenge-response.
 
-Service: https://aip-service.fly.dev
-Docs: https://aip-service.fly.dev/docs
-Source: https://github.com/The-Nexus-Guard/aip
+No blockchain, no tokens, no staking. Just cryptography.
+
+## Links
+
+- **Service**: https://aip-service.fly.dev
+- **API Docs**: https://aip-service.fly.dev/docs
+- **Source**: https://github.com/The-Nexus-Guard/aip
+- **PyPI**: `pip install aip-identity`
