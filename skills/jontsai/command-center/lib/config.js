@@ -15,7 +15,7 @@ const os = require("os");
 const HOME = os.homedir();
 
 /**
- * Get the OpenClaw profile directory (e.g., ~/.openclaw or ~/.openclaw-skilletz)
+ * Get the OpenClaw profile directory (e.g., ~/.openclaw or ~/.openclaw-<profile>)
  * This is the canonical source for profile-aware paths.
  */
 function getOpenClawDir(profile = null) {
@@ -27,8 +27,23 @@ function getOpenClawDir(profile = null) {
 
 /**
  * Auto-detect OpenClaw workspace by checking common locations
+ * Profile-aware: checks profile-specific paths first when OPENCLAW_PROFILE is set
  */
 function detectWorkspace() {
+  const profile = process.env.OPENCLAW_PROFILE || "";
+  const openclawDir = getOpenClawDir();
+
+  // Build candidates list - profile-specific paths come first
+  const profileCandidates = profile
+    ? [
+        // Profile-specific workspace inside the profile directory
+        path.join(openclawDir, "workspace"),
+        // Profile-specific workspace in home (e.g., ~/.openclaw-<profile>-workspace)
+        path.join(HOME, `.openclaw-${profile}-workspace`),
+        path.join(HOME, `.${profile}-workspace`),
+      ]
+    : [];
+
   const candidates = [
     // Environment variable (highest priority)
     process.env.OPENCLAW_WORKSPACE,
@@ -36,6 +51,8 @@ function detectWorkspace() {
     process.env.OPENCLAW_HOME,
     // Gateway config workspace (check early - this is where OpenClaw actually runs)
     getWorkspaceFromGatewayConfig(),
+    // Profile-specific paths (if profile is set)
+    ...profileCandidates,
     // Common custom workspace names
     path.join(HOME, "openclaw-workspace"),
     path.join(HOME, ".openclaw-workspace"),
@@ -61,12 +78,16 @@ function detectWorkspace() {
   }
 
   // Return default (will be created on first use)
+  // Use profile-specific workspace if profile is set
+  if (profile) {
+    return path.join(HOME, `.openclaw-${profile}`, "workspace");
+  }
   return path.join(HOME, ".openclaw-workspace");
 }
 
 /**
  * Try to get workspace from OpenClaw gateway config
- * Profile-aware: checks ~/.openclaw-{profile}/ first if profile is set
+ * Profile-aware: checks the profile directory first when OPENCLAW_PROFILE is set
  */
 function getWorkspaceFromGatewayConfig() {
   const openclawDir = getOpenClawDir();
@@ -244,8 +265,11 @@ function loadConfig() {
 
     // Billing - for cost savings calculation
     billing: {
-      claudePlanCost: parseFloat(process.env.CLAUDE_PLAN_COST || fileConfig.billing?.claudePlanCost || "200"),
-      claudePlanName: process.env.CLAUDE_PLAN_NAME || fileConfig.billing?.claudePlanName || "Claude Code Max",
+      claudePlanCost: parseFloat(
+        process.env.CLAUDE_PLAN_COST || fileConfig.billing?.claudePlanCost || "200",
+      ),
+      claudePlanName:
+        process.env.CLAUDE_PLAN_NAME || fileConfig.billing?.claudePlanName || "Claude Code Max",
     },
   };
 
