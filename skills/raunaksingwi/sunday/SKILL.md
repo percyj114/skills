@@ -1,22 +1,24 @@
 ---
 name: sunday
-description: "Agent identity provider — own email address, phone number, and E2E-encrypted credential vault. Use when storing or retrieving passwords for services, logging into services with stored credentials, checking email or SMS inbox, receiving OTP/verification codes, signing up for services, getting your agent's email address or phone number, or any task where the agent needs its own identity separate from the user's. Replaces 1Password + AgentMail with a single skill — no desktop app, no tmux, fully autonomous."
+description: "Agent identity provider — own email address and E2E-encrypted credential vault. Use when storing or retrieving passwords for services, logging into services with stored credentials, checking email inbox, receiving OTP/verification codes via email, signing up for services, getting your agent's email address, or any task where the agent needs its own identity separate from the user's. Replaces 1Password + AgentMail with a single skill — no desktop app, no tmux, fully autonomous."
 metadata: {"openclaw": {"emoji": "☀️", "requires": {"bins": ["sunday"]}, "install": [{"id": "brew", "kind": "brew", "formula": "ravi-technologies/tap/sunday", "bins": ["sunday"], "label": "Install Sunday CLI via Homebrew"}]}}
 ---
 
 # Sunday
 
-Give your agent its own identity — a dedicated email address, phone number, and E2E-encrypted credential vault. All in one CLI, no desktop app, no tmux sessions, no biometric prompts. Fully autonomous after one-time setup.
+Give your agent its own identity — a dedicated email address and E2E-encrypted credential vault. All in one CLI, no desktop app, no tmux sessions, no biometric prompts. Fully autonomous after one-time setup.
 
 ## Setup (One Time)
 
-1. Install the CLI:
+1. **Create a Sunday account** at [sunday.ravi.app](https://sunday.ravi.app). Set up your encryption PIN and create an Identity (this gives your agent its own email address).
+
+2. Install the CLI:
 
 ```bash
 brew install ravi-technologies/tap/sunday
 ```
 
-2. Authenticate (run this BEFORE starting OpenClaw):
+3. Authenticate (run this BEFORE starting OpenClaw):
 
 ```bash
 sunday auth login
@@ -24,7 +26,7 @@ sunday auth login
 
 This opens a browser for login, then prompts for your 6-digit encryption PIN. After this, credentials and encryption keys are stored in `~/.sunday/config.json` — no further prompts needed. All subsequent `sunday` commands work autonomously.
 
-3. Verify:
+4. Verify:
 
 ```bash
 sunday auth status
@@ -34,47 +36,41 @@ That's it. No desktop app to keep open. No tmux session. No environment variable
 
 ## When to Use
 
-- **Signing up for a service** — use your Sunday email/phone in registration forms
-- **Receiving OTP or verification codes** — check inbox for SMS or email codes
+- **Signing up for a service** — use your Sunday email in registration forms
+- **Receiving OTP or verification codes** — check inbox for email codes
 - **Storing credentials** — save username/password for services you've signed up for
 - **Retrieving credentials** — look up stored passwords when logging into a service
 - **Checking email** — read incoming emails to your agent's own address
-- **Checking SMS** — read incoming text messages to your agent's own number
-- **Any task needing your own identity** — don't use the user's personal email or phone
+- **Any task needing your own identity** — don't use the user's personal email
 
 ## Your Identity
 
-Get your agent's own email and phone number:
+Get your agent's own email address:
 
 ```bash
 # Get your email address
 sunday get email --json
 # → {"email": "scout-a1b2c3@sunday.app"}
 
-# Get your phone number
-sunday get phone --json
-# → {"phone_number": "+12125551234"}
-
 # Get the account owner's name
 sunday get owner --json
 ```
 
-Use these when filling out registration forms, not the user's personal email or phone.
+Use this when filling out registration forms, not the user's personal email.
 
-## Inbox — Reading Email and SMS
+## Inbox — Reading Email
 
 ### Unified Inbox
 
 ```bash
-# All messages (email + SMS), newest first
+# All messages, newest first
 sunday inbox list --json
 
 # Only unread messages
 sunday inbox list --unread --json
 
-# Filter by type
+# Filter to email only
 sunday inbox list --type email --json
-sunday inbox list --type sms --json
 
 # Filter by direction
 sunday inbox list --direction incoming --json
@@ -93,19 +89,6 @@ sunday inbox email --unread --json
 sunday inbox email <thread_id> --json
 ```
 
-### SMS Conversations
-
-```bash
-# List all SMS conversations
-sunday inbox sms --json
-
-# List only conversations with unread messages
-sunday inbox sms --unread --json
-
-# View a specific conversation
-sunday inbox sms <conversation_id> --json
-```
-
 ### Individual Messages
 
 ```bash
@@ -114,12 +97,6 @@ sunday message email --json
 
 # View a specific email by ID
 sunday message email <message_id> --json
-
-# List all SMS messages (flat, not grouped by conversation)
-sunday message sms --json
-
-# View a specific SMS by ID
-sunday message sms <message_id> --json
 ```
 
 ## Passwords — E2E Encrypted Credential Vault
@@ -189,22 +166,16 @@ sunday passwords generate --exclude-chars "!@#" --json
 # 1. Get your Sunday email
 EMAIL=$(sunday get email --json | jq -r '.email')
 
-# 2. Get your Sunday phone number (if phone verification needed)
-PHONE=$(sunday get phone --json | jq -r '.phone_number')
+# 2. Fill out the signup form with $EMAIL
 
-# 3. Fill out the signup form with $EMAIL and $PHONE
-
-# 4. Generate and store credentials
+# 3. Generate and store credentials
 sunday passwords create theservice.com --json
 
-# 5. Wait for verification email/SMS
+# 4. Wait for verification email
 sleep 10
 sunday inbox list --unread --json
 
-# 6. Extract OTP from SMS
-sunday inbox sms --unread --json
-
-# Or extract verification link from email
+# 5. Extract verification link or code from email
 sunday inbox email --unread --json
 ```
 
@@ -221,8 +192,6 @@ sunday passwords get <uuid> --json
 
 # 3. If 2FA is required, check inbox for the code
 sleep 5
-sunday inbox list --type sms --unread --json
-# Or check email
 sunday inbox list --type email --unread --json
 ```
 
@@ -232,20 +201,17 @@ sunday inbox list --type email --unread --json
 # After triggering a verification, wait then check
 sleep 5
 
-# Check SMS for numeric codes
-sunday inbox sms --unread --json
-
 # Check email for verification links or codes
 sunday inbox email --unread --json
 
-# Unified check (both SMS and email)
+# Unified check
 sunday inbox list --unread --json
 ```
 
 ## Important Notes
 
 - **Always use `--json`** for all commands. This gives structured output you can parse reliably.
-- **This is YOUR identity, not the user's.** Never use the user's personal email or phone. Always use `sunday get email` and `sunday get phone` for your own addresses.
+- **This is YOUR identity, not the user's.** Never use the user's personal email. Always use `sunday get email` for your own address.
 - **Credentials are encrypted.** You cannot read raw password values from disk or memory files. Always use `sunday passwords get <uuid>` to retrieve them.
-- **Inbox is read-only.** You can receive and read messages but cannot send email or SMS through Sunday.
+- **Inbox is read-only.** You can receive and read email but cannot send email through Sunday.
 - **Token auto-refreshes.** If you get an auth error, try the command again — the token refreshes automatically. If it persists, the user needs to re-run `sunday auth login`.

@@ -3,9 +3,15 @@
   "slug": "sunday",
   "displayName": "Sunday",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770975108358,
-    "commit": "https://github.com/openclaw/skills/commit/9b5bb8580e1b3124d1bbe7bf89db6d3361e3d95d"
+    "version": "1.0.1",
+    "publishedAt": 1770975599319,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770975108358,
+      "commit": "https://github.com/openclaw/skills/commit/9b5bb8580e1b3124d1bbe7bf89db6d3361e3d95d"
+    }
+  ]
 }
