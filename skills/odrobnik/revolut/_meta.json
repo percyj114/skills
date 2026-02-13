@@ -1,0 +1,11 @@
+{
+  "owner": "odrobnik",
+  "slug": "revolut",
+  "displayName": "Revolut",
+  "latest": {
+    "version": "1.2.2",
+    "publishedAt": 1770902142387,
+    "commit": null
+  },
+  "history": []
+}
