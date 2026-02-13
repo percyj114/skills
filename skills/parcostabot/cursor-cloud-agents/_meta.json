@@ -3,11 +3,16 @@
   "slug": "cursor-cloud-agents",
   "displayName": "Cursor Cloud Agents",
   "latest": {
-    "version": "1.2.6",
-    "publishedAt": 1770937203402,
-    "commit": "https://github.com/openclaw/skills/commit/4442cad5a3cb5d8fcc9a38532efd4f45d8353759"
+    "version": "1.2.7",
+    "publishedAt": 1770937713021,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.6",
+      "publishedAt": 1770937203402,
+      "commit": "https://github.com/openclaw/skills/commit/4442cad5a3cb5d8fcc9a38532efd4f45d8353759"
+    },
     {
       "version": "1.2.3",
       "publishedAt": 1770933115945,
