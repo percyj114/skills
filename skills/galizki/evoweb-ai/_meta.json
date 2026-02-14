@@ -3,11 +3,16 @@
   "slug": "evoweb-ai",
   "displayName": "EvoWeb.ai Website Builder",
   "latest": {
-    "version": "1.0.9",
-    "publishedAt": 1770843280080,
-    "commit": "https://github.com/openclaw/skills/commit/949e4fe5bb7d4616b0f87b39a722eed6b0ef7e7a"
+    "version": "1.0.10",
+    "publishedAt": 1771056125974,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.9",
+      "publishedAt": 1770843280080,
+      "commit": "https://github.com/openclaw/skills/commit/949e4fe5bb7d4616b0f87b39a722eed6b0ef7e7a"
+    },
     {
       "version": "1.0.8",
       "publishedAt": 1770363364139,
