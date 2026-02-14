@@ -105,7 +105,7 @@ When responding to a non-owner contact, enforce tier restrictions:
 ## Multi-Platform ID Matching
 
 Normalize IDs for comparison:
-- **Phone numbers**: Strip all non-digits except leading `+`. E.g., `+61 430 830 888` → `+61430830888`
+- **Phone numbers**: Strip all non-digits except leading `+`. E.g., `+1 555 123 4567` → `+15551234567`
 - **Telegram**: Use numeric user ID (not username, as usernames change)
 - **Discord**: Use numeric user ID
 - **Signal**: Use phone number (normalized)
