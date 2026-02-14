@@ -1,6 +1,5 @@
 ---
-slug: "pdf-to-structured"
-display_name: "PDF To Structured"
+name: "pdf-to-structured"
 description: "Extract structured data from construction PDFs. Convert specifications, BOMs, schedules, and reports from PDF to Excel/CSV/JSON. Use OCR for scanned documents and pdfplumber for native PDFs."
 ---
 
