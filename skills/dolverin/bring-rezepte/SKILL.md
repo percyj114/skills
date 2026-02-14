@@ -1,7 +1,23 @@
 ---
 name: bring-rezepte
-version: 1.2.0
+version: 1.3.0
 description: Use when running the OpenClaw/ClawHub Bring! skill to search recipes on the web, parse recipe URLs for ingredients, and add ingredients to a Bring shopping list. Covers recipe search via web_search, URL parsing, recipe batch-add, list management, and inspiration filters.
+metadata:
+  openclaw:
+    emoji: "🛒"
+    requires:
+      bins: ["node"]
+      env:
+        - name: BRING_EMAIL
+          description: "Bring! account email address"
+          required: true
+        - name: BRING_PASSWORD
+          description: "Bring! account password"
+          required: true
+        - name: BRING_COUNTRY
+          description: "Country code for Bring! (e.g. DE, AT, CH)"
+          required: false
+          default: "DE"
 ---
 
 # Bring App
@@ -18,12 +34,15 @@ description: Use when running the OpenClaw/ClawHub Bring! skill to search recipe
 
 Build a Bring! CLI-focused skill that uses the updated `node-bring-api` to fetch inspirations (recipes), highlight seasonal dishes, and add user-selected ingredients to a shopping list.
 
+**WICHTIG: Immer explizit nach Bestätigung fragen, bevor Artikel zur Liste hinzugefügt werden!**
+
 ## Quick start workflow
 
 1. List inspiration filters and identify seasonal tags.
 2. Fetch inspirations using those tags.
 3. Summarize 3-7 seasonal dishes.
-4. Ask which dishes to add to a list, then add their ingredients (not the dish name).
+4. **IMMER FRAGEN**: "Soll ich die Zutaten für [Rezeptname] zur Bring-Liste hinzufügen?"
+5. Nur bei expliziter Bestätigung: Add their ingredients (not the dish name).
 
 Use `references/bring-inspirations.md` for endpoint details and headers.
 These scripts load `node-bring-api` from:
@@ -61,11 +80,12 @@ node scripts/bring_inspirations.js --tags "<comma-separated-tags>" --limit 20
 
 - Return 3-7 options.
 - Include dish name and 1 short sentence (if available in the JSON).
-- Ask the user which dishes should be added to the list.
+- **WICHTIG**: Frage explizit: "Welche Rezepte sollen zur Bring-Liste hinzugefügt werden?" oder "Soll ich die Zutaten hinzufügen?"
+- Warte auf explizite Bestätigung des Users.
 
 ### 4) Add selected dishes to a list (ingredients only)
 
-If the user confirms, list available lists if needed:
+**NUR NACH EXPLIZITER BESTÄTIGUNG**, list available lists if needed:
 
 ```
 node scripts/bring_list.js --lists
@@ -157,9 +177,9 @@ Show the user the parsed recipes with:
 - Source URL
 - Key ingredients (first 5-6)
 
-Ask which recipe(s) to add to the shopping list.
+**IMMER FRAGEN**: "Möchtest du die Zutaten für [Rezeptname] zur Bring-Liste hinzufügen?" oder "Welche Rezepte soll ich zur Einkaufsliste hinzufügen?"
 
-**Step 4: Add selected recipe to list**
+**Step 4: Add selected recipe to list (NUR BEI BESTÄTIGUNG)**
 
 ```
 node scripts/bring_list.js --list-name "Einkauf" --add-recipe-url "https://www.chefkoch.de/rezepte/123/lasagne.html"
@@ -228,7 +248,8 @@ The image URL can then be used directly in markdown or Discord embeds — **no d
    - Image (embed via URL: `![](image_url)`)
    - Key ingredients
    - Source URL
-5. On confirmation, add to shopping list
+5. **IMMER FRAGEN**: "Soll ich die Zutaten für dieses Rezept zur Bring-Liste hinzufügen?"
+6. **NUR BEI EXPLIZITER BESTÄTIGUNG**: Add to shopping list
 
 ### Example: Complete recipe workflow
 
@@ -246,9 +267,38 @@ web_fetch("https://www.eatclub.de/rezept/honig-senf-lachs/")
 
 # Step 3: Present to user with image URL embedded
 # ![Honig-Senf-Lachs](https://www.eatclub.de/wp-content/uploads/2023/09/shutterstock-416951386.jpg)
+# Zutaten: Lachs, Honig, Senf, Olivenöl, Knoblauch...
 
-# Step 4: Add to list on confirmation
+# Step 4: IMMER FRAGEN
+# "Soll ich die Zutaten für Honig-Senf-Lachs zur Bring-Liste hinzufügen?"
+# Warte auf: Ja / Nein / Bestätigung
+
+# Step 5: NUR BEI BESTÄTIGUNG hinzufügen
+# node scripts/bring_list.js --list-name "Zuhause" --add-recipe "Honig-Senf-Lachs" --recipe-items "..."
 ```
+
+### Beispiel-Dialog
+
+**Agent**: "Ich habe 3 leckere Rezepte gefunden:
+1. 🍝 Spaghetti Carbonara (5 Zutaten)
+2. 🍛 Chicken-Curry (9 Zutaten)  
+3. 🥗 Griechischer Salat (7 Zutaten)
+
+**Welche Rezepte soll ich zur Bring-Liste hinzufügen?**"
+
+**User**: "Das Curry klingt gut"
+
+**Agent**: "Soll ich die Zutaten für Chicken-Curry zur Bring-Liste 'Zuhause' hinzufügen? (9 Artikel: Hähnchen, Kokosmilch, Curry...)"
+
+**User**: "Ja"
+
+**Agent**: "✅ Zutaten für Chicken-Curry hinzugefügt!"
+
+### Mehrere Rezepte gleichzeitig
+
+Bei mehreren Rezepten IMMER einzeln bestätigen lassen oder explizit fragen:
+- "Soll ich ALLE 3 Rezepte hinzufügen?"
+- "Welche der Rezepte soll ich hinzufügen? (1, 2, 3 oder alle)"
 
 **Remember:** 
 - Recipe images come from the source website, never from image generation tools
@@ -258,8 +308,11 @@ web_fetch("https://www.eatclub.de/rezept/honig-senf-lachs/")
 ## Notes
 
 - Keep the skill output in German for Germany by default.
-- Do not add items without explicit user confirmation.
+- **KRITISCH**: NIEMALS Artikel ohne explizite Bestätigung hinzufügen!
+- **IMMER FRAGEN**: "Soll ich die Zutaten zur Bring-Liste hinzufügen?" oder ähnliche Formulierung
+- **NUR BEI JA/BESTÄTIGUNG**: Erst dann zur Liste hinzufügen
 - Always add ingredients instead of the dish name when using inspirations.
+- Bei mehreren Rezepten: Einzeln oder alle zusammen bestätigen lassen
 
 ## Resources
 

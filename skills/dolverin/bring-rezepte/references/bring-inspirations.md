@@ -10,7 +10,7 @@ Use the Bring! inspirations endpoints to retrieve recipe suggestions and filters
    - Body: `email`, `password` (URL-encoded)
    - Response includes `uuid`, `access_token`, `refresh_token`, `publicUuid`
 2. Set headers for subsequent calls:
-   - `X-BRING-API-KEY`: `cof4Nc6D8saplXjE3h3HXqHH8m7VU2i1Gs0g85Sp`
+   - `X-BRING-API-KEY`: `<public client key from bring-shopping npm package>`
    - `X-BRING-CLIENT`: `webApp`
    - `X-BRING-CLIENT-SOURCE`: `webApp`
    - `X-BRING-COUNTRY`: `DE` (use user locale country if known)
