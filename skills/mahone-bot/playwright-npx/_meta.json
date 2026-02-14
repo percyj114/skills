@@ -1,0 +1,11 @@
+{
+  "owner": "mahone-bot",
+  "slug": "playwright-npx",
+  "displayName": "Playwright (scripts) + npx",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771081676566,
+    "commit": null
+  },
+  "history": []
+}
