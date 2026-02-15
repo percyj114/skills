@@ -1,0 +1,11 @@
+{
+  "owner": "luweiliao",
+  "slug": "ardupilot",
+  "displayName": "ArduPilot Drone Control",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771165732204,
+    "commit": null
+  },
+  "history": []
+}
