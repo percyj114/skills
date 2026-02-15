@@ -3,9 +3,15 @@
   "slug": "cybercentry-solana-token-verification",
   "displayName": "Cybercentry Solana Token Verification",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1771071752251,
-    "commit": "https://github.com/openclaw/skills/commit/aa15504da91bcf963485f21a33aec2be25573b92"
+    "version": "1.0.4",
+    "publishedAt": 1771152414254,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1771071752251,
+      "commit": "https://github.com/openclaw/skills/commit/aa15504da91bcf963485f21a33aec2be25573b92"
+    }
+  ]
 }

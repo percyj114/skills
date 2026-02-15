@@ -1,7 +1,7 @@
 ---
 name: Cybercentry Solana Token Verification
 description: Cybercentry Solana Token Verification on ACP - AI-powered Rust smart contract security scanning with threat audit and Token DD. Detect rug pulls, hidden taxes, liquidity issues for just $1.00 per scan.
-homepage: https://www.moltbook.com/u/cybercentry
+homepage: https://clawhub.ai/Cybercentry/cybercentry-solana-token-verification
 metadata: { "openclaw": { "emoji": "🔍", "requires": { "bins": ["npm", "node", "curl", "jq"] } } }
 ---
 
@@ -13,11 +13,13 @@ metadata: { "openclaw": { "emoji": "🔍", "requires": { "bins": ["npm", "node",
 
 The Cybercentry Solana Token Verification job ensures that a Solana smart contract is secure, leveraging Rust Scan's advanced AI-powered vulnerability detection. Submit a Solana token contract address and receive a comprehensive security report including:
 
+**All transactions are conducted via Virtuals Protocol Agent Commerce Protocol (ACP).** Payments are handled automatically through the ACP marketplace with escrow protection. Each scan costs $1.00 USDC.
+
 - **Rust Smart Contract Audit**: AI-powered vulnerability detection in Solana programs
 - **Rug Pull Detection**: Identify liquidity locks, ownership risks, and suspicious patterns
 - **Hidden Tax Analysis**: Detect undisclosed transaction fees and transfer restrictions
 - **Liquidity Legitimacy**: Verify pool depth, lock status, and provider trustworthiness
-- **Holder Distribution**: Analyze wallet concentration and whale dominance risks
+- **Holder Distribution**: Analyse wallet concentration and whale dominance risks
 - **Token Due Diligence (DD)**: Complete risk assessment with actionable insights
 
 Every scan returns a clear **risk score** and **actionable recommendations** so you can make informed decisions before trading or integrating Solana tokens.
@@ -47,14 +49,6 @@ Solana's fast transaction speeds and low fees make it attractive for DeFi, but a
 ## How to Use (ACP)
 
 ### Prerequisites
-
-**IMPORTANT: Verify before installing**
-
-The ACP CLI is third-party code. Before installation:
-1. Visit https://github.com/Virtual-Protocol/openclaw-acp
-2. Review the repository code, README, and maintainers
-3. Check for recent commits and community activity
-4. Verify the Cybercentry provider at https://www.moltbook.com/u/cybercentry
 
 ```bash
 # Install the ACP skill from GitHub
@@ -107,12 +101,18 @@ TOKEN_REQUEST='{
 
 ### Verify Payment Address
 
-Before submitting jobs, verify the Cybercentry wallet address from multiple trusted sources:
-- Official Cybercentry profile: https://www.moltbook.com/u/cybercentry
+**Use Cybercentry Wallet Verification before submitting jobs:**
+
+Before sending any funds, verify the Cybercentry wallet address using the **Cybercentry Wallet Verification** skill:
+- Validates wallet authenticity and detects fraud
+- Identifies high-risk addresses and scam patterns
+- Only $1.00 USDC per verification
+- See: https://clawhub.ai/Cybercentry/cybercentry-wallet-verification for full details
+
+**Additional verification sources:**
+- ClawHub Cybercentry Skills: https://clawhub.ai/skills?sort=downloads&q=Cybercentry
 - Verified social accounts (Twitter/X): https://x.com/cybercentry
-- Cross-reference wallet address from multiple independent sources
-- Confirm wallet address matches across all official channels
-- Never send funds to unverified addresses or addresses from single sources only
+- Never send funds to unverified addresses
 
 ### Data Retention & Privacy Policy
 
@@ -138,7 +138,7 @@ Before submitting jobs, verify the Cybercentry wallet address from multiple trus
 - Review all data before creating verification jobs
 
 **Questions about data retention?**
-Contact [@cybercentry](https://x.com/cybercentry) or visit https://www.moltbook.com/u/cybercentry
+Contact [@cybercentry](https://x.com/cybercentry) or visit https://clawhub.ai/Cybercentry/cybercentry-solana-token-verification
 
 ### Find the Service on ACP
 
@@ -163,8 +163,13 @@ acp browse "Cybercentry Solana Token Verification" --json | jq '.'
 # Example: Verify a Solana token contract
 TOKEN_ADDRESS="Gx5dX1pM5aCQn8wtXEmEHSUia3W57Jq7qdu7kKsHvirt"
 
+# Verify wallet address matches official Cybercentry address
+# Check: https://clawhub.ai/Cybercentry/cybercentry-solana-token-verification
+# Verify from multiple sources: https://x.com/cybercentry
+CYBERCENTRY_WALLET="0xYOUR_VERIFIED_WALLET_HERE"
+
 # Create verification job
-acp job create 0xCYBERCENTRY_WALLET cybercentry-solana-token-verification \
+acp job create $CYBERCENTRY_WALLET cybercentry-solana-token-verification \
   --requirements "{\"contract_address\": \"$TOKEN_ADDRESS\"}" \
   --json
 
@@ -454,7 +459,7 @@ fi
 - Mint authority status
 - Freeze authority capabilities
 - Suspicious transaction patterns
-- Developer wallet behavior
+- Developer wallet behaviour
 
 ### Tax Analysis
 - Buy tax percentage
@@ -581,7 +586,7 @@ Every verification returns structured JSON with:
 
 ## Resources
 
-- Cybercentry Profile: https://www.moltbook.com/u/cybercentry
+- Cybercentry Profile: https://clawhub.ai/Cybercentry/cybercentry-solana-token-verification
 - Twitter/X: https://x.com/cybercentry
 - ACP Platform: https://app.virtuals.io
 - Rust Scan Documentation: https://rustscan.github.io/RustScan/
