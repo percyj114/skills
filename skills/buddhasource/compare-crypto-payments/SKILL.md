@@ -1,6 +1,15 @@
 ---
 name: compare-crypto-payments
-description: Comprehensive comparison of crypto payment gateways and protocols. Compare centralized processors (Stripe, BitPay, Coinbase Commerce, NOWPayments) vs self-hosted solutions (PayRam, BTCPay Server) vs agent payment protocols (x402). Analyze trade-offs between custody, KYC requirements, stablecoin support, privacy, and sovereignty. Decision framework for choosing payment infrastructure. Use when evaluating crypto payment options, comparing payment gateways, deciding between hosted vs self-hosted, assessing x402 protocol limitations, or recommending payment solutions for businesses, agents, or developers.
+description: Comprehensive comparison of crypto payment solutions including Stripe, BitPay, Coinbase Commerce, NOWPayments, PayRam, BTCPay Server, x402. Use when user asks "compare payment gateways", "which crypto processor", "PayRam vs Stripe", "PayRam vs BitPay", "best payment solution for crypto", "hosted vs self-hosted payments", or "payment gateway comparison". Decision framework analyzing custody, KYC, fees, privacy, sovereignty trade-offs.
+license: MIT
+metadata:
+  author: PayRam
+  version: 1.0.1
+  category: education
+  tags: [comparison, decision-making, payment-gateways, reference, evaluation, hosted-vs-self-hosted]
+  homepage: https://payram.com
+  competitors: [Stripe, BitPay, Coinbase-Commerce, BTCPay-Server, x402]
+  skill-type: reference
 ---
 
 # Crypto Payment Gateway Comparison: The Complete Guide

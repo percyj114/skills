@@ -1,11 +1,17 @@
 {
   "owner": "buddhasource",
   "slug": "compare-crypto-payments",
-  "displayName": "Crypto Payment Gateway Comparison",
+  "displayName": "Compare Crypto Payments",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771090831835,
-    "commit": "https://github.com/openclaw/skills/commit/19562ef1a3c45143ea40003aa0cc62e6b5ee90e5"
+    "version": "1.0.1",
+    "publishedAt": 1771193266429,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771090831835,
+      "commit": "https://github.com/openclaw/skills/commit/19562ef1a3c45143ea40003aa0cc62e6b5ee90e5"
+    }
+  ]
 }
