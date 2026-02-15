@@ -1,7 +1,7 @@
 ---
 name: Amazon
 slug: amazon
-version: 1.0.0
+version: 1.0.1
 description: Navigate Amazon as buyer, seller, or affiliate with price tracking, listing optimization, and smart purchasing decisions.
 metadata: {"clawdbot":{"emoji":"📦","requires":{"bins":[]},"os":["linux","darwin","win32"]}}
 ---
