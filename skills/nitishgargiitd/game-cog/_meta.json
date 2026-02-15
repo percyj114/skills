@@ -3,11 +3,16 @@
   "slug": "game-cog",
   "displayName": "game-cog",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770774148387,
-    "commit": "https://github.com/openclaw/skills/commit/1a4576cc1843f399a4e0886e0383562dd5513309"
+    "version": "1.0.3",
+    "publishedAt": 1771064077488,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770774148387,
+      "commit": "https://github.com/openclaw/skills/commit/1a4576cc1843f399a4e0886e0383562dd5513309"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770419784168,
