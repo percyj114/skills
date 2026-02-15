@@ -1,6 +1,6 @@
 ---
 name: snaptrade-portfolio
-description: Connect to a user's investment accounts via SnapTrade SDK and generate portfolio reports (e.g., daily total value). Use when the user wants SnapTrade-based brokerage connectivity (Questrade, etc.), connection portal links, account registration, or automated portfolio summaries.
+description: Connect to a user's investment accounts via SnapTrade SDK and generate portfolio reports (e.g., daily total value). Use when the user wants SnapTrade-based brokerage connectivity (Webull, E*TRADE, etc.), connection portal links, account registration, or automated portfolio summaries.
 ---
 
 # SnapTrade Portfolio
@@ -10,12 +10,41 @@ Connect brokerage accounts through SnapTrade and generate a daily total-value re
 
 ## Workflow
 
-### 0) Install dependencies
+### 2d) Place buy/sell orders (stocks/ETFs)
+Run:
+```
+python3 scripts/snaptrade_order.py buy|sell TICKER UNITS --account-id <ACCOUNT_ID> [--order-type market|limit] [--limit-price <PRICE>] [--tif Day|GTC|IOC|FOK]
+```
+Defaults:
+- order type: **market**
+- time in force: **Day**
+- limit price: only required for limit orders
+
+Optional monitoring (poll recent orders):
+```
+python3 scripts/snaptrade_order.py buy|sell TICKER UNITS --account-id <ACCOUNT_ID> --watch
+```
+- polls every **10s** for up to **120s** by default
+- adjust with `--watch-interval` and `--watch-seconds`
+
+Watch an existing order by ID:
+```
+python3 scripts/snaptrade_watch_order.py --account-id <ACCOUNT_ID> --order-id <BROKERAGE_ORDER_ID>
+```
+- same 10s/120s defaults, adjustable with `--watch-interval` and `--watch-seconds`
+
+Use **account orders endpoint** to confirm fills and report open orders to the user when asked.
+
+
+### 0) Create a SnapTrade account + API keys
+You need a SnapTrade account to connect brokerages. Create a free account at **https://snaptrade.com**, generate your **Client ID** and **Consumer Key**, then add them to the skill config.
+
+### 1) Install dependencies
 ```
 pip3 install -r requirements.txt
 ```
 
-### 1) Configure credentials (one-time)
+### 2) Configure credentials (one-time)
 Store credentials in a local config file (not committed). `user_id` is generated automatically on first run:
 
 ```
@@ -72,7 +101,15 @@ Output is JSON like:
 {"total_value": 123456.78, "currency": "CAD"}
 ```
 
-**Implementation notes:** The script first lists brokerage authorizations to detect **disabled connections**. It skips refresh and sync-wait for disabled ones (but still reports their last-known balances), then waits for updated sync timestamps on enabled connections. It then enumerates all current **non-closed** accounts via `list_user_accounts` and uses `get_user_holdings` to read each account’s `account.balance.total`. Disabled connections are included in the output under `disabled_connections` for reporting.
+### 3b) Per-broker totals (converted currency)
+Run:
+```
+python3 scripts/snaptrade_broker_totals.py --currency CAD
+```
+
+Output JSON includes per-broker totals in the chosen currency and the FX rates used.
+
+**Implementation notes:** Avoid `get_user_holdings` when possible. Prefer `get_user_account_positions` (positions endpoint) for holdings/positions data. Only use balances/cash from holdings if explicitly required by the user; otherwise do not call holdings.
 
 ### 4) Schedule daily report
 Use cron to call `snaptrade_total.py`, format a concise WhatsApp message, then send it to the user. Only the total value is required.
@@ -83,7 +120,10 @@ Use cron to call `snaptrade_total.py`, format a concise WhatsApp message, then s
 - `scripts/snaptrade_portal.py` — register user + generate connection portal link
 - `scripts/snaptrade_reconnect.py` — generate reconnect link for disabled connections
 - `scripts/snaptrade_brokers.py` — list allowed brokerages for this client
+- `scripts/snaptrade_order.py` — place buy/sell orders (market/limit) with optional monitoring
+- `scripts/snaptrade_watch_order.py` — watch an existing order by ID for fills
 - `scripts/snaptrade_total.py` — compute total value across all accounts
+- `scripts/snaptrade_broker_totals.py` — per-broker totals with FX conversion
 
 ## Notes
 - Request signing is handled by the SDK via `request_after_hook` using `consumer_key`.

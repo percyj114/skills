@@ -164,8 +164,14 @@ def main():
                 if not created_ts or (datetime.now(timezone.utc) - created_ts).total_seconds() >= 300:
                     still_wait.append(l)
             if still_wait:
-                print({"error": "sync_timeout", "laggards": still_wait, "disabled_connections": sorted(set(disabled_connections))})
-                return
+                # proceed with cached values but report laggards
+                sync_timeout_laggards = still_wait
+            else:
+                sync_timeout_laggards = []
+        else:
+            sync_timeout_laggards = []
+    else:
+        sync_timeout_laggards = []
 
     resp = client.account_information.list_user_accounts(user_id=user_id, user_secret=user_secret)
     accounts = getattr(resp, "body", resp)
@@ -176,41 +182,67 @@ def main():
         # try to coerce
         accounts = list(accounts) if accounts is not None else []
 
+    currency_totals = {}
     for acct in accounts:
         account_id = acct.get("id") if isinstance(acct, dict) else getattr(acct, "id", None)
         if not account_id:
             continue
-        holdings_resp = client.account_information.get_user_holdings(
-            user_id=user_id, user_secret=user_secret, account_id=account_id
-        )
-        holdings = getattr(holdings_resp, "body", holdings_resp)
-        # holdings may be dict with account.balance.total
-        bal = None
-        if isinstance(holdings, dict):
-            bal = (((holdings.get("account") or {}).get("balance") or {}).get("total"))
-            if bal:
-                amount = bal.get("amount")
-                cur = bal.get("currency")
-            else:
-                amount = None
-                cur = None
-        else:
-            acct_obj = getattr(holdings, "account", None)
-            bal_obj = getattr(acct_obj, "balance", None) if acct_obj else None
-            total_obj = getattr(bal_obj, "total", None) if bal_obj else None
-            amount = getattr(total_obj, "amount", None) if total_obj else None
-            cur = getattr(total_obj, "currency", None) if total_obj else None
-        if amount is None:
-            continue
-        total_value += float(amount)
-        if cur and not currency:
-            currency = cur
+        # Positions endpoint (preferred)
+        try:
+            pos_resp = client.account_information.get_user_account_positions(
+                user_id=user_id, user_secret=user_secret, account_id=account_id
+            )
+            pos_body = getattr(pos_resp, "body", pos_resp)
+            positions = pos_body if isinstance(pos_body, list) else (pos_body.get("positions") if isinstance(pos_body, dict) else [])
+        except Exception:
+            positions = []
+
+        for p in positions:
+            if not isinstance(p, dict):
+                continue
+            price = p.get("price") or 0
+            units = p.get("units") or p.get("fractional_units") or 0
+            cur = None
+            cur_obj = p.get("currency")
+            if isinstance(cur_obj, dict):
+                cur = cur_obj.get("code")
+            if not cur:
+                cur = currency or cfg.get("currency", "")
+            if not cur:
+                continue
+            currency_totals[cur] = currency_totals.get(cur, 0.0) + float(price) * float(units)
+
+        # Balances endpoint (cash)
+        try:
+            bal_resp = client.account_information.get_user_account_balance(
+                user_id=user_id, user_secret=user_secret, account_id=account_id
+            )
+            bal_body = getattr(bal_resp, "body", bal_resp) or []
+            for b in bal_body:
+                if not isinstance(b, dict):
+                    continue
+                cur_obj = b.get("currency") or {}
+                cur = cur_obj.get("code") if isinstance(cur_obj, dict) else None
+                cash = b.get("cash")
+                if cur and cash is not None:
+                    currency_totals[cur] = currency_totals.get(cur, 0.0) + float(cash)
+        except Exception:
+            pass
+
+    # pick a primary currency (first seen), sum all totals for that currency
+    if currency_totals:
+        currency = next(iter(currency_totals.keys()))
+        total_value = currency_totals.get(currency, 0.0)
+    else:
+        total_value = 0.0
 
     currency = currency or cfg.get("currency", "")
     # print as JSON for easy parsing
     result = {"total_value": round(total_value, 2), "currency": currency}
     if disabled_connections:
         result["disabled_connections"] = sorted(set(disabled_connections))
+    if sync_timeout_laggards:
+        result["sync_timeout_laggards"] = sync_timeout_laggards
     print(result)
 
 
