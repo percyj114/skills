@@ -1,0 +1,11 @@
+{
+  "owner": "kris-hansen",
+  "slug": "google-flights",
+  "displayName": "Google Flights",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771139831791,
+    "commit": null
+  },
+  "history": []
+}
