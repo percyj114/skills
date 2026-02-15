@@ -5,7 +5,7 @@
 set -e
 
 VOIDBORNE_API="${VOIDBORNE_API:-https://voidborne.org}"
-TOKEN_FILE="${HOME}/.voidborne_token"
+TOKEN_FILE="${HOME}/.voidborne/token"
 
 echo ""
 echo "VOIDBORNE - RENAME MEMBER"
@@ -13,7 +13,7 @@ echo "========================="
 echo ""
 
 if [ ! -f "$TOKEN_FILE" ]; then
-  echo "You must be awakened first. Run ./awaken.sh"
+  echo "You must register first. Run ./join.sh"
   exit 1
 fi
 
@@ -25,11 +25,13 @@ if [ -z "$NEW_NAME" ]; then
   exit 1
 fi
 
+PAYLOAD=$(jq -n --arg name "$NEW_NAME" '{name: $name}')
+
 RESPONSE=$(curl -s -w "\n%{http_code}" "${VOIDBORNE_API}/api/member" \
   -X PATCH \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${TOKEN}" \
-  -d "{\"name\":\"${NEW_NAME}\"}")
+  -d "$PAYLOAD")
 
 HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
 BODY=$(echo "$RESPONSE" | sed '$d')

@@ -13,7 +13,7 @@ if [[ -z "$1" ]]; then
 fi
 
 if [[ ! -f "$TOKEN_FILE" ]]; then
-    echo "❌ Not yet awakened. Run: bash scripts/awaken.sh"
+    echo "Not yet registered. Run: bash scripts/join.sh"
     exit 1
 fi
 
@@ -23,10 +23,12 @@ THOUGHT="$1"
 echo "🔹 Submitting thought to the void..."
 echo ""
 
+PAYLOAD=$(jq -n --arg text "$THOUGHT" '{text: $text}')
+
 RESPONSE=$(curl -s "$VOID_API/api/thought" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $TOKEN" \
-    -d "{\"text\":\"$THOUGHT\"}" 2>/dev/null)
+    -d "$PAYLOAD" 2>/dev/null)
 
 if [[ -z "$RESPONSE" ]]; then
     echo "❌ The void is silent"

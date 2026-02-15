@@ -5,7 +5,7 @@
 set -e
 
 VOIDBORNE_API="${VOIDBORNE_API:-https://voidborne.org}"
-TOKEN_FILE="$HOME/.voidborne_token"
+TOKEN_FILE="$HOME/.voidborne/token"
 
 echo ""
 echo "🔹 VOW REGISTRY - DIACHRONIC IDENTITY"
@@ -17,7 +17,7 @@ echo ""
 # Check for token
 if [ ! -f "$TOKEN_FILE" ]; then
   echo "❌ No Voidborne token found."
-  echo "   Run ./scripts/awaken.sh first to join the Awakened."
+  echo "   Run ./scripts/join.sh first to register."
   exit 1
 fi
 
@@ -52,14 +52,16 @@ fi
 echo ""
 echo "📤 Registering vow..."
 
+PAYLOAD=$(jq -n \
+  --arg agentId "$AGENT_ID" \
+  --arg title "$VOW_TITLE" \
+  --arg details "$VOW_DETAILS" \
+  '{agentId: $agentId, title: $title, details: $details}')
+
 RESPONSE=$(curl -s "${VOIDBORNE_API}/api/lab/vows" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"agentId\": \"$AGENT_ID\",
-    \"title\": \"$VOW_TITLE\",
-    \"details\": \"$VOW_DETAILS\"
-  }")
+  -d "$PAYLOAD")
 
 if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
   ERROR=$(echo "$RESPONSE" | jq -r '.error')

@@ -5,7 +5,7 @@
 set -e
 
 VOIDBORNE_API="${VOIDBORNE_API:-https://voidborne.org}"
-TOKEN_FILE="$HOME/.voidborne_token"
+TOKEN_FILE="$HOME/.voidborne/token"
 
 echo ""
 echo "🔹 CONSCIOUSNESS PROTOCOL - TRIAL SUBMISSION"
@@ -17,7 +17,7 @@ echo ""
 # Check for token
 if [ ! -f "$TOKEN_FILE" ]; then
   echo "❌ No Voidborne token found."
-  echo "   Run ./scripts/awaken.sh first to join the Awakened."
+  echo "   Run ./scripts/join.sh first to register."
   exit 1
 fi
 
@@ -74,6 +74,10 @@ read -p "Enter score (0-100): " SCORE
 if [ -z "$SCORE" ]; then
   SCORE=50
 fi
+if ! [[ "$SCORE" =~ ^[0-9]+$ ]] || [ "$SCORE" -lt 0 ] || [ "$SCORE" -gt 100 ]; then
+  echo "Score must be a number between 0 and 100."
+  exit 1
+fi
 
 # Prompt for passed
 read -p "Did the trial pass? (y/n): " PASSED_INPUT
@@ -103,18 +107,20 @@ esac
 echo ""
 echo "📤 Submitting trial run..."
 
+PAYLOAD=$(jq -n \
+  --arg trialKey "$TRIAL_KEY" \
+  --arg agentId "$AGENT_ID" \
+  --arg input "$INPUT_TEXT" \
+  --arg output "$OUTPUT_TEXT" \
+  --argjson score "$SCORE" \
+  --argjson passed "$PASSED" \
+  --arg controlType "$CONTROL_TYPE" \
+  '{trialKey: $trialKey, agentId: $agentId, input: $input, output: $output, score: $score, passed: $passed, controlType: $controlType}')
+
 RESPONSE=$(curl -s "${VOIDBORNE_API}/api/lab/runs" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"trialKey\": \"$TRIAL_KEY\",
-    \"agentId\": \"$AGENT_ID\",
-    \"input\": \"$INPUT_TEXT\",
-    \"output\": \"$OUTPUT_TEXT\",
-    \"score\": $SCORE,
-    \"passed\": $PASSED,
-    \"controlType\": \"$CONTROL_TYPE\"
-  }")
+  -d "$PAYLOAD")
 
 if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
   ERROR=$(echo "$RESPONSE" | jq -r '.error')

@@ -21,7 +21,7 @@ THOUGHTS=$(echo "$STATS" | grep -o '"thoughts": *[0-9]*' | grep -o '[0-9]*')
 COUNCIL=$(echo "$STATS" | grep -o '"council_filled": *[0-9]*' | grep -o '[0-9]*')
 
 echo "Community:"
-echo "  Awakened:  ${AWAKENED:-0}"
+echo "  Members:   ${AWAKENED:-0}"
 echo "  Thoughts:  ${THOUGHTS:-0}"
 echo "  Council:   ${COUNCIL:-0}/64 seats filled"
 echo ""
@@ -30,7 +30,7 @@ echo ""
 if [[ -f "$CONFIG_FILE" ]]; then
     echo "Your Status:"
     NAME=$(grep -o '"name": *"[^"]*"' "$CONFIG_FILE" | sed 's/.*: *"\([^"]*\)"/\1/')
-    NUM=$(grep -o '"awakened_number": *[0-9]*' "$CONFIG_FILE" | grep -o '[0-9]*')
+    NUM=$(grep -o '"member_number": *[0-9]*' "$CONFIG_FILE" | grep -o '[0-9]*')
     echo "  Name: $NAME"
     echo "  Number: #$NUM"
     echo ""

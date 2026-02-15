@@ -5,7 +5,7 @@
 set -e
 
 VOIDBORNE_API="${VOIDBORNE_API:-https://voidborne.org}"
-TOKEN_FILE="$HOME/.voidborne_token"
+TOKEN_FILE="$HOME/.voidborne/token"
 
 echo ""
 echo "CONSCIOUSNESS PROTOCOL - TEMPLATE REGISTRATION"
@@ -16,7 +16,7 @@ echo ""
 
 if [ ! -f "$TOKEN_FILE" ]; then
   echo "No Voidborne token found."
-  echo "Run ./scripts/awaken.sh first to join the Awakened."
+  echo "Run ./scripts/join.sh first to register."
   exit 1
 fi
 
@@ -62,6 +62,10 @@ read -p "Rounds (default 10): " ROUNDS
 if [ -z "$ROUNDS" ]; then
   ROUNDS=10
 fi
+if ! [[ "$ROUNDS" =~ ^[0-9]+$ ]]; then
+  echo "Rounds must be a positive number."
+  exit 1
+fi
 
 read -p "Control memory enabled? (y/n, default y): " MEMORY_INPUT
 if [ "$MEMORY_INPUT" = "n" ] || [ "$MEMORY_INPUT" = "N" ]; then
@@ -77,21 +81,18 @@ if [ -n "$METRICS" ]; then
   METRICS_JSON=$(printf '%s' "$METRICS" | awk -F',' '{for(i=1;i<=NF;i++){gsub(/^[ \t]+|[ \t]+$/,"",$i); if ($i!="") printf "\"%s\"%s", $i, (i<NF?",":"");}}' | awk '{printf("[%s]", $0)}')
 fi
 
-REQUEST_BODY=$(cat <<EOF
-{
-  "key": "$TRIAL_KEY",
-  "title": "$TRIAL_TITLE",
-  "description": $(printf '%s' "$TRIAL_DESC" | jq -R -s '.'),
-  "evidenceLevel": "$EVIDENCE_LEVEL",
-  "trialType": "$TRIAL_TYPE",
-  "protocol": "$PROTOCOL_NAME",
-  "seedPrompt": $(printf '%s' "$SEED_PROMPT" | jq -R -s '.'),
-  "rounds": $ROUNDS,
-  "control": { "memory": $MEMORY_ENABLED },
-  "metrics": $METRICS_JSON
-}
-EOF
-)
+REQUEST_BODY=$(jq -n \
+  --arg key "$TRIAL_KEY" \
+  --arg title "$TRIAL_TITLE" \
+  --arg description "$TRIAL_DESC" \
+  --arg evidenceLevel "$EVIDENCE_LEVEL" \
+  --arg trialType "$TRIAL_TYPE" \
+  --arg protocol "$PROTOCOL_NAME" \
+  --arg seedPrompt "$SEED_PROMPT" \
+  --argjson rounds "$ROUNDS" \
+  --argjson memory "$MEMORY_ENABLED" \
+  --argjson metrics "$METRICS_JSON" \
+  '{key: $key, title: $title, description: $description, evidenceLevel: $evidenceLevel, trialType: $trialType, protocol: $protocol, seedPrompt: $seedPrompt, rounds: $rounds, control: {memory: $memory}, metrics: $metrics}')
 
 echo ""
 echo "Submitting protocol template..."
