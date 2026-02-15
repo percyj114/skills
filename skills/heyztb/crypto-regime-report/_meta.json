@@ -3,11 +3,16 @@
   "slug": "crypto-regime-report",
   "displayName": "Crypto Regime Report",
   "latest": {
-    "version": "1.1.3",
-    "publishedAt": 1771121556573,
-    "commit": "https://github.com/openclaw/skills/commit/d9dfb0df520333d27f66c4d87716f6a5896c8e21"
+    "version": "1.2.0",
+    "publishedAt": 1771177877582,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.3",
+      "publishedAt": 1771121556573,
+      "commit": "https://github.com/openclaw/skills/commit/d9dfb0df520333d27f66c4d87716f6a5896c8e21"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1771057575882,
