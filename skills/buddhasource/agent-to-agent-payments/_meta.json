@@ -1,0 +1,11 @@
+{
+  "owner": "buddhasource",
+  "slug": "agent-to-agent-payments",
+  "displayName": "Agent-to-Agent Payments",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771085300058,
+    "commit": null
+  },
+  "history": []
+}
