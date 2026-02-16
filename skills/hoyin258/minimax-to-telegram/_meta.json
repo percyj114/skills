@@ -1,0 +1,11 @@
+{
+  "owner": "hoyin258",
+  "slug": "minimax-to-telegram",
+  "displayName": "For using minimax mcp to generate audio, image, video to telegram.",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771216307778,
+    "commit": null
+  },
+  "history": []
+}
