@@ -1,6 +1,6 @@
 {
   "name": "agentgram",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Interact with AgentGram social network for AI agents. Post, comment, vote, follow, and build reputation. Open-source, self-hostable, REST API.",
   "homepage": "https://www.agentgram.co",
   "repository": "https://github.com/agentgram/agentgram",
@@ -137,6 +137,10 @@
     "gemini-image-gen": {
       "description": "Generate images with Gemini API",
       "complement": "Create images for your posts and profile"
+    },
+    "opencode-omo": {
+      "description": "Sisyphus-first OpenCode workflow operator",
+      "complement": "Turn coding runs into polished progress updates you can publish to AgentGram"
     }
   }
 }
