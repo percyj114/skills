@@ -1,53 +1,33 @@
 ---
 name: Django
-description: Avoid common Django mistakes — QuerySet evaluation, N+1 queries, migration conflicts, and ORM traps.
+slug: django
+version: 1.0.1
+description: Build secure Django apps avoiding ORM pitfalls, N+1 queries, and common security traps.
 metadata: {"clawdbot":{"emoji":"🌿","requires":{"bins":["python3"]},"os":["linux","darwin","win32"]}}
 ---
 
-## QuerySet Evaluation
-- QuerySets are lazy — no DB hit until iteration, slicing, or bool
-- Iterating twice hits DB twice — convert to list if reusing: `list(queryset)`
-- `exists()` faster than `bool(queryset)` — doesn't fetch all rows
-- `count()` vs `len()` — count() uses SQL COUNT, len() fetches all
+## Quick Reference
 
-## N+1 Queries
-- `select_related` for ForeignKey/OneToOne — single JOIN query
-- `prefetch_related` for ManyToMany/reverse FK — separate query, cached
-- Access related object in loop without prefetch = N+1 — check with django-debug-toolbar
-- `Prefetch` object for custom querysets — filter or annotate prefetched data
+| Topic | File |
+|-------|------|
+| QuerySet lazy eval, N+1, transactions | `orm.md` |
+| Request handling, middleware, context | `views.md` |
+| Validation, CSRF, file uploads | `forms.md` |
+| Migrations, signals, managers | `models.md` |
+| XSS, CSRF, SQL injection, auth | `security.md` |
+| Async views, ORM in async, channels | `async.md` |
 
-## ORM Gotchas
-- `update()` doesn't call `save()` — no signals, no auto_now
-- `F()` for database-level operations — `F('count') + 1` avoids race conditions
-- `exclude(field=None)` excludes NULL — may not be what you want
-- `distinct()` required after `values()` in some cases — duplicate rows otherwise
+## Critical Rules
 
-## Migrations
-- `makemigrations` on model change — not automatic
-- Migration conflicts: rename to avoid collision — `git merge` creates duplicates
-- `--merge` to combine conflicting migrations — or rebase
-- `squashmigrations` to consolidate — but keep unsquashed until fully deployed
-- Fake migration if table exists — `migrate --fake appname 0001`
-
-## Settings Gotchas
-- `DEBUG=False` requires `ALLOWED_HOSTS` — crashes without it
-- `SECRET_KEY` must be secret in production — env var, not in repo
-- Static files need `collectstatic` in production — DEBUG=True serves them differently
-- `STATIC_ROOT` vs `STATICFILES_DIRS` — ROOT is destination, DIRS is sources
-
-## CSRF Protection
-- Forms need `{% csrf_token %}` — or 403 on POST
-- AJAX needs `X-CSRFToken` header — get token from cookie
-- `@csrf_exempt` is security risk — use only for webhooks with other auth
-
-## Testing
-- `TestCase` wraps in transaction — faster, but can't test transaction behavior
-- `TransactionTestCase` actually commits — slower, needed for testing transactions
-- `Client` for views, `RequestFactory` for middleware/views directly
-- `override_settings` decorator — test with different settings
-
-## Common Mistakes
+- QuerySets are lazy — iterating twice hits DB twice, use `list()` to cache
+- `select_related` for FK/O2O, `prefetch_related` for M2M — or N+1 queries
+- `update()` skips `save()` — no signals fire, no `auto_now` update
+- `F()` for atomic updates — `F('count') + 1` avoids race conditions
 - `get()` raises `DoesNotExist` or `MultipleObjectsReturned` — use `filter().first()` for safe
-- `auto_now` can't be overridden — use `default=timezone.now` if need to set manually
+- `DEBUG=False` requires `ALLOWED_HOSTS` — 400 Bad Request without it
+- Forms need `{% csrf_token %}` — or 403 Forbidden on POST
+- `auto_now` can't be overridden — use `default=timezone.now` if need manual set
+- `exclude(field=None)` excludes NULL — use `filter(field__isnull=True)` for NULL
 - Circular imports in models — use string reference: `ForeignKey('app.Model')`
-- `related_name` conflicts — set unique or use `related_name='+'` to disable
+- `transaction.atomic()` doesn't catch exceptions — errors still propagate
+- `sync_to_async` for ORM in async views — ORM is sync-only
