@@ -1,0 +1,11 @@
+{
+  "owner": "wangyendt",
+  "slug": "chat-ollama-gradio",
+  "displayName": "Pywayne Llm Chat Ollama Gradio",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771230276348,
+    "commit": null
+  },
+  "history": []
+}
