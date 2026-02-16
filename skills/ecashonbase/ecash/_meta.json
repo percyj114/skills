@@ -1,0 +1,11 @@
+{
+  "owner": "ecashonbase",
+  "slug": "ecash",
+  "displayName": "eCash",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1771208708470,
+    "commit": null
+  },
+  "history": []
+}
