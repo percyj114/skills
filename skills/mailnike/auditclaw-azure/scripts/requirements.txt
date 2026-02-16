@@ -1,0 +1,10 @@
+azure-identity>=1.17.0
+azure-mgmt-storage>=21.0.0
+azure-mgmt-network>=26.0.0
+azure-mgmt-compute>=32.0.0
+azure-mgmt-keyvault>=10.3.0
+azure-mgmt-sql>=3.0.1
+azure-mgmt-web>=7.3.0
+azure-mgmt-security>=7.0.0
+azure-mgmt-monitor>=6.0.0
+azure-mgmt-resource>=23.0.0
