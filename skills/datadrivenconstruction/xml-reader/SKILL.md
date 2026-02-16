@@ -1,9 +1,9 @@
 ---
-slug: "xml-reader"
-display_name: "Xml Reader"
+name: "xml-reader"
 description: "Read and parse XML from construction systems - P6 schedules, BSDD exports, IFC-XML, COBie-XML. Convert to pandas DataFrames."
+homepage: "https://datadrivenconstruction.io"
+metadata: {"openclaw": {"emoji": "🏷️", "os": ["darwin", "linux", "win32"], "homepage": "https://datadrivenconstruction.io", "requires": {"bins": ["python3"]}}}
 ---
-
 # XML Reader for Construction Data
 
 ## Overview
