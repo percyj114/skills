@@ -3,9 +3,15 @@
   "slug": "context-builder",
   "displayName": "Context Builder",
   "latest": {
-    "version": "0.8.1",
-    "publishedAt": 1771156851516,
-    "commit": "https://github.com/openclaw/skills/commit/1daf985325d71d4e1b9ac8e665db0e239897034f"
+    "version": "0.8.3-1",
+    "publishedAt": 1771221929206,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.8.1",
+      "publishedAt": 1771156851516,
+      "commit": "https://github.com/openclaw/skills/commit/1daf985325d71d4e1b9ac8e665db0e239897034f"
+    }
+  ]
 }
