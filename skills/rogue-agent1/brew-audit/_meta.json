@@ -1,0 +1,11 @@
+{
+  "owner": "rogue-agent1",
+  "slug": "brew-audit",
+  "displayName": "Brew Audit",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771163158351,
+    "commit": null
+  },
+  "history": []
+}
