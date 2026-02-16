@@ -1,0 +1,11 @@
+{
+  "owner": "cerbug45",
+  "slug": "task-panner-validator",
+  "displayName": "Task Panner Validator for Agents",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771182801511,
+    "commit": null
+  },
+  "history": []
+}
