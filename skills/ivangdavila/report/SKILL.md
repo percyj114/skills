@@ -1,10 +1,10 @@
 ---
 name: Report
 slug: report
-version: 1.0.2
+version: 1.0.3
 description: Configure custom recurring reports. User defines data sources, skill handles scheduling and formatting.
-changelog: User-driven data source model, explicit permission grants
-metadata: {"clawdbot":{"emoji":"📊","requires":{"bins":[]},"os":["linux","darwin","win32"]}}
+changelog: Fixed path consistency, declared optional env vars in metadata
+metadata: {"clawdbot":{"emoji":"📊","requires":{"bins":[],"env":{"optional":["USER_PROVIDED_API_KEYS"]}},"os":["linux","darwin","win32"]}}
 ---
 
 ## Data Storage
@@ -37,6 +37,27 @@ This skill does NOT:
 - ❌ Access APIs without user-provided credentials
 - ❌ Pull data from sources user hasn't specified
 - ❌ Store credentials (user provides via environment)
+
+## Environment Variables
+
+**No fixed requirements.** User provides API keys as needed:
+
+```bash
+# Example: if user wants Stripe data
+export STRIPE_API_KEY="sk_..."
+
+# Example: if user wants GitHub data  
+export GITHUB_TOKEN="ghp_..."
+```
+
+Config references env var name, never the value.
+
+## Delivery Security
+
+External delivery (Telegram/webhook/email) sends report content off-device.
+- User explicitly configures each channel
+- User responsible for trusting destination
+- `file` delivery stays local (~/report/{name}/generated/)
 
 ## Quick Reference
 
