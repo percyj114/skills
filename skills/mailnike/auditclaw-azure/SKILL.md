@@ -1,12 +1,21 @@
 ---
 name: auditclaw-azure
-description: Azure compliance evidence collection for auditclaw-grc
+description: Azure compliance evidence collection for auditclaw-grc. 12 read-only checks across storage, NSG, Key Vault, SQL, compute, App Service, and Defender for Cloud.
+version: 1.0.1
 user-invocable: true
-metadata: {"openclaw":{"requires":{"bins":["python3"],"env":["AZURE_SUBSCRIPTION_ID"]}}}
+metadata: {"openclaw":{"type":"executable","requires":{"bins":["python3"],"env":["AZURE_SUBSCRIPTION_ID"]}}}
 ---
-# Azure Evidence Collection
+# AuditClaw Azure
 
-Companion skill for auditclaw-grc. Collects compliance evidence from Azure subscriptions.
+Companion skill for auditclaw-grc. Collects compliance evidence from Azure subscriptions using read-only API calls.
+
+**12 checks | Reader + Security Reader roles only | Evidence stored in shared GRC database**
+
+## Security Model
+- **Read-only access**: Requires only Reader + Security Reader roles (subscription-level). No write/modify permissions.
+- **Credentials**: Uses `DefaultAzureCredential` (service principal env vars, `az login`, or managed identity). No credentials stored by this skill.
+- **Dependencies**: Azure SDK packages (all pinned in requirements.txt)
+- **Data flow**: Check results stored as evidence in `~/.openclaw/grc/compliance.sqlite` via auditclaw-grc
 
 ## Prerequisites
 - Azure credentials configured (service principal or `az login`)
