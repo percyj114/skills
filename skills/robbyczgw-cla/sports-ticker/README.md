@@ -11,7 +11,7 @@ Built for [OpenClaw](https://openclaw.com) but works standalone too.
 - 🎯 **Multi-sport support** — Soccer, NFL, NBA, NHL, MLB, F1, and more!
 - ⚽ **Live scoring alerts** with player names and times
 - 🟥 **Key events** — cards, touchdowns, home runs, goals
-- ⏸️ **Period updates** — Halftime, quarters, intermissions
+- ⏸ **Period updates** — Halftime, quarters, intermissions
 - 🏁 **Final results** with WIN/LOSS/DRAW
 - 📊 **Multi-team support** — track as many teams as you want
 - 📅 **Schedule/Fixtures** — view upcoming matches for next 30 days (NEW in v3!)
@@ -48,7 +48,7 @@ This skill uses ESPN's public API which provides:
 **⚾ Baseball**
 - MLB (`mlb`)
 
-**🏎️ Racing**
+**🏎 Racing**
 - Formula 1 (`f1`)
 
 ## 🚀 Quick Start
@@ -64,7 +64,7 @@ git clone https://github.com/your-repo/sports-ticker
 cd sports-ticker
 ```
 
-### 2. Run the Setup Wizard 🧙‍♂️
+### 2. Run the Setup Wizard 🧙♂
 
 First time? The interactive wizard makes setup a breeze!
 
@@ -83,7 +83,7 @@ python3 scripts/setup.py
 ```
 ╔═══════════════════════════════════════════════════════╗
 ║   🏆  SPORTS TICKER  🏆                               ║
-║   ⚽ 🏈 🏀 🏒 ⚾ 🏎️                                    ║
+║   ⚽ 🏈 🏀 🏒 ⚾ 🏎                                    ║
 ║   Never miss a goal, touchdown, or checkered flag!   ║
 ╚═══════════════════════════════════════════════════════╝
 ```
@@ -178,8 +178,7 @@ python3 scripts/schedule.py --json               # JSON output
 
 # 🤖 Auto-generate match crons (NEW in v3!)
 python3 scripts/auto_setup_crons.py --team spurs --days 14
-python3 scripts/auto_setup_crons.py --json       # For OpenClaw cron API
-python3 scripts/auto_setup_crons.py --commands   # CLI commands
+python3 scripts/auto_setup_crons.py --json       # JSON output for agent to process
 
 # ESPN API commands
 python3 scripts/espn.py leagues           # List all sports/leagues
@@ -231,18 +230,20 @@ Kansas City Chiefs 31-24 Buffalo Bills
 The easiest way to set up match-day alerts is with the setup script:
 
 ```bash
-# Run the setup script with your Telegram ID and timezone
+# Generate cron job configurations (outputs JSON for agent to use)
 python3 scripts/setup_crons.py <telegram_id> <timezone>
 
 # Example
 python3 scripts/setup_crons.py 123456789 "Europe/London"
 python3 scripts/setup_crons.py 123456789 "America/New_York"
 
-# Just view the cron configs without creating
+# Just view the example cron configs
 python3 scripts/setup_crons.py --list
 ```
 
-This creates 3 cron jobs:
+> **Note (v3.0.5):** The script outputs JSON configurations that the agent uses with the OpenClaw cron tool. It does NOT create crons directly — the agent handles that via platform tools.
+
+This generates 3 cron job configs:
 
 | Cron Job | Schedule | Purpose |
 |----------|----------|---------|
@@ -335,21 +336,23 @@ python3 scripts/schedule.py --team spurs --days 30
 #    📍 Tottenham Hotspur Stadium
 ```
 
-**Auto-Cron Generator** creates match-day cron jobs:
+**Auto-Cron Generator** creates match-day cron job configs:
 
 ```bash
 python3 scripts/auto_setup_crons.py --team spurs --days 14
 
-# Generates:
+# Outputs JSON configs for:
 # ✅ spurs-reminder-2026-02-07 (30 mins before kickoff)
 # ✅ spurs-ticker-start-2026-02-07 (starts monitoring)
-# ⏸️ spurs-ticker-2026-02-07 (every 2 mins during match)
+# ⏸ spurs-ticker-2026-02-07 (every 2 mins during match)
 ```
+
+> **Note (v3.0.5):** The script outputs JSON configurations instead of CLI commands. The agent processes these JSON configs and creates crons via the OpenClaw cron tool.
 
 ### Workflow
 1. Run `schedule.py` weekly to see upcoming fixtures
-2. Run `auto_setup_crons.py --json` to generate cron configs
-3. Feed the JSON to OpenClaw cron API
+2. Run `auto_setup_crons.py` to generate cron configs (JSON output)
+3. Agent processes the JSON and creates crons via OpenClaw
 4. Never miss a match again! 🎉
 
 ## 🌐 ESPN API Reference
@@ -389,13 +392,13 @@ MIT — use it however you want!
 - [Interactive API Explorer](https://zudoku.dev/demo?api-url=https://raw.githubusercontent.com/zuplo/espn-openapi/refs/heads/main/espn_openapi_soccer_league_path.yaml) — try endpoints in browser
 - [Zuplo Guide](https://zuplo.com/learning-center/espn-hidden-api-guide) — overview & alternatives
 
-> ⚠️ **Note:** ESPN's API is unofficial/undocumented. It's stable and widely used, but could change without notice. The skill handles errors gracefully.
+> ⚠ **Note:** ESPN's API is unofficial/undocumented. It's stable and widely used, but could change without notice. The skill handles errors gracefully.
 
 ## 🙏 Credits
 
 - ESPN for their awesome (and free!) API
 - pseudo-r, zuplo, and the community for API documentation
-- Built with ❤️ for football fans everywhere
+- Built with ❤ for football fans everywhere
 
 ---
 
