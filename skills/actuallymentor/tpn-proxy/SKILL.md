@@ -18,6 +18,18 @@ Ask this skill things like:
 
 ---
 
+## Security Posture
+
+| Aspect | Detail |
+|--------|--------|
+| Environment variables | `TPN_API_KEY` — existence-checked only (`[ -n "$TPN_API_KEY" ]`), never echoed or logged |
+| Files read/written | None |
+| Other secrets accessed | None — no signing keys, no credentials beyond `TPN_API_KEY` |
+| Network destinations | `api.taoprivatenetwork.com` (API calls) + user-specified URLs (validated per Step 5) |
+| x402 signing | Handled entirely by external libraries (`@x402/*`); this skill provides endpoint URLs only |
+
+---
+
 ## This is an action skill
 
 This skill executes API calls and returns results directly — it does not output documentation or instructions for the user to follow.
@@ -38,13 +50,31 @@ This skill executes API calls and returns results directly — it does not outpu
 
 Follow this procedure every time the user requests a proxy or asks you to fetch something through a proxy.
 
+### Security: Input validation (mandatory)
+
+Before constructing any shell command, **validate every user-provided value**. Never interpolate raw user input into shell commands.
+
+| Input              | Validation rule                                                                                     |
+|--------------------|------------------------------------------------------------------------------------------------------|
+| `geo`              | Must be exactly 2 uppercase ASCII letters (ISO 3166-1 alpha-2). Reject anything else.                |
+| `minutes`          | Must be a positive integer between 1 and 1440. Reject non-numeric or out-of-range values.            |
+| `connection_type`  | Must be one of: `any`, `datacenter`, `residential`. Reject anything else.                            |
+| `format`           | Must be one of: `text`, `json`. Reject anything else.                                                |
+| URLs (for Step 5)  | Must start with `http://` or `https://`, contain no shell metacharacters (`` ` `` `$` `(` `)` `;` `&` `|` `<` `>` `\n`), and be a well-formed URL. |
+
+**Rules:**
+
+- **Never** interpolate raw user input directly into shell commands. Always validate first.
+- **Never** construct `-d` JSON payloads via string concatenation with user input. Use a safe static template and only insert validated values.
+- When using `curl`, always **quote** the URL and proxy URI arguments.
+- Prefer using the agent's built-in HTTP tools (e.g. `WebFetch`) for fetching user-specified URLs rather than constructing `curl` commands.
+
 ### Step 1: Resolve the API key
 
-Check these locations in order — use the first one found:
+Check whether `$TPN_API_KEY` is set in the environment (OpenClaw injects this automatically from your config):
 
-1. Secrets file: `cat ~/.openclaw/workspace/.secrets/tpn.env` (may be raw value or `TPN_API_KEY=value`)
-2. Environment variable: `echo $TPN_API_KEY`
-3. If neither exists → check if the user can pay via [x402](https://www.x402.org) (no API key needed), otherwise guide them through account setup (see the "Set up TPN" example)
+1. Test the variable: `[ -n "$TPN_API_KEY" ] && echo "API key is set" || echo "API key is not set"` — **never** echo, log, or display the key value itself.
+2. If not set → check if the user can pay via [x402](https://www.x402.org) (no API key needed), otherwise guide them through account setup (see the "Set up TPN" example)
 
 ### Step 2: Choose response format
 
@@ -54,11 +84,15 @@ Check these locations in order — use the first one found:
 | Need to show structured host/port/user/pass breakdown | `json` | Gives individual fields |
 | Not sure | `text` | Simpler, fewer things to break |
 
-If you choose `json`, determine which parser is available before calling the API:
+If you choose `json`, parse the response with `jq`:
 
-1. `which jq` → preferred: `curl -s ... | jq -r '.vpnConfig.username'`
-2. `which python3 || which python` → fallback: `curl -s ... | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['vpnConfig']['username'])"`
-3. Shell parsing (last resort): `curl -s ... | grep -o '"username":"[^"]*"' | cut -d'"' -f4`
+```bash
+curl -s ... | jq -r '.vpnConfig.username'
+```
+
+If `jq` is not available, use `format=text` instead — it returns a plain `socks5://` URI that needs no parsing.
+
+> **Do not** use `python -c`, `grep`, `cut`, or other shell-based JSON parsing fallbacks. These patterns risk shell injection when combined with dynamic inputs. Stick to `jq` or `format=text`.
 
 ### Step 3: Generate the proxy
 
@@ -78,9 +112,11 @@ Map the user's request to these parameters:
 | `format`          | string  | no       | `text`  | `"text"` for URI string, `"json"` for object   |
 | `connection_type` | string  | no       | `any`   | `"any"`, `"datacenter"`, or `"residential"`    |
 
+> **Safe JSON body construction:** Always build the `-d` JSON payload as a static single-quoted string with only validated values inserted. Validate `geo` (2 uppercase letters), `minutes` (integer 1–1440), `connection_type` (enum), and `format` (enum) per the validation rules above **before** constructing the curl command. Never concatenate raw user input into the JSON body or any part of the command.
+
 ### Step 4: Present the result
 
-Show the **full proxy credentials** so the user can immediately connect. These are temporary (scoped to the lease duration) and safe to display in context. Use the `socks5h://` scheme (with `h`) to ensure DNS resolves through the proxy. Include:
+Show the **full proxy credentials** so the user can immediately connect. These are temporary (scoped to the lease duration) and safe to display in context. Use the `socks5h://` scheme (with `h`) to ensure DNS resolves through the proxy — this protects user DNS privacy. (When the agent fetches URLs in Step 5, it uses `socks5://` instead — see Step 5.) Include:
 
 - Structured config block (host, port, username, password, scheme, expiry)
 - Full `socks5h://` URI
@@ -88,12 +124,29 @@ Show the **full proxy credentials** so the user can immediately connect. These a
 
 ### Step 5: If the user asked you to fetch a URL
 
-After generating the proxy, make the request yourself:
+After generating the proxy, make the request yourself. When the agent fetches a URL, use `socks5://` (not `socks5h://`) so DNS resolves locally. This makes checks 5–6 authoritative — the validated public IP is the IP the proxy connects to, eliminating the proxy-side DNS rebinding vector. User-facing credentials (Step 4) continue using `socks5h://` for DNS privacy.
+
+**Before fetching, validate the target URL using the allowlist model below.** Every check must pass — reject the URL if any check fails.
+
+1. **Scheme:** Must start with `http://` or `https://`. Reject all other schemes.
+2. **Shell safety:** Reject any URL containing shell metacharacters: `` ` `` `$` `(` `)` `;` `&` `|` `<` `>` newlines
+3. **No raw IPs:** Reject URLs with raw IP addresses as the hostname (IPv4 or IPv6). Domain names only.
+4. **No internal hostnames:** Reject hostnames matching internal infrastructure patterns:
+   - `*.internal`, `*.local`, `*.localhost`, `*.localdomain`
+   - `*.corp`, `*.lan`
+   - `metadata.*` (cloud metadata endpoints)
+   - Single-label hostnames (no dots — e.g. `localhost`, `redis`, `db`)
+5. **Local DNS resolution required:** Resolve the hostname locally before proxying. If the hostname **fails to resolve** via local DNS, reject it — it may only exist in the proxy's internal DNS. Because the agent uses `socks5://`, local DNS resolution is authoritative — the proxy connects to the same IP the agent validated.
+6. **Public IP required:** The resolved IP must be publicly routable. Reject if it resolves to any private/internal range: `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, `fd00::/8`, or known cloud metadata addresses (e.g. `169.254.169.254`).
+
+**Preferred method** — use the agent's built-in HTTP tools (e.g. `WebFetch`) with the proxy, which avoids shell command construction entirely.
+
+**If you must use curl**, always double-quote the URL and proxy URI:
 
 ```bash
-curl --proxy socks5h://username:password@ip:port \
+curl --proxy "socks5://username:password@ip:port" \
   --connect-timeout 10 --max-time 30 \
-  https://target-url.com
+  "https://validated-target-url.com"
 ```
 
 Return the response content to the user — the goal is a complete answer, not a proxy they still need to use themselves.
@@ -296,7 +349,7 @@ The pattern: **the user asks, you act, you return results.** You never tell the 
 
 Only show these if the user explicitly asks "how do I use this in my code?" — otherwise just hand them the config.
 
-> **Always use `socks5h://`** (with `h`) to resolve DNS through the proxy. Plain `socks5://` resolves DNS locally, leaking the target hostname.
+> **User-facing code should always use `socks5h://`** (with `h`) to resolve DNS through the proxy, preserving DNS privacy. (The agent uses `socks5://` for its own fetching in Step 5, where local DNS resolution is a security feature — see Step 5.)
 
 > If proxy credentials contain special characters (`@`, `:`, `/`, `#`, `?`), percent-encode them (e.g. `p@ss` → `p%40ss`).
 
@@ -370,11 +423,13 @@ Credit packages: Starter 1,000/$9.99 · Pro 5,000/$49.99 · Premium 20,000/$199.
 | `402 Payment Required`    | Insufficient credits — buy more or use the x402 flow           |
 | `503 Service Unavailable` | No miners available — credits are refunded, retry later        |
 | Connection timeout        | Proxy lease may have expired — generate a new one              |
-| DNS not resolving         | Use `socks5h://` (with `h`) for remote DNS resolution         |
+| DNS not resolving (user)  | Use `socks5h://` (with `h`) for remote DNS resolution          |
+| DNS not resolving (agent) | Agent uses `socks5://` — verify local DNS resolution in check 5 |
 
 **Operational rules:**
 
-- Always use `socks5h://` (not `socks5://`) to prevent DNS leaks
+- User-facing credentials and code examples: always use `socks5h://` for DNS privacy
+- Agent-side fetching (Step 5): always use `socks5://` so local DNS validation is authoritative
 - Check credit balance with `GET /api/v1/user/balance` before generating proxies in bulk
 - Proxy leases expire at `expiresAt` — never cache or reuse credentials beyond that time
 - If a `503` occurs, credits are refunded automatically — retry after a short delay
@@ -393,7 +448,7 @@ If you are an x402-capable agent, you already know how to handle the payment han
 
 Same request body as the centralised endpoint. No `X-API-Key` needed.
 
-See `{baseDir}/references/x402-examples.md` for language-specific implementation examples, and the [x402 spec](https://www.x402.org) for protocol details and credential management.
+See `{baseDir}/references/x402-examples.md` for curl and browser JS examples, and the [x402 spec](https://www.x402.org) for full protocol details. Signing is handled entirely by external libraries — this skill provides endpoint URLs only.
 
 ---
 
