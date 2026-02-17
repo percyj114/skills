@@ -1,13 +1,18 @@
 {
   "owner": "ashrf-in",
   "slug": "odoo-openclaw-skill",
-  "displayName": "Odoo",
+  "displayName": "Odoo Reporting",
   "latest": {
-    "version": "2.0.5",
-    "publishedAt": 1770819560242,
-    "commit": "https://github.com/openclaw/skills/commit/64cd708dadbe3882c796cc51fad2bd977b0d0a55"
+    "version": "2.0.6",
+    "publishedAt": 1771319975067,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.5",
+      "publishedAt": 1770819560242,
+      "commit": "https://github.com/openclaw/skills/commit/64cd708dadbe3882c796cc51fad2bd977b0d0a55"
+    },
     {
       "version": "2.0.2",
       "publishedAt": 1770749221220,
