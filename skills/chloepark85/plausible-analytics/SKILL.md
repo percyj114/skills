@@ -1,6 +1,14 @@
 ---
 name: plausible-analytics
 description: Query and analyze website analytics from Plausible Analytics. Use when you need to check real-time visitors, get page views and visitor statistics for a time period, analyze traffic sources or top pages, examine geographic distribution, or generate analytics reports and insights for websites tracked with Plausible Analytics.
+metadata:
+  openclaw:
+    requires:
+      env:
+        - PLAUSIBLE_API_KEY
+      bins:
+        - node
+    primaryEnv: PLAUSIBLE_API_KEY
 ---
 
 # Plausible Analytics
