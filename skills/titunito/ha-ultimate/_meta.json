@@ -3,9 +3,15 @@
   "slug": "ha-ultimate",
   "displayName": "Home Assistant",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771242550527,
-    "commit": "https://github.com/openclaw/skills/commit/c838995a1c67e4c8b109601adb6f59c17327deab"
+    "version": "1.0.2",
+    "publishedAt": 1771245425172,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771242550527,
+      "commit": "https://github.com/openclaw/skills/commit/c838995a1c67e4c8b109601adb6f59c17327deab"
+    }
+  ]
 }

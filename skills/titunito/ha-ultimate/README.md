@@ -1,8 +1,10 @@
-# 🏠 homeassistant — Definitive Skill
+# 🏠 ha-ultimate — Definitive Home Assistant Skill
 
 The most comprehensive Home Assistant skill for AI agents. Control 25+ entity domains
 via REST API with safety enforcement, entity inventory generation, a CLI wrapper,
 webhook support, and complete documentation.
+
+[![ClawHub](https://img.shields.io/badge/ClawHub-ha--ultimate-blue)](https://clawhub.ai/skills/ha-ultimate)
 
 Works with [OpenClaw](https://github.com/openclaw/openclaw),
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code),

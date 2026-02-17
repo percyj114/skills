@@ -51,6 +51,35 @@ check_blocked() {
   fi
 }
 
+CRITICAL_DOMAINS="lock alarm_control_panel"
+
+warn_critical() {
+  local entity="$1"
+  local domain="${entity%%.*}"
+  local is_cover_garage=false
+
+  # Check if it's a cover with garage device_class
+  if [[ "$domain" == "cover" ]]; then
+    local dc
+    dc=$(api "$HA_URL/api/states/$entity" 2>/dev/null | jq -r '.attributes.device_class // ""')
+    [[ "$dc" == "garage" || "$dc" == "gate" ]] && is_cover_garage=true
+  fi
+
+  for cd in $CRITICAL_DOMAINS; do
+    if [[ "$domain" == "$cd" ]] || $is_cover_garage; then
+      echo "⚠️  CRITICAL: $entity is a security-sensitive device ($domain)."
+      echo "   The agent MUST confirm with the user before executing this action."
+      echo "   If running interactively, type YES to proceed or anything else to cancel."
+      read -r -p "   Confirm? " response 2>/dev/null || return 0
+      if [[ "${response,,}" != "yes" && "${response,,}" != "y" ]]; then
+        echo "❌ Cancelled."
+        exit 1
+      fi
+      return 0
+    fi
+  done
+}
+
 # --- Commands ---
 
 case "$cmd" in
@@ -72,6 +101,7 @@ case "$cmd" in
   on|turn_on)
     entity="${1:?Usage: ha.sh on <entity_id> [brightness]}"
     check_blocked "$entity"
+    warn_critical "$entity"
     domain="${entity%%.*}"
     brightness="${2:-}"
     if [[ -n "$brightness" ]]; then
@@ -87,6 +117,7 @@ case "$cmd" in
   off|turn_off)
     entity="${1:?Usage: ha.sh off <entity_id>}"
     check_blocked "$entity"
+    warn_critical "$entity"
     domain="${entity%%.*}"
     api -X POST "$HA_URL/api/services/$domain/turn_off" \
       -d "{\"entity_id\": \"$entity\"}" >/dev/null
@@ -96,6 +127,7 @@ case "$cmd" in
   toggle)
     entity="${1:?Usage: ha.sh toggle <entity_id>}"
     check_blocked "$entity"
+    warn_critical "$entity"
     domain="${entity%%.*}"
     api -X POST "$HA_URL/api/services/$domain/toggle" \
       -d "{\"entity_id\": \"$entity\"}" >/dev/null

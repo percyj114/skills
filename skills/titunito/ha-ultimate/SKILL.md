@@ -1,14 +1,14 @@
 ---
-name: homeassistant
+name: ha-ultimate
 description: >
   Definitive Home Assistant skill for AI agents. Control 25+ entity domains via REST API
   with safety enforcement, webhooks, inventory generation, and a full CLI wrapper.
   Lights, climate, locks, presence, weather, calendars, notifications, TTS, scripts,
   automations, and more.
-metadata: {"openclaw":{"emoji":"🏠","requires":{"env":["HA_URL","HA_TOKEN"],"bins":["curl","jq"]},"primaryEnv":"HA_TOKEN"}}
+metadata: {"openclaw":{"emoji":"🏠","requires":{"env":["HA_URL","HA_TOKEN"],"bins":["curl","jq"]},"optionalBins":["node"],"primaryEnv":"HA_TOKEN","configPaths":["$HOME/.config/homeassistant/config.json",".env"]}}
 ---
 
-# Home Assistant — Definitive Skill
+# ha-ultimate — Definitive Home Assistant Skill
 
 Control your smart home via the Home Assistant REST API with safety enforcement, inventory
 awareness, and full domain coverage.
@@ -22,12 +22,16 @@ export HA_URL="http://your-ha-instance:8123"
 export HA_TOKEN="your-long-lived-access-token"
 ```
 
-Or create a `.env` file in the skill directory (auto-loaded by some agents):
+Or create a `.env` file in the skill directory (auto-loaded by ha.sh):
 
 ```env
 HA_URL=http://192.168.1.100:8123
 HA_TOKEN=eyJ...your-token...
 ```
+
+The CLI wrapper also checks `$HOME/.config/homeassistant/config.json` as a fallback
+(JSON with `url` and `token` keys). Protect this file with restrictive permissions
+(`chmod 600`) since it may contain your token.
 
 ### 2. Getting a Long-Lived Access Token
 
@@ -48,9 +52,10 @@ Or with the CLI wrapper:
 scripts/ha.sh info
 ```
 
-### 4. Generate Entity Inventory (Recommended)
+### 4. Generate Entity Inventory (Recommended, requires Node.js)
 
-Run once to create a complete map of your HA entities:
+**Note:** Node.js is an **optional** dependency, only needed for `inventory.js`.
+If Node.js is not available, `ha.sh inventory` falls back to a curl+jq listing.
 
 ```bash
 node scripts/inventory.js
@@ -85,17 +90,20 @@ security-critical devices.
 
 Never act on security-sensitive devices without explicit user confirmation.
 
-### Layer 2: Critical Action Pattern
+### Layer 2: Critical Action Workflow
 
-For critical domains, use this workflow:
+For critical domains (locks, alarm panels, garage doors, covers controlling physical
+access), follow this workflow **before executing any command**:
 
-1. **Attempt the action** — execute the command normally
-2. **Inform the user** — "⚠️ Opening the garage door is a critical action. Do you want to proceed?"
+1. **Identify the action as critical** — check if the entity domain is lock, alarm_control_panel, or cover with device_class garage/gate
+2. **Inform the user and ask for confirmation** — "⚠️ Opening the garage door is a critical action. Do you want to proceed?"
 3. **Wait for explicit confirmation** — "Yes", "OK", "Sure", "Do it", or any affirmative response
-4. **Only then execute** — proceed with the action
+4. **Only then execute the command** — never execute first
 
-Acceptable confirmations: "Yes", "OK", "Sure", "Do it", "Confirmed", "Go ahead", or any
-clearly affirmative response. You do NOT need a specific phrase verbatim.
+**Important:** The agent (not the script) is responsible for enforcing this confirmation
+flow. The CLI wrapper (`scripts/ha.sh`) checks `blocked_entities.json` as a hard block,
+but interactive confirmation must be handled at the agent conversation level before
+invoking any command on critical domains.
 
 ### Layer 3: Blocked Entities (Optional Configuration)
 
