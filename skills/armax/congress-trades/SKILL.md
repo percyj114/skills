@@ -1,11 +1,11 @@
 ---
 name: congress-trades
-description: Track US congress member stock trades in real-time using the Quiver Quant API. Automatically syncs trades to SQLite (zero external dependencies), detects new significant trades above 15K, and sends alerts via OpenClaw messaging. Requires QUIVER_API_KEY environment variable. Use when setting up congressional trade monitoring, stock trade alerts for politicians, or insider trading surveillance.
+description: Track US congress member and politician stock trades in real-time using the Quiver Quant API. Syncs trades to a local SQLite database, detects new significant trades above 15K, and sends alerts via OpenClaw messaging. Only requires Python with the requests library and a QUIVER_API_KEY environment variable. Use when setting up congressional trade monitoring, politician stock trade alerts, insider trading surveillance, or tracking what senators and representatives are buying and selling.
 ---
 
 # Congress Trades Tracker
 
-Monitor US congressional stock trades via Quiver Quant API, store in SQLite (no external DB needed), and alert on new significant trades.
+Monitor US congressional stock trades via Quiver Quant API, store in a local SQLite database, and alert on new significant trades. Requires Python `requests` library and a Quiver Quant API key.
 
 ## Requirements
 
@@ -38,11 +38,15 @@ export QUIVER_API_KEY="your-api-key-here"
 
 ### 3. Schedule with user cron (no sudo needed)
 
+Add your env vars to `~/.profile` or a `.env` file sourced by your shell, then add the cron entry:
+
 ```bash
 crontab -e
-# Add this line:
-* * * * * QUIVER_API_KEY="your-key" /usr/bin/python3 /path/to/scripts/scraper.py >> /path/to/logs/scraper.log 2>&1
+# Add this line (uses env vars from your profile):
+* * * * * . "$HOME/.profile" && /usr/bin/python3 /path/to/scripts/scraper.py >> /path/to/logs/scraper.log 2>&1
 ```
+
+Never inline API keys directly in crontab entries.
 
 ### 4. Set up OpenClaw alert pickup
 

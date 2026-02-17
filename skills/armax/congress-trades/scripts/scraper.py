@@ -16,7 +16,10 @@ import requests
 
 # ─── Config (override with env vars) ───────────────────────────────────────
 API_BASE = "https://api.quiverquant.com/beta/live/congresstrading"
-API_KEY = os.environ.get("QUIVER_API_KEY", "YOUR_QUIVER_API_KEY")
+API_KEY = os.environ.get("QUIVER_API_KEY")
+if not API_KEY:
+    print("ERROR: QUIVER_API_KEY environment variable is required. Get one at https://www.quiverquant.com/")
+    sys.exit(1)
 MIN_TRADE_AMOUNT = int(os.environ.get("MIN_TRADE_AMOUNT", "15001"))
 
 # Paths (relative to script location)

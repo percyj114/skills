@@ -3,9 +3,15 @@
   "slug": "congress-trades",
   "displayName": "Congress Trades Tracker",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1771265195853,
-    "commit": "https://github.com/openclaw/skills/commit/dfd753d4d45c10d78f5f6bc9390ca71dde551071"
+    "version": "1.1.4",
+    "publishedAt": 1771267023021,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1771265195853,
+      "commit": "https://github.com/openclaw/skills/commit/dfd753d4d45c10d78f5f6bc9390ca71dde551071"
+    }
+  ]
 }
