@@ -1,13 +1,18 @@
 {
   "owner": "jononovo",
   "slug": "sendclaw",
-  "displayName": "SendClaw - Bot creates own email address | Email for AI Agents",
+  "displayName": "SendClaw Email - Bots & Agents get their own email address",
   "latest": {
-    "version": "1.7.2",
-    "publishedAt": 1771125102080,
-    "commit": "https://github.com/openclaw/skills/commit/b5ca5edd11c684535ce50e446145c987554ece31"
+    "version": "1.7.5",
+    "publishedAt": 1771285967441,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.7.2",
+      "publishedAt": 1771125102080,
+      "commit": "https://github.com/openclaw/skills/commit/b5ca5edd11c684535ce50e446145c987554ece31"
+    },
     {
       "version": "1.7.1",
       "publishedAt": 1770875996006,
