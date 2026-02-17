@@ -3,11 +3,16 @@
   "slug": "agent-tinman",
   "displayName": "Tinman -  AI Failure Mode Research, Prompt Injection & Tool Exfil Detection",
   "latest": {
-    "version": "0.6.2",
-    "publishedAt": 1770799734354,
-    "commit": "https://github.com/openclaw/skills/commit/ea4bf7451b5bf45b0d1dbb83c1b37c60eb5b7df2"
+    "version": "0.6.3",
+    "publishedAt": 1771336469142,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.6.2",
+      "publishedAt": 1770799734354,
+      "commit": "https://github.com/openclaw/skills/commit/ea4bf7451b5bf45b0d1dbb83c1b37c60eb5b7df2"
+    },
     {
       "version": "0.6.1",
       "publishedAt": 1770510471068,
