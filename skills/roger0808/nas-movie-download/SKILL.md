@@ -1,11 +1,13 @@
 ---
 name: nas-movie-download
-description: Search and download movies via Jackett and qBittorrent. Use when user wants to download movies or videos from torrent sources, search for specific movie titles, or manage movie downloads.
+description: Search and download movies via Jackett and qBittorrent. Use when user wants to download movies or videos from torrent sources, search for specific movie titles, or manage movie downloads. Now includes automatic subtitle download support.
 ---
 
 # NAS Movie Download
 
 Automated movie downloading system using Jackett for torrent search and qBittorrent for download management.
+
+**新功能：自动字幕下载支持！** 🎬
 
 ## Configuration
 
@@ -21,6 +23,16 @@ Set these environment variables for the skill to function properly:
 - `QB_URL`: qBittorrent Web UI URL (default: http://192.168.1.246:8888)
 - `QB_USERNAME`: qBittorrent username (default: admin)
 - `QB_PASSWORD`: qBittorrent password (default: adminadmin)
+
+**Subtitle Configuration:**
+- `OPENSUBTITLES_API_KEY`: OpenSubtitles API key (optional, can also save to `config/opensubtitles.key`)
+- `SUBTITLE_LANGUAGES`: Default subtitle languages (default: zh-cn,en)
+
+### OpenSubtitles Setup
+
+1. 注册账号：https://www.opensubtitles.com
+2. 获取 API Key
+3. 保存到配置文件：`echo "your-api-key" > config/opensubtitles.key`
 
 ### Indexer Setup
 
@@ -43,14 +55,25 @@ scripts/jackett-search.sh -q "The Matrix"
 scripts/jackett-search.sh -q "死期将至"  # Chinese movie names supported
 ```
 
-### Download Highest Quality Version
+### Download with Automatic Subtitles 🆕
 
-Search and automatically download the highest quality version:
+One-click download with automatic subtitle fetching:
 
 ```bash
-scripts/download-movie.sh -q "Inception"
+# Download movie and automatically download subtitles after completion
+scripts/download-movie.sh -q "Young Sheldon" -s -w
+
+# Download with specific languages
+scripts/download-movie.sh -q "Community" -s -l zh-cn,en
+
+# Download movie only (no subtitles)
 scripts/download-movie.sh -q "The Matrix"
 ```
+
+**参数说明：**
+- `-s, --with-subtitle`: 启用自动字幕下载
+- `-w, --wait`: 等待下载完成后自动下载字幕
+- `-l, --languages`: 指定字幕语言（默认：zh-cn,en）
 
 ### Manual Download Workflow
 
@@ -59,6 +82,29 @@ For more control over the download process:
 1. Search: `scripts/jackett-search.sh -q "movie name"`
 2. Review results and copy magnet link
 3. Add to qBittorrent: `scripts/qbittorrent-add.sh -m "magnet:?xt=urn:btih:..."`
+4. Download subtitles: `scripts/subtitle-download.sh -d "/path/to/downloaded/files"`
+
+### Subtitle Download Only
+
+Download subtitles for existing video files:
+
+```bash
+# Single file
+scripts/subtitle-download.sh -f "/path/to/video.mkv" -l zh-cn,en
+
+# Entire directory (recursive)
+scripts/subtitle-download.sh -d "/path/to/tv/show" -r
+
+# Specific languages
+scripts/subtitle-download.sh -d "/media/Young Sheldon" -l zh-cn,en,ja
+```
+
+**Language Codes:**
+- `zh-cn`: 中文简体
+- `zh-tw`: 中文繁体
+- `en`: 英文
+- `ja`: 日文
+- `ko`: 韩文
 
 ### Test Configuration
 
@@ -112,15 +158,50 @@ scripts/qbittorrent-add.sh -m "magnet:?xt=urn:btih:..."
 
 ### download-movie.sh
 
-One-click search and download.
+One-click search and download with optional subtitle support.
 
 **Parameters:**
 - `-q, --query`: Movie name (required)
+- `-s, --with-subtitle`: Enable automatic subtitle download
+- `-w, --wait`: Wait for download to complete before downloading subtitles
+- `-l, --languages`: Subtitle languages (default: zh-cn,en)
 
 **Example:**
 ```bash
+# Basic download
 scripts/download-movie.sh -q "The Matrix"
+
+# Download with subtitles
+scripts/download-movie.sh -q "Young Sheldon" -s -w -l zh-cn,en
 ```
+
+### subtitle-download.sh 🆕
+
+Download subtitles for video files using OpenSubtitles API.
+
+**Parameters:**
+- `-f, --file`: Single video file path
+- `-d, --directory`: Process all videos in directory
+- `-l, --languages`: Subtitle languages, comma-separated (default: zh-cn,en)
+- `-k, --api-key`: OpenSubtitles API Key (optional if configured)
+- `-r, --recursive`: Recursively process subdirectories
+- `-h, --help`: Show help
+
+**Example:**
+```bash
+# Single file
+scripts/subtitle-download.sh -f "/media/movie.mkv"
+
+# Batch process directory
+scripts/subtitle-download.sh -d "/media/TV Shows" -r -l zh-cn,en
+```
+
+**Features:**
+- Automatically parses video filenames (TV episodes, movies)
+- Downloads best-rated subtitles for each language
+- Renames subtitles to match video filenames
+- Skips existing subtitle files
+- Supports batch processing
 
 ## Tips and Best Practices
 
@@ -129,6 +210,7 @@ scripts/download-movie.sh -q "The Matrix"
 - **Monitor qBittorrent** to manage download progress
 - **Consider storage space** when downloading 4K content
 - **Test configuration** periodically to ensure services are running
+- **For TV series**: Use `-s -w` flag to auto-download subtitles for all episodes
 
 ## Troubleshooting
 
@@ -145,6 +227,12 @@ scripts/download-movie.sh -q "The Matrix"
 2. Check Web UI is enabled in qBittorrent settings
 3. Verify username and password
 4. Ensure network connectivity to qBittorrent server
+
+### Subtitle Download Issues
+
+1. **No API Key**: Save your key to `config/opensubtitles.key` or use `-k` flag
+2. **No subtitles found**: Try different language codes or the video may not have subtitles available
+3. **API limit**: OpenSubtitles free tier has rate limits; wait a few minutes and retry
 
 ### Permission Issues
 
@@ -165,9 +253,19 @@ chmod +x scripts/*.sh
 
 - `curl`: For HTTP requests
 - `jq`: For JSON parsing
+- `bc`: For floating point calculations (subtitle download progress)
 - Bash shell
 
-Install jq if missing:
+Install dependencies if missing:
 ```bash
-apt-get install jq
+apt-get install curl jq bc
 ```
+
+## Changelog
+
+### v2.0 - 2025-02-17
+- ✅ Added automatic subtitle download support
+- ✅ New `subtitle-download.sh` script
+- ✅ Updated `download-movie.sh` with `-s` and `-w` flags
+- ✅ Support for OpenSubtitles API
+- ✅ Multi-language subtitle support (zh-cn, en, ja, ko, etc.)
