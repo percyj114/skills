@@ -153,3 +153,7 @@ If `MINT_URL` is not provided, it may default to a public test mint or fail. Alw
 
 - Tokens are large strings starting with `cashuA...` (V3) or `cashuB...` (V4).
 - Ensure you back up your mnemonic if using significant funds (see `cashu info`).
+
+## Contributing
+
+Open issues or contribute at https://github.com/cashubtc/nutshell
