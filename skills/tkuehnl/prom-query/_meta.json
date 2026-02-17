@@ -3,9 +3,15 @@
   "slug": "prom-query",
   "displayName": "Prom Query",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771229236261,
-    "commit": "https://github.com/openclaw/skills/commit/5bdef7bf6b08c038ff507c6b3b04e79996e423ae"
+    "version": "1.0.3",
+    "publishedAt": 1771314978193,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771229236261,
+      "commit": "https://github.com/openclaw/skills/commit/5bdef7bf6b08c038ff507c6b3b04e79996e423ae"
+    }
+  ]
 }
