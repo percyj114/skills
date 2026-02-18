@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// SECURITY MANIFEST:
+//   Environment variables accessed: NONE
+//   External endpoints called: NONE
+//   Local files read: config.yaml
+//   Local files written: NONE
 /**
  * Config Validator
  *

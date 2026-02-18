@@ -1,4 +1,10 @@
 #!/bin/bash
+# SECURITY MANIFEST:
+#   Environment variables accessed: NONE (except those used by clawhub CLI)
+#   External endpoints called: ClawHub registry API (publish)
+#   Local files read: skill directory, config files
+#   Local files written: none
+#
 # Republish curated-search after remediation
 # Run this after rate limit resets (wait ~1-2 hours)
 

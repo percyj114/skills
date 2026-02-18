@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// SECURITY MANIFEST:
+//   Environment variables accessed: NONE
+//   External endpoints called: NONE (checks local index and may invoke local search tool)
+//   Local files read: config.yaml, data/index/*
+//   Local files written: NONE
 /**
  * Health check for Curated Search skill
  *

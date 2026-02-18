@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// SECURITY MANIFEST:
+//   Environment variables accessed: NONE
+//   External endpoints called: User-configured domains from config.yaml during crawling (whitelist only)
+//   Local files read: config.yaml
+//   Local files written: data/index/*
 /**
  * Curated Crawler Runner
  *

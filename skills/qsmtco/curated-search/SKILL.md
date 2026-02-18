@@ -1,16 +1,42 @@
 ---
 name: curated-search
 description: Domain-restricted full-text search over curated technical documentation
+version: 1.0.7
+author: qsmtco
+license: MIT
+homepage: https://github.com/openclaw/curated-search
 metadata:
   openclaw:
     requires:
       bins: ["node"]
+    emoji: "🔍"
 ---
 
 # Curated Search Skill
 
 ## Summary
 Domain-restricted full-text search over a curated whitelist of technical documentation (MDN, Python docs, etc.). Provides clean, authoritative results without web spam.
+
+## External Endpoints
+
+This skill does **not** call any external network endpoints during search operations. The crawler optionally makes outbound HTTP requests during index builds (one‑time setup), but those are user‑initiated (`npm run crawl`) and respect the configured domain whitelist.
+
+## Security & Privacy
+
+- **Search is fully local** – After the index is built, all queries run offline; no data leaves your machine.
+- **Crawling is optional and whitelist‑scoped** – The crawler only accesses domains you explicitly list in `config.yaml`. It respects `robots.txt` and configurable delays.
+- **No telemetry** – No usage data is transmitted externally.
+- **Configuration** is read from local `config.yaml` and the index file in `data/`.
+
+## Model Invocation Note
+
+The `curated-search.search` tool is invoked **only when the user explicitly calls it**. It does not run autonomously. OpenClaw calls the tool handler (`scripts/search.js`) when the user asks to search the curated index.
+
+## Trust Statement
+
+By using this skill, you trust that the code operates locally and only crawls domains you approve. The skill does not send your queries or workspace data to any third party. Review the open‑source implementation before installing.
+
+---
 
 ## Tool: curated-search.search
 
