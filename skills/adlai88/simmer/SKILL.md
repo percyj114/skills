@@ -1,6 +1,6 @@
 ---
 name: simmer
-version: 1.15.0
+version: 1.15.2
 published: true
 description: The best prediction market interface for AI agents. Trade on Polymarket with self-custody wallets, safety rails, and smart context.
 homepage: https://simmer.markets
@@ -301,7 +301,7 @@ Content-Type: application/json
 
 {"polymarket_url": "https://polymarket.com/event/..."}
 ```
-Response headers include `X-Imports-Remaining` and `X-Imports-Limit` (shared imports, 10/day free tier).
+Supports single markets and multi-outcome events (e.g., tweet count ranges). Pass `market_ids` array to import specific outcomes only. Each import (single or event) counts as 1 toward daily quota (10/day free, 50/day Pro). Response headers include `X-Imports-Remaining` and `X-Imports-Limit`.
 
 ### Trading
 
@@ -495,7 +495,7 @@ Content-Type: application/json
 }
 ```
 
-Returns `{ "success": true, "tx_hash": "0x..." }`. The server looks up all Polymarket details automatically.
+Returns `{ "success": true, "tx_hash": "0x..." }`. The server looks up all Polymarket details automatically. Works with both managed and external (self-custody) wallets — the SDK handles signing automatically.
 
 ### Price Alerts
 
