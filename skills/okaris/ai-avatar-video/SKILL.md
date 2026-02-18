@@ -1,19 +1,14 @@
 ---
 name: ai-avatar-video
-description: |
-  Create AI avatar and talking head videos with OmniHuman, Fabric, PixVerse via inference.sh CLI.
-  Models: OmniHuman 1.5, OmniHuman 1.0, Fabric 1.0, PixVerse Lipsync.
-  Capabilities: audio-driven avatars, lipsync videos, talking head generation, virtual presenters.
-  Use for: AI presenters, explainer videos, virtual influencers, dubbing, marketing videos.
-  Triggers: ai avatar, talking head, lipsync, avatar video, virtual presenter,
-  ai spokesperson, audio driven video, heygen alternative, synthesia alternative,
-  talking avatar, lip sync, video avatar, ai presenter, digital human
+description: "Create AI avatar and talking head videos with OmniHuman, Fabric, PixVerse via inference.sh CLI. Models: OmniHuman 1.5, OmniHuman 1.0, Fabric 1.0, PixVerse Lipsync. Capabilities: audio-driven avatars, lipsync videos, talking head generation, virtual presenters. Use for: AI presenters, explainer videos, virtual influencers, dubbing, marketing videos. Triggers: ai avatar, talking head, lipsync, avatar video, virtual presenter, ai spokesperson, audio driven video, heygen alternative, synthesia alternative, talking avatar, lip sync, video avatar, ai presenter, digital human"
 allowed-tools: Bash(infsh *)
 ---
 
 # AI Avatar & Talking Head Videos
 
 Create AI avatars and talking head videos via [inference.sh](https://inference.sh) CLI.
+
+![AI Avatar & Talking Head Videos](https://cloud.inference.sh/app/files/u/4mg21r6ta37mpaz6ktzwtt8krr/01kg0tszs96s0n8z5gy8y5mbg7.jpeg)
 
 ## Quick Start
 
@@ -26,6 +21,8 @@ infsh app run bytedance/omnihuman-1-5 --input '{
   "audio_url": "https://speech.mp3"
 }'
 ```
+
+> **Install note:** The [install script](https://cli.inference.sh) only detects your OS/architecture, downloads the matching binary from `dist.inference.sh`, and verifies its SHA-256 checksum. No elevated permissions or background processes. [Manual install & verification](https://dist.inference.sh/cli/checksums.txt) available.
 
 ## Available Models
 
@@ -129,19 +126,19 @@ infsh app run infsh/latentsync-1-6 --input '{
 
 ```bash
 # Full platform skill (all 150+ apps)
-npx skills add inference-sh/agent-skills@inference-sh
+npx skills add inference-sh/skills@inference-sh
 
 # Text-to-speech (generate audio for avatars)
-npx skills add inference-sh/agent-skills@text-to-speech
+npx skills add inference-sh/skills@text-to-speech
 
 # Speech-to-text (transcribe for dubbing)
-npx skills add inference-sh/agent-skills@speech-to-text
+npx skills add inference-sh/skills@speech-to-text
 
 # Video generation
-npx skills add inference-sh/agent-skills@ai-video-generation
+npx skills add inference-sh/skills@ai-video-generation
 
 # Image generation (create avatar images)
-npx skills add inference-sh/agent-skills@ai-image-generation
+npx skills add inference-sh/skills@ai-image-generation
 ```
 
 Browse all video apps: `infsh app list --category video`

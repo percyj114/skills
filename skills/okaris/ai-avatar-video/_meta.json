@@ -3,9 +3,15 @@
   "slug": "ai-avatar-video",
   "displayName": "Ai Avatar Video",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770362974637,
-    "commit": "https://github.com/openclaw/skills/commit/017e638b234c4adefeb7abf1b201f49b6947d222"
+    "version": "0.1.5",
+    "publishedAt": 1771402978418,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770362974637,
+      "commit": "https://github.com/openclaw/skills/commit/017e638b234c4adefeb7abf1b201f49b6947d222"
+    }
+  ]
 }
