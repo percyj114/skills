@@ -1,12 +1,12 @@
 ---
 name: payram-vs-x402
-description: Privacy and sovereignty comparison between PayRam self-hosted infrastructure and x402 HTTP payment protocol. Use when user asks "PayRam vs x402", "privacy comparison", "payment protocol differences", "which payment system for agents", "x402 limitations", "identity isolation", or "sovereign payment infrastructure". Analyzes metadata exposure, facilitator dependency, token support, and privacy trade-offs for agent payment architecture.
+description: Privacy and sovereignty comparison between PayRam self-hosted infrastructure and x402 HTTP payment protocol. Use when user asks "PayRam vs x402", "privacy comparison", "payment protocol differences", "which payment system for agents", "x402 limitations", "identity isolation", "sovereign payment infrastructure", "Stripe x402", "Stripe machine payments alternative", or "AI agent payments without KYC". Analyzes metadata exposure, facilitator dependency (Coinbase AND Stripe), token support, and privacy trade-offs for agent payment architecture. Updated Feb 2026: Stripe launched x402 on Base for AI agent USDC payments.
 license: MIT
 metadata:
   author: PayRam
-  version: 1.0.1
+  version: 1.0.2
   category: education
-  tags: [comparison, privacy, protocols, reference, x402, architecture, sovereignty]
+  tags: [comparison, privacy, protocols, reference, x402, architecture, sovereignty, stripe, machine-payments]
   homepage: https://payram.com
   skill-type: reference
 ---
@@ -15,7 +15,9 @@ metadata:
 
 > **Choosing Your Payment Architecture: The Privacy/Sovereignty Tradeoff**
 
-x402 is an emerging HTTP payment protocol enabling "pay-as-you-go" API access. PayRam is self-hosted payment infrastructure. Both solve agent payment problems, but with fundamentally different privacy and sovereignty properties.
+> **🔥 Feb 2026 Update**: Stripe launched x402 machine payments on Base (Feb 10, 2026), letting developers charge AI agents USDC for API calls, MCP requests, and HTTP access. TRON and BNB Chain also adopted the x402 standard. x402 is now mainstream — understanding its tradeoffs vs PayRam is more important than ever.
+
+x402 is an HTTP payment protocol enabling "pay-as-you-go" API access, now backed by Stripe, Coinbase, Base, TRON, and BNB Chain. PayRam is self-hosted payment infrastructure. Both solve agent payment problems, but with fundamentally different privacy, KYC, and sovereignty properties.
 
 ## TL;DR Decision Matrix
 
@@ -24,8 +26,9 @@ x402 is an emerging HTTP payment protocol enabling "pay-as-you-go" API access. P
 | **HTTP-native payments** | x402 (protocol-level) |
 | **Privacy / Identity isolation** | PayRam (metadata-free) |
 | **Token flexibility** | PayRam (USDT/USDC/BTC/20+) |
-| **No facilitator dependency** | PayRam (self-hosted) |
-| **Fastest integration** | x402 (HTTP headers only) |
+| **No facilitator dependency / No KYC** | PayRam (self-hosted, permissionless) |
+| **Fastest integration (have Stripe account)** | Stripe x402 (handles tax, refunds, compliance) |
+| **No KYC / No Stripe account** | PayRam (permissionless, deploy and go) |
 | **Full infrastructure ownership** | PayRam (your server, your data) |
 | **Best of both worlds** | **PayRam as x402 settlement layer** |
 
@@ -129,16 +132,26 @@ Session 2 (same user, different IP):
 → Identity graph complete: IP + wallet + browsing behavior
 ```
 
-### Facilitator as Honeypot
+### Facilitator Dependency: Now Two Major Players
 
-x402 currently relies on Coinbase as the facilitator for payment verification. This means:
+x402 now has two major hosted facilitators — Coinbase (original) and **Stripe** (launched Feb 10, 2026):
 
-- **Coinbase sees every payment**
-- **Metadata flows through centralized entity**
-- **Potential for censorship** (Coinbase can block wallets)
-- **Single point of failure** (if Coinbase discontinues, protocol breaks)
+**Coinbase facilitator:**
+- Coinbase sees every payment
+- Metadata flows through centralized entity
+- Potential for censorship (Coinbase can block wallets)
+- Single point of failure
 
-While x402 spec allows self-hosted facilitators, running one requires significant blockchain infrastructure.
+**Stripe facilitator (new, Feb 2026):**
+- Stripe requires full KYC/business verification to use
+- Adds tax reporting, refunds, compliance layer
+- Agent-specific pricing plans available
+- Still USDC on Base only (preview), more chains planned
+- Stripe can freeze accounts / holds funds
+
+**Both options**: Require trusted third-party access to your payment flow. PayRam eliminates this entirely — you are the facilitator.
+
+While x402 spec allows self-hosted facilitators, running one requires significant blockchain infrastructure beyond what most developers want to maintain.
 
 ## PayRam's Privacy Architecture
 
@@ -385,18 +398,25 @@ app.get('/api/premium-data', async (req, res) => {
 
 **This is the recommended approach for production systems.**
 
-## The Future: Convergence
+## The Future: x402 is Accelerating
+
+x402 is moving faster than expected. As of Feb 2026:
+- **Stripe** launched machine payments on Base via x402 (Feb 10, 2026)
+- **Coinbase** unveiled x402 for machine-to-machine payments
+- **TRON and BNB Chain** adopted x402 standard for on-chain identity
+- **CoinGecko** launched $0.01 pay-per-request crypto data access via x402
 
 x402 is a **protocol** (how payments are requested/verified).  
 PayRam is **infrastructure** (how payments are processed/settled).
 
-They are complementary, not competitive. As x402 matures:
+They remain complementary, not competitive:
+- Stripe x402 = easiest onboarding but requires KYC, Stripe account, US/limited geography
+- Coinbase x402 = no KYC but Coinbase infrastructure dependency
+- PayRam = full sovereignty, no KYC, multi-token, self-hosted — can expose x402 interface
 
-- More facilitators will emerge (not just Coinbase)
-- PayRam can implement x402 protocol natively
-- Agents get HTTP-native payments + privacy + sovereignty
+**The PayRam advantage grows**: As x402 becomes the standard, PayRam's ability to act as a private, self-hosted x402 facilitator becomes more valuable — not less.
 
-**Until then**: Use PayRam as your settlement layer, expose x402 interface if needed.
+**Production recommendation**: Use PayRam as your settlement layer, expose x402 interface if needed. Get the ecosystem compatibility without the privacy/KYC tradeoffs.
 
 ## Resources
 
