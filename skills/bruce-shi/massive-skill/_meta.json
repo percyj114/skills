@@ -3,9 +3,15 @@
   "slug": "massive-skill",
   "displayName": "Massive(Polygon)",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771275424613,
-    "commit": "https://github.com/openclaw/skills/commit/fe750247dba9004cdfab6a31411722d53683478f"
+    "version": "1.0.5",
+    "publishedAt": 1771352319098,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771275424613,
+      "commit": "https://github.com/openclaw/skills/commit/fe750247dba9004cdfab6a31411722d53683478f"
+    }
+  ]
 }
