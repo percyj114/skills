@@ -1,7 +1,7 @@
 ---
 name: skill-releaser
 description: Release skills to ClawhHub through the full publication pipeline — auto-scaffolding, OPSEC scan, dual review (agent + user), force-push release, security scan verification. Use when releasing a skill, preparing a skill for release, reviewing a skill for publication, or checking release readiness.
-version: 1.4.0
+version: 1.4.2
 triggers:
   - release skill
   - publish skill
@@ -51,8 +51,9 @@ A user with a finished SKILL.md should be able to say "release this skill" and t
 
 ## Automation Model
 
-The pipeline has two fully automated phases separated by one human gate:
+The pipeline has two fully automated phases separated by one human gate. **Both single and batch releases follow the same model.**
 
+### Single Skill
 ```
 Phase 1 (AUTO): Steps 1-7 — scaffold, validate, stage, scan, review, push
      ↓
@@ -61,19 +62,41 @@ Phase 1 (AUTO): Steps 1-7 — scaffold, validate, stage, scan, review, push
 Phase 2 (AUTO): Steps 9-12 — erase history, flip public, publish, verify scan, deliver
 ```
 
+### Batch Release (multiple skills)
+```
+Phase 1 (PARALLEL): Spawn subagents — one per skill, all run Phase 1 simultaneously
+     ↓
+  GATE: ONE batch review message with all repo links
+        User replies: "approve all" / "approve A,C; revise B: fix readme"
+     ↓
+Phase 2 (PARALLEL): Spawn subagents for approved skills, all publish simultaneously
+     ↓
+  DELIVERY: ONE batch summary with all links and scan results
+```
+
+**Batch rules:**
+- Never serialize releases — spawn parallel subagents for Phase 1
+- Never block on one approval to start the next Phase 1
+- Assign each skill a short unique ID (A, B, C...) in the batch review message
+- Collect all Phase 1 results, present ONE batch review message with short IDs
+- Accept batch approvals: "approve all" / "approve A,C" / "revise B: fix readme"
+- Run all Phase 2s in parallel after approval
+
 **Design principles:**
-- User says "release {skill}" once. Agent runs Phase 1 end-to-end without interruption.
-- Agent sends ONE message: the review link + recommendation. Then waits.
-- User replies with one word. Agent runs Phase 2 end-to-end without interruption.
+- User says "release these skills" once. Agent runs all Phase 1s in parallel without interruption.
+- Agent sends ONE message: all review links + recommendations. Then waits.
+- User replies once. Agent runs all Phase 2s in parallel without interruption.
+- Agent sends ONE delivery message with all results.
 - If any step fails, agent fixes it automatically and continues. Only report to user if unfixable.
 - Rate limits, retries, and delays are handled silently (sleep + retry, not "rate limited, should I try again?")
 
 **Anti-patterns (never do these):**
+- Do not serialize releases — always parallelize with subagents
+- Do not block on approval for skill A before starting Phase 1 for skill B
+- Do not send per-skill review messages — batch them
 - Do not ask "should I create the repo?" — just create it
-- Do not ask "should I run OPSEC scan?" — just run it
-- Do not report intermediate steps — only report the final review request and final delivery
+- Do not report intermediate steps — only the batch review and batch delivery
 - Do not ask about rate limits or transient errors — retry silently
-- Do not send multiple messages during a phase — batch everything into one
 
 ## Process
 
@@ -85,7 +108,7 @@ Before any quality checks, generate all missing structure files from the existin
 | File | Source | Generation Method |
 |------|--------|-------------------|
 | `skill.yml` | SKILL.md frontmatter + triggers | Extract name, description, version, triggers from SKILL.md |
-| `README.md` | SKILL.md description + usage | GitHub landing page: what it does, when to use, example commands |
+| `README.md` | SKILL.md description + usage | GitHub landing page for humans: what it does, how to install, future work. NOT agent instructions. |
 | `CHANGELOG.md` | Version from skill.yml + git log | `## v{version} — {date}` + summary of current state |
 | `tests/test-triggers.json` | SKILL.md triggers + "When to Use" | `shouldTrigger` from triggers list, `shouldNotTrigger` from anti-patterns |
 | `scripts/` | Create directory | Empty dir or placeholder README if no scripts needed |
@@ -108,7 +131,7 @@ If this skill has been published before, bump the version before proceeding:
 
 1. **Check current published version:**
 ```bash
-clawhub search {name}
+clawhub inspect {slug}
 ```
 
 2. **Bump version** in both `skill.yml` and `SKILL.md` frontmatter:
@@ -118,7 +141,19 @@ clawhub search {name}
 
 3. **Update CHANGELOG.md** with new version entry describing what changed
 
-Skip this step for first-time releases.
+4. **Verify `display_name` is set in `skill.yml`** — this is the human-readable title shown on ClawhHub.
+   It must be set explicitly; never derive it from the slug or guess it.
+   If missing, add it now:
+   ```yaml
+   display_name: "Human Readable Title"  # Required — used as ClawhHub listing title
+   ```
+   Rules:
+   - Title case, plain English, no jargon
+   - Describes what the skill does, not how it's implemented
+   - Example: slug `autonomous-task-runner` → `display_name: "Autonomous Task Runner"`
+   - Example: slug `skill-releaser` → `display_name: "Skill Releaser"`
+
+Skip this step for first-time releases (but still verify `display_name` exists).
 
 ### Step 2: Readiness Check
 Verify the skill directory is complete:
@@ -134,12 +169,15 @@ If any check fails, report what needs fixing. Do not proceed.
 # Check if repo already exists
 gh repo view your-org/openclaw-skill-{name} 2>/dev/null
 
-# If not, create it
-gh repo create your-org/openclaw-skill-{name} --private --description "{skill description from skill.yml}"
+# If not, create it — CRITICAL: use the SANITIZED description, not the source skill.yml
+# Run OPSEC scan on the description string BEFORE passing to gh repo create
+gh repo create your-org/openclaw-skill-{name} --private --description "{sanitized description}"
 ```
 
+**OPSEC on repo metadata:** The description passed to `gh repo create` is public when the repo flips to public. It must be scanned for the same patterns as file contents (org names, personal info, internal project names). This is not covered by file-based scanners — it must be checked explicitly.
+
 ### Step 4: Prepare Release Content
-Copy sanitized skill content to a clean directory:
+Copy ONLY the skill directory content to a clean staging area:
 ```bash
 mkdir -p /tmp/skill-release-{name}
 cp -r skills/{name}/* /tmp/skill-release-{name}/
@@ -148,6 +186,20 @@ cp -r skills/{name}/* /tmp/skill-release-{name}/
 rm -f /tmp/skill-release-{name}/WORKSPACE.md
 rm -f /tmp/skill-release-{name}/.gitignore
 rm -rf /tmp/skill-release-{name}/_meta.json
+rm -rf /tmp/skill-release-{name}/.clawhub
+```
+
+**CRITICAL VALIDATION — verify before proceeding:**
+```bash
+# The release directory must contain ONLY skill files.
+# If you see ANY of these, you copied from the wrong directory — STOP and fix:
+#   - USER.md, MEMORY.md, AGENTS.md, SOUL.md (workspace/repo root files)
+#   - audits/, shared/, scripts/ (repo directories)
+#   - memory/, slides/, projects/ (personal data)
+#   - .gitmodules (repo root)
+ls /tmp/skill-release-{name}/
+# Expected: SKILL.md, skill.yml, README.md, CHANGELOG.md, LICENSE, tests/, references/, scripts/
+# If file count exceeds ~15 files, something is wrong. Verify source path.
 ```
 
 Add release files if missing:
@@ -155,13 +207,21 @@ Add release files if missing:
 - `README.md` (must work as GitHub landing page for strangers)
 - `.gitignore`
 
-### Step 5: OPSEC Deep Scan
+### Step 5: Release Content Validation (HARD GATE)
+```bash
+bash scripts/validate-release-content.sh /tmp/skill-release-{name}
+```
+**This is a deterministic script that blocks pushes if the release directory contains repo-level files (USER.md, MEMORY.md, audits/, etc.), has too many files (>50), or contains suspicious file types (logs, images, PDFs).**
+
+Must return SAFE (exit 0). If BLOCKED, you copied from the wrong directory. **Do NOT proceed. Fix the source path and re-copy.**
+
+### Step 6: OPSEC Deep Scan
 ```bash
 bash scripts/opsec-scan.sh /tmp/skill-release-{name}
 ```
 Must return CLEAN (exit 0). If violations found, fix them in the release copy. Do NOT modify the source in openclaw-knowledge — keep the internal version as-is.
 
-### Step 6: Agent Review
+### Step 7: Agent Review
 Generate review document:
 ```markdown
 # Release Review: {skill-name}
@@ -190,13 +250,18 @@ APPROVE / REVISE: {reasons}
 
 Save to `openclaw-knowledge/reviews/{name}-release-review.md`
 
-### Step 7: Push to Private Staging Repo
+### Step 8: Push to Private Staging Repo
 Push sanitized content so user can review the actual repo on any device (phone, laptop):
 ```bash
 cd /tmp/skill-release-{name}
 git init
 git config user.email "agent@localhost"
 git config user.name "SkillEngineer"
+
+# Install OPSEC pre-commit hook — prevents sensitive data from entering git history
+cp /tmp/openclaw-knowledge/scripts/opsec-precommit-hook.sh .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+
 git add .
 git commit -m "v{version}: Initial release of {name}"
 git remote add origin https://github.com/your-org/openclaw-skill-{name}.git
@@ -204,25 +269,43 @@ git branch -M main
 git push -u origin main
 ```
 
-### Step 8: User Review
-Send repo link + brief summary to user via Telegram:
+### Step 9: User Review
+For single skills, send review link. For batch releases, collect all Phase 1 results and send ONE message.
+
+**Single skill:**
 ```
 RELEASE REVIEW: {skill-name}
 
-Score: {X}/24 | OPSEC: CLEAN | Position: {novel/ahead}
-Review here: https://github.com/your-org/openclaw-skill-{name}
-
-{1-2 sentence summary of what the skill does}
-
-Agent recommendation: {APPROVE/REVISE}
+{score} | OPSEC: CLEAN
+{1-line description}
+https://github.com/your-org/openclaw-skill-{name}
 
 Reply: approve / revise:{feedback} / reject
 ```
 
-The repo IS the review artifact. User reviews actual files, not a summary.
-Wait for user response. Do not proceed without explicit approval.
+**Batch review (assign short IDs for easy approval):**
+```
+BATCH RELEASE REVIEW — {N} skills
 
-### Step 9: Erase History & Flip to Public (after user approval)
+A. {skill-name} — {score} | CLEAN | {1-line description}
+https://github.com/your-org/openclaw-skill-{name}
+
+B. {skill-name} — {score} | CLEAN | {1-line description}
+https://github.com/your-org/openclaw-skill-{name}
+
+C. {skill-name} — {score} | CLEAN | {1-line description}
+https://github.com/your-org/openclaw-skill-{name}
+
+Reply: approve all / approve A,C / revise B:{feedback}
+```
+
+**Rules:**
+- Links on their own line (never in tables — not clickable on mobile)
+- Short IDs (A, B, C) for batch approval — user should never type full skill names
+- The repo IS the review artifact. User reviews actual files, not a summary.
+- Wait for user response. Do not proceed without explicit approval.
+
+### Step 10: Erase History & Flip to Public (after user approval)
 Erase git history (may contain OPSEC fixes from earlier revisions) and make the repo public:
 ```bash
 cd /tmp/skill-release-{name}
@@ -236,20 +319,81 @@ git push -f origin main
 
 # Flip visibility
 gh repo edit your-org/openclaw-skill-{name} --visibility public
+
+# Verify repo metadata is OPSEC-clean (description, topics are now public)
+gh repo view your-org/openclaw-skill-{name} --json description,repositoryTopics -q '.description + " " + (.repositoryTopics | join(" "))'
+# Manually check output for org names, personal info, internal project names
+# If dirty: gh repo edit your-org/openclaw-skill-{name} --description "{clean description}"
 ```
 
 Single commit, clean history, one repo. No dual-repo complexity.
 
-### Step 10: Publish to ClawhHub
+### Step 11: Publish to ClawhHub
+
+**Before running the publish command, extract all parameters from `skill.yml` — never guess or hardcode:**
+
 ```bash
-clawhub publish /tmp/skill-release-{name} \
-  --slug {name} \
-  --name "{Display Name}" \
-  --version {version} \
-  --changelog "{summary of changes}"
+# Extract publish parameters directly from skill.yml
+SLUG=$(grep '^name:' /tmp/skill-release-{name}/skill.yml | awk '{print $2}')
+DISPLAY_NAME=$(grep '^display_name:' /tmp/skill-release-{name}/skill.yml | sed 's/display_name: *//' | tr -d '"')
+VERSION=$(grep '^version:' /tmp/skill-release-{name}/skill.yml | awk '{print $2}')
+
+echo "slug:         $SLUG"
+echo "display_name: $DISPLAY_NAME"
+echo "version:      $VERSION"
+
+# Verify all three are non-empty before proceeding
+if [ -z "$SLUG" ] || [ -z "$DISPLAY_NAME" ] || [ -z "$VERSION" ]; then
+  echo "ERROR: Missing slug, display_name, or version in skill.yml — fix before publishing"
+  exit 1
+fi
 ```
 
-### Step 11: Verify Security Scan (Browser Required)
+If `display_name` is missing from `skill.yml`, add it now (see Step 1.5). Do not proceed with an empty display name.
+
+```bash
+clawhub publish /tmp/skill-release-{name} \
+  --slug "$SLUG" \
+  --name "$DISPLAY_NAME" \
+  --version "$VERSION" \
+  --changelog "{summary of changes from CHANGELOG.md}"
+```
+
+### Step 11.5: Post-Publish Verification (Content Match)
+
+After publishing, verify the live listing matches the source skill.yml exactly.
+**This step catches wrong titles, version mismatches, and stale metadata before delivery.**
+
+```bash
+clawhub inspect "$SLUG" 2>&1
+```
+
+Compare the output against skill.yml:
+
+| Field | Expected (from skill.yml) | Actual (from clawhub inspect) | Match? |
+|-------|--------------------------|-------------------------------|--------|
+| Display name | `display_name` value | First line of inspect output | ✅ / ❌ |
+| Version | `version` value | `Latest:` field | ✅ / ❌ |
+| Description | First sentence of `description` | `Summary:` field (truncated) | ✅ / ❌ |
+| Owner | your ClawhHub username | `Owner:` field | ✅ / ❌ |
+
+**If any field does not match:**
+1. Do NOT proceed to Step 12
+2. Identify the mismatch (wrong `--name`, wrong `--slug`, stale `skill.yml`)
+3. Fix the source (skill.yml or publish command), bump patch version, republish
+4. Re-run Step 11.5 until all fields match
+5. Only proceed to Step 12 when the table shows ✅ on all rows
+
+**Common mismatches and fixes:**
+
+| Mismatch | Cause | Fix |
+|----------|-------|-----|
+| Wrong display name | `display_name` missing from skill.yml; name was guessed | Add `display_name` to skill.yml, republish |
+| Wrong version | skill.yml not updated before publish | Bump version in skill.yml, republish |
+| Wrong slug | `name` field in skill.yml doesn't match intended slug | Fix `name` in skill.yml or use correct `--slug` |
+| Wrong owner | Published under wrong account | Check `clawhub whoami`, re-authenticate if needed |
+
+### Step 12: Verify Security Scan (Browser Required)
 ClawhHub automatically scans all published skills via VirusTotal (Code Insight) and OpenClaw's own scanner. **Do not consider the release complete until scans are reviewed.**
 
 **Use the browser tool to check scan results — ClawhHub pages require JS rendering:**
@@ -271,7 +415,7 @@ browser snapshot (refs=aria)
 
 | Verdict | Meaning | Action |
 |---------|---------|--------|
-| Benign (both) | Clean, auto-approved | Proceed to Step 12 |
+| Benign (both) | Clean, auto-approved | Proceed to Step 13 |
 | Pending | Still processing | Wait 2 minutes, re-snapshot |
 | Suspicious (undeclared permissions) | Skill needs privileged access not in metadata | Add `permissions` to skill.yml, bump version, re-publish |
 | Suspicious (other) | Flagged behavior | Review detail text. If false positive, contact OpenClaw security team. If real, fix and re-publish |
@@ -290,7 +434,7 @@ browser snapshot (refs=aria)
 
 5. **If VirusTotal is still Pending** after 5 minutes, proceed to Step 12 but note it in the delivery. The scan completes asynchronously.
 
-### Step 12: Deliver
+### Step 13: Deliver
 Confirm the release is live and deliver all links and scan status to the user:
 
 ```
@@ -304,12 +448,9 @@ OpenClaw Scan: {verdict} ({confidence})
 {1-line description}
 ```
 
-**Update tracking** — record in memory or STATUS.json:
-- GitHub URL (public)
-- ClawhHub URL and slug
-- Release date and version
-- Security scan verdicts (VirusTotal + OpenClaw)
-- Review dates (agent and user)
+### Pipeline Ends Here
+
+Skill-releaser scope ends at Step 13 (delivery). Post-release bookkeeping (STATUS.json updates, submodule conversion, memory logging) is a **refactory system responsibility**, not a release pipeline responsibility. See REFACTORY-SYSTEM.md "Post-Release Stage."
 
 ## Error Handling
 
@@ -321,6 +462,32 @@ OpenClaw Scan: {verdict} ({confidence})
 | clawhub publish fails | CLI not installed or auth | Run `npm install -g clawhub`, authenticate |
 | User rejects | Feedback provided | Address feedback, restart from Step 4 |
 
+## Configuration
+
+No persistent configuration required. The pipeline uses environment-level tools
+(`gh`, `clawhub`, `git`) that must be authenticated before use.
+
+**Required tools:**
+
+| Tool | Purpose | Check |
+|------|---------|-------|
+| `gh` CLI | GitHub repo creation, visibility changes | `gh auth status` |
+| `clawhub` CLI | Publish to ClawhHub registry | `clawhub whoami` |
+| `git` | Version control | Built-in |
+| `python3` | OPSEC scanner (optional) | `python3 --version` |
+
+**Pipeline scripts (in `scripts/`):**
+
+| Script | Purpose |
+|--------|---------|
+| `validate-structure.sh` | Score skill structure completeness (8 checks) |
+| `validate-release-content.sh` | Block placeholder text, empty files |
+| `opsec-scan.sh` | Scan for sensitive data before public release |
+
+**Org/username:** Update `your-org` in the pipeline steps to your GitHub
+username or org. The clawhub `--slug` argument uses the skill's `name` field
+from `skill.yml`.
+
 ## Examples
 
 **Release a specific skill:**
@@ -331,3 +498,4 @@ OpenClaw Scan: {verdict} ({confidence})
 
 **Batch readiness check:**
 "Which skills are ready to publish?"
+

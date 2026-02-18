@@ -3,9 +3,15 @@
   "slug": "skill-releaser",
   "displayName": "Skill Releaser",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1771269479562,
-    "commit": "https://github.com/openclaw/skills/commit/391abb42f432e3b4efa3090f30abfed4fc5bf709"
+    "version": "1.4.2",
+    "publishedAt": 1771388078033,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1771269479562,
+      "commit": "https://github.com/openclaw/skills/commit/391abb42f432e3b4efa3090f30abfed4fc5bf709"
+    }
+  ]
 }
