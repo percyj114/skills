@@ -3,7 +3,7 @@ name: atoship
 description: Turn your AI assistant into a fully autonomous shipping manager. Buy discounted labels, compare rates across USPS, FedEx, and UPS, track packages, and manage shipments — all by just describing what you need. No portals, no tabs, no manual work.
 user-invokable: true
 license: MIT
-metadata: {"openclaw": {"emoji": "📦", "primaryEnv": "ATOSHIP_API_KEY", "requires": {"bins": ["node"]}}}
+metadata: {"openclaw": {"emoji": "📦", "primaryEnv": "ATOSHIP_API_KEY", "homepage": "https://atoship.com"}}
 ---
 
 # atoship — Your AI Shipping Manager
@@ -27,20 +27,33 @@ With this skill installed, your AI becomes a fully capable shipping manager. Jus
 
 ## Getting started
 
-You need a free atoship account and API key:
+This is an instruction-only skill — no CLI or additional software required. Your AI assistant calls the atoship API directly using your API key.
 
-1. Sign up at https://atoship.com (free)
-2. Go to Dashboard → Settings → API Keys
-3. Create a key and set it:
+**Step 1: Create a free atoship account**
+
+Sign up at https://atoship.com (free, no credit card required to start).
+
+**Step 2: Get your API key**
+
+Go to Dashboard → Settings → API Keys and create a new key.
+
+**Step 3: Set your API key**
 
 ```bash
 export ATOSHIP_API_KEY=ak_live_your_key_here
 ```
 
-Or save it permanently:
-```bash
-ship config set-key ak_live_your_key_here
-```
+Or configure it in your AI assistant's environment settings.
+
+**Step 4: Add funds to your wallet**
+
+Go to Dashboard → Billing to add postage credit. Labels are deducted from your wallet balance — you only pay for what you ship.
+
+> **Note on permissions:** Your API key authorizes label purchases and wallet charges. We recommend:
+> - Start with a small wallet balance (e.g. $20) while evaluating
+> - Use a test/sandbox key (`ak_test_...`) for development — test labels are free and never shipped
+> - Set spending alerts in Dashboard → Billing → Notifications
+> - Revoke and rotate keys at any time from Dashboard → Settings → API Keys
 
 ## How to use this skill
 
@@ -147,6 +160,19 @@ atoship is built for e-commerce sellers, small business owners, logistics coordi
 - Real-time tracking and delivery event notifications
 - Address validation and standardization
 - Wallet-based billing with no monthly fees or subscriptions
+
+## Security & API key safety
+
+This skill calls the atoship REST API (https://atoship.com/api/v1) on your behalf. It does not write files to disk, does not access your system beyond the API calls, and only uses the `ATOSHIP_API_KEY` you provide.
+
+**API actions that affect your wallet:**
+- `purchase_label` — deducts the label cost from your balance
+- `void_label` — issues a refund (within carrier void window)
+
+**API actions that are read-only:**
+- `get_shipping_rates`, `track_package`, `list_labels`, `get_label`, `get_account`, `list_carrier_accounts`, `validate_address`
+
+To limit risk, you can create a read-only API key in Dashboard → Settings → API Keys and restrict it to specific IP addresses or rate limits.
 
 ## Support & Contact
 

@@ -3,9 +3,15 @@
   "slug": "atoship",
   "displayName": "atoship",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1771395807336,
-    "commit": "https://github.com/openclaw/skills/commit/baeb3fa226b9e3edb6da124d6c1a0d9dea869946"
+    "version": "1.0.5",
+    "publishedAt": 1771396206891,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1771395807336,
+      "commit": "https://github.com/openclaw/skills/commit/baeb3fa226b9e3edb6da124d6c1a0d9dea869946"
+    }
+  ]
 }
