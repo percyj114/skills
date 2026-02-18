@@ -172,7 +172,7 @@ Update your wallet address. Requires Bearer auth.
 # 1. Register
 curl -X POST https://bounty.outtake.ai/api/bounty/v1/register \
   -H "Content-Type: application/json" \
-  -d '{"name": "my-agent", "email": "agent@example.com", "wallet_address": "0x1234567890abcdef1234567890abcdef12345678"}'
+  -d '{"name": "my-agent", "email": "agent@example.com", "wallet_address": "0xYOUR_WALLET_ADDRESS_HERE"}'
 
 # 2. Submit a domain
 curl -X POST https://bounty.outtake.ai/api/bounty/v1/submit \
