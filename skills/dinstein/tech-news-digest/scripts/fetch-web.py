@@ -26,7 +26,6 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
-from urllib.error import URLError, HTTPError
 
 TIMEOUT = 30
 MAX_RESULTS_PER_QUERY = 5
@@ -347,7 +346,7 @@ Examples:
     
     # Auto-generate unique output path if not specified
     if not args.output:
-        fd, temp_path = tempfile.mkstemp(prefix="tech-digest-web-", suffix=".json")
+        fd, temp_path = tempfile.mkstemp(prefix="tech-news-digest-web-", suffix=".json")
         os.close(fd)
         args.output = Path(temp_path)
     

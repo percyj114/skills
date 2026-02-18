@@ -1,14 +1,14 @@
 ---
 name: tech-news-digest
 description: Generate tech news digests with unified source model, quality scoring, and multi-format output. Five-layer data collection from RSS feeds, Twitter/X KOLs, GitHub releases, Reddit, and web search. Pipeline-based scripts with retry mechanisms and deduplication. Supports Discord, email, and markdown templates.
-version: "3.4.1"
+version: "3.4.10"
 homepage: https://github.com/draco-agent/tech-news-digest
 source: https://github.com/draco-agent/tech-news-digest
 metadata:
   openclaw:
     requires:
       bins: ["python3"]
-    optionalBins: ["gog"]
+    optionalBins: ["gog", "gh", "openssl"]
 env:
   - name: X_BEARER_TOKEN
     required: false
@@ -19,6 +19,15 @@ env:
   - name: GITHUB_TOKEN
     required: false
     description: GitHub token for higher API rate limits (auto-generated from GitHub App if not set)
+  - name: GH_APP_ID
+    required: false
+    description: GitHub App ID for automatic installation token generation
+  - name: GH_APP_INSTALL_ID
+    required: false
+    description: GitHub App Installation ID for automatic token generation
+  - name: GH_APP_KEY_FILE
+    required: false
+    description: Path to GitHub App private key PEM file
 tools:
   - python3: Required. Runs data collection and merge scripts.
   - gog: Optional. Gmail CLI for email delivery (skip if not installed).
@@ -27,11 +36,11 @@ files:
     - config/defaults/: Default source and topic configurations
     - references/: Prompt templates and output templates
     - scripts/: Python pipeline scripts
-    - workspace/archive/tech-digest/: Previous digests for dedup
+    - <workspace>/archive/tech-news-digest/: Previous digests for dedup
   write:
     - /tmp/td-*.json: Temporary pipeline intermediate outputs
     - /tmp/td-email.html: Temporary email HTML body
-    - workspace/archive/tech-digest/: Saved digest archives
+    - <workspace>/archive/tech-news-digest/: Saved digest archives
 ---
 
 # Tech News Digest
@@ -59,7 +68,7 @@ Automated tech news digest system with unified data source model, quality scorin
      --defaults config/defaults \
      --config workspace/config \
      --hours 48 --freshness pd \
-     --archive-dir workspace/archive/tech-digest/ \
+     --archive-dir workspace/archive/tech-news-digest/ \
      --output /tmp/td-merged.json --verbose --force
    ```
 
@@ -125,7 +134,7 @@ Automated tech news digest system with unified data source model, quality scorin
 python3 scripts/run-pipeline.py \
   --defaults config/defaults [--config CONFIG_DIR] \
   --hours 48 --freshness pd \
-  --archive-dir workspace/archive/tech-digest/ \
+  --archive-dir workspace/archive/tech-news-digest/ \
   --output /tmp/td-merged.json --verbose --force
 ```
 - **Features**: Runs all 5 fetch steps in parallel, then merges + deduplicates + scores
@@ -235,10 +244,10 @@ Place custom configs in `workspace/config/` to override defaults:
 - Technical details section
 - Expandable sections support
 
-## Default Sources (131 total)
+## Default Sources (133 total)
 
-- **RSS Feeds (50)**: AI labs, tech blogs, crypto news, Chinese tech media
-- **Twitter/X KOLs (47)**: AI researchers, crypto leaders, tech executives
+- **RSS Feeds (49)**: AI labs, tech blogs, crypto news, Chinese tech media
+- **Twitter/X KOLs (49)**: AI researchers, crypto leaders, tech executives
 - **GitHub Repos (22)**: Major open-source projects (LangChain, vLLM, DeepSeek, Llama, etc.)
 - **Reddit (13)**: r/MachineLearning, r/LocalLLaMA, r/CryptoCurrency, r/ChatGPT, r/OpenAI, etc.
 - **Web Search (4 topics)**: LLM, AI Agent, Crypto, Frontier Tech
@@ -257,13 +266,6 @@ pip install -r requirements.txt
 
 **All scripts work with Python 3.8+ standard library only.**
 
-## Migration from v1.x
-
-1. **Config Migration**: Old config files are automatically migrated to new structure
-2. **Script Updates**: New command-line interfaces with better error handling
-3. **Template System**: Replace old prompt-based generation with template system
-4. **Quality Scoring**: New scoring system affects article ranking
-
 ## Monitoring & Operations
 
 ### Health Checks
@@ -279,7 +281,7 @@ python3 scripts/fetch-twitter.py --hours 1 --verbose
 ```
 
 ### Archive Management
-- Digests automatically archived to `workspace/archive/tech-digest/`
+- Digests automatically archived to `<workspace>/archive/tech-news-digest/`
 - Previous digest titles used for duplicate detection
 - Old archives cleaned automatically (90+ days)
 
@@ -308,32 +310,32 @@ The cron prompt should **NOT** hardcode the pipeline steps. Instead, reference `
 
 #### Daily Digest Cron Prompt
 ```
-读取 <SKILL_DIR>/references/digest-prompt.md，按照其中的完整流程生成日报。
+Read <SKILL_DIR>/references/digest-prompt.md and follow the complete workflow to generate a daily digest.
 
-用以下参数替换占位符：
+Replace placeholders with:
 - MODE = daily
 - TIME_WINDOW = past 1-2 days
 - FRESHNESS = pd
 - RSS_HOURS = 48
 - ITEMS_PER_SECTION = 3-5
 - BLOG_PICKS_COUNT = 2-3
-- EXTRA_SECTIONS = （无）
+- EXTRA_SECTIONS = (none)
 - SUBJECT = Daily Tech Digest - YYYY-MM-DD
 - WORKSPACE = <your workspace path>
 - SKILL_DIR = <your skill install path>
 - DISCORD_CHANNEL_ID = <your channel id>
-- EMAIL = （optional）
-- LANGUAGE = Chinese
+- EMAIL = (optional)
+- LANGUAGE = English
 - TEMPLATE = discord
 
-严格按 prompt 模板中的步骤执行，不要跳过任何步骤。
+Follow every step in the prompt template strictly. Do not skip any steps.
 ```
 
 #### Weekly Digest Cron Prompt
 ```
-读取 <SKILL_DIR>/references/digest-prompt.md，按照其中的完整流程生成周报。
+Read <SKILL_DIR>/references/digest-prompt.md and follow the complete workflow to generate a weekly digest.
 
-用以下参数替换占位符：
+Replace placeholders with:
 - MODE = weekly
 - TIME_WINDOW = past 7 days
 - FRESHNESS = pw
@@ -345,11 +347,11 @@ The cron prompt should **NOT** hardcode the pipeline steps. Instead, reference `
 - WORKSPACE = <your workspace path>
 - SKILL_DIR = <your skill install path>
 - DISCORD_CHANNEL_ID = <your channel id>
-- EMAIL = （optional）
-- LANGUAGE = Chinese
+- EMAIL = (optional)
+- LANGUAGE = English
 - TEMPLATE = discord
 
-严格按 prompt 模板中的步骤执行，不要跳过任何步骤。
+Follow every step in the prompt template strictly. Do not skip any steps.
 ```
 
 #### Why This Pattern?
@@ -363,13 +365,13 @@ OpenClaw enforces **cross-provider isolation**: a single session can only send m
 
 ```
 # Job 1: Discord + Email
-- DISCORD_CHANNEL_ID = 1470806864412414071
+- DISCORD_CHANNEL_ID = <your-discord-channel-id>
 - EMAIL = user@example.com
 - TEMPLATE = discord
 
 # Job 2: Telegram DM
-- DISCORD_CHANNEL_ID = （无）
-- EMAIL = （无）
+- DISCORD_CHANNEL_ID = (none)
+- EMAIL = (none)
 - TEMPLATE = telegram
 ```
 Replace `DISCORD_CHANNEL_ID` delivery with Telegram delivery in the second job's prompt (use `message` tool with `channel=telegram`).
@@ -414,7 +416,25 @@ All scripts support `--verbose` flag for detailed logging and troubleshooting.
 ## Security Considerations
 
 ### Shell Execution
-The digest prompt instructs agents to run Python scripts via shell commands. All script paths and arguments are skill-defined constants — no user input is interpolated into commands. Scripts themselves contain no subprocess/os.system calls. Email delivery writes HTML to a temp file before passing to `gog` CLI, avoiding shell interpolation of fetched content. Email subjects are static format strings only.
+The digest prompt instructs agents to run Python scripts via shell commands. All script paths and arguments are skill-defined constants — no user input is interpolated into commands. Two scripts use `subprocess`:
+- `run-pipeline.py` orchestrates child fetch scripts (all within `scripts/` directory)
+- `fetch-github.py` has two subprocess calls:
+  1. `openssl dgst -sha256 -sign` for JWT signing (only if `GH_APP_*` env vars are set — signs a self-constructed JWT payload, no user content involved)
+  2. `gh auth token` CLI fallback (only if `gh` is installed — reads from gh's own credential store)
+
+No user-supplied or fetched content is ever interpolated into subprocess arguments. Email delivery writes HTML to a temp file before passing to `gog` CLI, avoiding shell interpolation. Email subjects are static format strings only.
+
+### Credential & File Access
+Scripts do **not** directly read `~/.config/`, `~/.ssh/`, or any credential files. All API tokens are read from environment variables declared in the skill metadata. The GitHub auth cascade is:
+1. `$GITHUB_TOKEN` env var (you control what to provide)
+2. GitHub App token generation (only if you set `GH_APP_ID`, `GH_APP_INSTALL_ID`, and `GH_APP_KEY_FILE` — uses inline JWT signing via `openssl` CLI, no external scripts involved)
+3. `gh auth token` CLI (delegates to gh's own secure credential store)
+4. Unauthenticated (60 req/hr, safe fallback)
+
+If you prefer no automatic credential discovery, simply set `$GITHUB_TOKEN` and the script will use it directly without attempting steps 2-3.
+
+### Dependency Installation
+This skill does **not** install any packages. `requirements.txt` lists optional dependencies (`feedparser`, `jsonschema`) for reference only. All scripts work with Python 3.8+ standard library. Users should install optional deps in a virtualenv if desired — the skill never runs `pip install`.
 
 ### Input Sanitization
 - URL resolution rejects non-HTTP(S) schemes (javascript:, data:, etc.)

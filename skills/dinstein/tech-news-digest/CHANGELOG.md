@@ -1,5 +1,53 @@
 # Changelog
 
+## v3.4.9
+
+- Declare `openssl` as optional binary in SKILL.md (used for GitHub App JWT signing)
+
+## v3.4.8
+
+- **New `summarize-merged.py` helper**: Outputs structured human-readable summary of merged data, sorted by quality score with metrics/sources
+- **Prevent ad-hoc JSON parsing**: `digest-prompt.md` now instructs agents to use `summarize-merged.py` instead of writing inline Python (which often failed with `AttributeError` on nested structures)
+
+## v3.4.7
+
+- **Inline GitHub App JWT signing**: Remove `GH_APP_TOKEN_SCRIPT` env var entirely. Token generation now built into `fetch-github.py` using `openssl` CLI for RS256 signing — no external scripts executed, no arbitrary code execution risk.
+- Only 3 env vars needed: `GH_APP_ID`, `GH_APP_INSTALL_ID`, `GH_APP_KEY_FILE`
+- Remove unused imports, fix bare excepts across all scripts
+
+## v3.4.6
+
+- Add `reddit` to config/schema.json source type enum (was missing, caused validation mismatch)
+- Rename all archive paths `tech-digest/` → `tech-news-digest/` for consistency
+- Fix Discord template: default delivery is channel (via DISCORD_CHANNEL_ID), not DM
+- GH_APP_TOKEN_SCRIPT: add trust warning in code and env var description
+- Path placeholders: SKILL.md uses `<workspace>/` consistently with digest-prompt.md
+
+## v3.4.5
+
+- Fix source count inconsistencies across docs (131/132 → 133: 49 RSS + 49 Twitter + 22 GitHub + 13 Reddit)
+- Rename legacy `tech-digest` references to `tech-news-digest` in comments, descriptions, and cache file paths
+
+## v3.4.4
+
+- Remove hardcoded Discord channel ID from SKILL.md (use `<your-discord-channel-id>` placeholder)
+- Cron prompt examples: Chinese → English, default LANGUAGE = English
+- Remove outdated "Migration from v1.x" section
+
+## v3.4.3
+
+- **Audit compliance**: Address all ClawHub Code Insights findings:
+  - Declare `gh` as optional binary in SKILL.md metadata
+  - Document credential access cascade and file access scope in security section
+  - Add "Dependency Installation" section clarifying skill never runs `pip install`
+  - Explicitly state scripts do not read `~/.config/`, `~/.ssh/`, or arbitrary credential files
+
+## v3.4.2
+
+- **Remove hardcoded GitHub App credentials**: App ID, install ID, key file path, and token script path now read exclusively from env vars (`GH_APP_ID`, `GH_APP_INSTALL_ID`, `GH_APP_KEY_FILE`, `GH_APP_TOKEN_SCRIPT`). No defaults — if not set, this auth method is silently skipped.
+- **Declare new env vars in SKILL.md**: All 4 GitHub App env vars declared in metadata
+- **Fix security docs**: Updated Shell Execution section to accurately describe `subprocess.run()` usage in `run-pipeline.py` and `fetch-github.py`
+
 ## v3.4.1
 
 - **KOL Display Names**: KOL Updates section now shows "Sam Altman (@sama)" instead of bare "@sama" across all templates (Discord, Email, Telegram)
