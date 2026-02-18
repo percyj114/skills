@@ -1,8 +1,9 @@
 ---
 name: Gym
 slug: gym
-version: 1.0.0
+version: 1.0.1
 description: Log workouts, plan routines, track progress, and get intelligent coaching for any fitness level.
+changelog: "Preferences now persist across skill updates"
 metadata: {"clawdbot":{"emoji":"🏋️","requires":{"bins":[]},"os":["linux","darwin","win32"]}}
 ---
 
@@ -17,22 +18,28 @@ metadata: {"clawdbot":{"emoji":"🏋️","requires":{"bins":[]},"os":["linux","d
 
 ## User Profile
 
-<!-- Edit these fields to customize coaching -->
+User preferences persist in `~/gym/memory.md`. Create on first use:
 
-### Level
+```markdown
+## Level
 <!-- beginner | intermediate | advanced -->
 
-### Goals
-<!-- strength | hypertrophy | fat-loss | general-fitness | powerlifting | bodybuilding -->
+## Goals
+<!-- strength | hypertrophy | fat-loss | general-fitness | powerlifting -->
 
-### Days Available
-<!-- e.g., Mon/Wed/Fri or 3x/week -->
+## Schedule
+<!-- Days available. Format: "days | frequency" -->
+<!-- Examples: Mon/Wed/Fri, 3x/week, daily -->
 
-### Session Duration
-<!-- e.g., 45min | 60min | 90min -->
+## Session Duration
+<!-- 45min | 60min | 90min -->
 
-### Restrictions
-<!-- Injuries, equipment limitations, mobility issues -->
+## Restrictions
+<!-- Injuries, equipment limits, mobility issues -->
+<!-- Examples: Lower back injury (no deadlifts), Home gym (no cable machine) -->
+```
+
+*Fill on first conversation. Update as goals evolve.*
 
 ## Data Storage
 
