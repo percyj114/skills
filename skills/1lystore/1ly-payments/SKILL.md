@@ -151,6 +151,44 @@ Use `mcporter list 1ly --schema` if tool names or parameters differ.
 - `imageBase64` must be raw base64 and <= 15MB decoded.
 - `slippageBps` range 0-10000 when `slippageMode=manual`.
 
+## Fee Sharing (Read This)
+
+### feeClaimers = social accounts (X/GitHub/Kick/TikTok)
+Use this when the user says “send X% to @someone” on a social platform.
+
+- `bps` = percent * 100 (20% = 2000)
+- Do NOT make feeClaimers sum to 10000
+- Creator share is auto‑computed
+
+Example: “20% to @1ly_store”
+```json
+{ "feeClaimers": [{ "provider": "twitter", "username": "1ly_store", "bps": 2000 }] }
+```
+
+### share_fee = platform fee to 1ly (NOT a social account)
+Use this only when the user says “send X% to 1ly / marketplace / platform / 1ly fee”.
+
+- `share_fee` is in bps (1% = 100)
+- Default: if omitted, it’s 0
+
+Example: “1% to 1ly”
+```json
+{ "share_fee": 100 }
+```
+
+### Combined example (both)
+“20% to @1ly_store + 1% to platform”
+```json
+{
+  "feeClaimers": [{ "provider": "twitter", "username": "1ly_store", "bps": 2000 }],
+  "share_fee": 100
+}
+```
+
+### Do NOT
+- ❌ Use `share_fee` for “send X% to @someone”
+- ❌ Add parameters the user didn’t ask for
+
 ## Example (spend flow)
 - Search: `1ly_search` with query like "paid api"
 - Pay: `1ly_call` with `endpoint`

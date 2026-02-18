@@ -3,11 +3,16 @@
   "slug": "1ly-payments",
   "displayName": "1ly Payments",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1771262906140,
-    "commit": "https://github.com/openclaw/skills/commit/a2b22f4229048280494ab04397025612d98da187"
+    "version": "1.0.4",
+    "publishedAt": 1771275046798,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1771262906140,
+      "commit": "https://github.com/openclaw/skills/commit/a2b22f4229048280494ab04397025612d98da187"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770192476136,
