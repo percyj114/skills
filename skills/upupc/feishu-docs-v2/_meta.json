@@ -3,11 +3,16 @@
   "slug": "feishu-docs-v2",
   "displayName": "Feishu Docs",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1771334321957,
-    "commit": "https://github.com/openclaw/skills/commit/2f1a907ecc29ebcad087b49b83dc7f8100d15e9a"
+    "version": "0.1.3",
+    "publishedAt": 1771334939722,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1771334321957,
+      "commit": "https://github.com/openclaw/skills/commit/2f1a907ecc29ebcad087b49b83dc7f8100d15e9a"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1770823905893,
