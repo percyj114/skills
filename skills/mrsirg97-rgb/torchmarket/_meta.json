@@ -3,11 +3,16 @@
   "slug": "torchmarket",
   "displayName": "Torch Market",
   "latest": {
-    "version": "4.4.1",
-    "publishedAt": 1771276739304,
-    "commit": "https://github.com/openclaw/skills/commit/1f34f8a3edf3cb653dec7b7a6e2ed43727b93cc8"
+    "version": "4.4.2",
+    "publishedAt": 1771384557519,
+    "commit": null
   },
   "history": [
+    {
+      "version": "4.4.1",
+      "publishedAt": 1771276739304,
+      "commit": "https://github.com/openclaw/skills/commit/1f34f8a3edf3cb653dec7b7a6e2ed43727b93cc8"
+    },
     {
       "version": "4.3.1",
       "publishedAt": 1771206476255,
