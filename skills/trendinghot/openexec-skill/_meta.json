@@ -1,11 +1,17 @@
 {
   "owner": "trendinghot",
   "slug": "openexec-skill",
-  "displayName": "OpenExec — Governed Deterministic Execution",
+  "displayName": "OpenExec — Deterministic Execution Boundary for Agent Systems",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1771223458875,
-    "commit": "https://github.com/openclaw/skills/commit/84df72ae6070a04186f7093c6cb869e4181c9c0e"
+    "version": "0.1.10",
+    "publishedAt": 1771365686798,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1771223458875,
+      "commit": "https://github.com/openclaw/skills/commit/84df72ae6070a04186f7093c6cb869e4181c9c0e"
+    }
+  ]
 }
