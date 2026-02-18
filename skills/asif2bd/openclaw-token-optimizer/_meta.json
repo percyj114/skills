@@ -3,11 +3,16 @@
   "slug": "openclaw-token-optimizer",
   "displayName": "OpenClaw Token Optimizer",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1771345048989,
-    "commit": "https://github.com/openclaw/skills/commit/8319cc764e8f650eb26f9f3243ad74c0c069e4f8"
+    "version": "1.4.3",
+    "publishedAt": 1771378005530,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1771345048989,
+      "commit": "https://github.com/openclaw/skills/commit/8319cc764e8f650eb26f9f3243ad74c0c069e4f8"
+    },
     {
       "version": "1.2.9",
       "publishedAt": 1771325117973,
