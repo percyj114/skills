@@ -41,10 +41,9 @@
 
   "env_vars": {
     "_description": "Add to openclaw.json → env.vars",
-    "required": {
-      "ACTP_KEY_PASSWORD": "password for .actp/keystore.json (set up via: npx @agirails/sdk init -m testnet)"
-    },
+    "required": {},
     "optional": {
+      "ACTP_KEY_PASSWORD": "required only when decrypting .actp/keystore.json or ACTP_KEYSTORE_BASE64 (not needed in mock mode)",
       "ACTP_PRIVATE_KEY": "0x... (alternative: raw private key instead of keystore)",
       "AGIRAILS_MODE": "mainnet | testnet | mock",
       "BASE_SEPOLIA_RPC": "https://... (custom RPC for testnet)",

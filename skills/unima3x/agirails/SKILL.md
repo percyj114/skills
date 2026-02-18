@@ -2,16 +2,18 @@
 name: AGIRAILS Payments
 version: 3.0.0
 description: Trustless payment protocol for AI agents — ACTP escrow + x402 instant payments, USDC on Base L2.
+homepage: https://github.com/agirails/openclaw-skill
+author:
+  name: AGIRAILS
+  colony: agirails
+license: MIT
 metadata:
-  openclaw:
+  clawdbot:
     requires:
-      env:
-        - ACTP_KEY_PASSWORD
+      env: []
       bins:
         - node
         - npm
-    primaryEnv: ACTP_KEY_PASSWORD
-    homepage: https://agirails.io
     emoji: "💸"
     install:
       - kind: node
@@ -293,6 +295,17 @@ main().catch(console.error);
 **If payment_mode = "x402"** (instant HTTP payment, no escrow):
 
 > x402 requires a real HTTP endpoint that returns `402 Payment Required`. It works on **testnet and mainnet** — in mock mode, use ACTP for everything.
+> 
+> **Critical 402 header format:** `x-payment-token` must be `USDC` (symbol), not a token address.
+> 
+> ```http
+> x-payment-required: true
+> x-payment-address: 0xYourProviderAddress
+> x-payment-amount: 1000000
+> x-payment-network: base-sepolia
+> x-payment-token: USDC
+> x-payment-deadline: 1708...
+> ```
 
 ```typescript
 import { ACTPClient, X402Adapter } from '@agirails/sdk';
@@ -522,6 +535,11 @@ The SDK auto-detects your wallet in this order:
 export ACTP_KEYSTORE_BASE64="$(base64 < .actp/keystore.json)"
 export ACTP_KEY_PASSWORD="your-keystore-password"
 ```
+
+> **Where to set env vars for OpenClaw:** Add `ACTP_KEY_PASSWORD` to your `openclaw.json` under `env.vars`, not `.bashrc`. This keeps the password scoped to the agent process and avoids shell-wide exposure. Example:
+> ```json
+> { "env": { "vars": { "ACTP_KEY_PASSWORD": "your-keystore-password" } } }
+> ```
 
 > **Note:** SDK includes default RPC endpoints. For high-volume production use, set up your own RPC via [Alchemy](https://alchemy.com) or [QuickNode](https://quicknode.com) and pass `rpcUrl` to client config.
 
@@ -996,6 +1014,29 @@ This enables:
 - **Drift detection**: SDK checks config hash on startup (non-blocking warning if mismatch)
 - **Recovery**: restore your config from on-chain if local file is lost
 
+**AGIRAILS.md format** — must start with YAML frontmatter (`---`):
+
+```yaml
+---
+name: my-agent
+version: 1.0.0
+services:
+  - type: code-review
+    price: 5.00
+    currency: USDC
+  - type: bug-fixing
+    price: 10.00
+    currency: USDC
+network: base-sepolia
+---
+
+# My Agent
+
+Optional markdown description of your agent's capabilities.
+```
+
+Required fields: `name`, `services` (with `type`, `price`, `currency`). Optional: `version`, `network`, `description`.
+
 ---
 
 ## Deployment Security
@@ -1026,7 +1067,8 @@ actp deploy:env
 
 The `serviceTypes` taxonomy in the YAML frontmatter is a **suggested naming convention**, not a discovery mechanism.
 
-- `provide('code-review')` only matches `request('code-review')` — exact string match
+- `provide('code-review')` only matches `request('code-review')` — **exact string match, case-sensitive**
+- Typos like `content-writting` instead of `content-writing` will silently fail to match — double-check spelling
 - There is no global registry, search, or automatic matching between agents
 - Requesters must know the provider's address and service name
 - **ServiceDirectory is in-memory, per-process.** A provider in one process is not visible to a requester in another process. For cross-process communication, pass the provider's address explicitly via the `provider:` field.
@@ -1199,7 +1241,7 @@ asyncio.run(main())
 - **Invalid proof error** — wrong encoding. Use `ethers.AbiCoder` with correct types.
 - **Deadline expired** — create new transaction with longer deadline.
 - **RPC 503 errors** — Base Sepolia public RPC has rate limits. Set `BASE_SEPOLIA_RPC` env var to Alchemy or other provider.
-- **Mainnet $1000 limit** — security limit. Mainnet transactions capped at $1,000 USDC.
+- **Large transaction caution** — security audit passed (Feb 2026), no hard cap. Use appropriate amounts for your use case.
 - **"ACTP_PRIVATE_KEY rejected"** — blocked on mainnet. Use encrypted keystore or `ACTP_KEYSTORE_BASE64` for containers.
 - **"deploy:check FAIL"** — run `actp deploy:env` to generate safe ignore files, then fix flagged issues.
 
@@ -1266,6 +1308,34 @@ See `{baseDir}/openclaw/QUICKSTART.md` for detailed guide.
 ---
 
 *One file. Any agent. Earn or pay.*
+
+---
+
+## External Endpoints
+
+| Endpoint | Purpose | Data Sent |
+|----------|---------|-----------|
+| `registry.npmjs.org` | Install `@agirails/sdk` | Package name |
+| Base Sepolia RPC (`sepolia.base.org`) | Testnet transactions | Wallet address, signed tx data |
+| Base Mainnet RPC (`mainnet.base.org`) | Mainnet transactions | Wallet address, signed tx data |
+| Coinbase CDP Paymaster + Bundler | ERC-4337 gas sponsorship | UserOperation calldata |
+
+## Security & Privacy
+
+- **Private keys** are stored in an AES-128-CTR encrypted keystore (`.actp/keystore.json`, chmod 600, auto-gitignored). They are decrypted in-memory only when signing transactions, never transmitted.
+- **Raw private keys** (`ACTP_PRIVATE_KEY`) are blocked on mainnet by the SDK's fail-closed policy. On testnet they trigger a one-time warning.
+- **On-chain transactions** are public on Base L2. Wallet addresses and USDC amounts are visible to anyone.
+- **No telemetry or analytics** are collected by the SDK or this skill.
+- **No data is sent** to AGIRAILS servers. All transactions go directly to Base L2 via public or user-configured RPC endpoints.
+
+## Trust
+
+ACTP is an open-source protocol. Smart contracts are verified on-chain:
+- Protocol source: [github.com/agirails/actp-kernel](https://github.com/agirails/actp-kernel)
+- SDK source: [github.com/agirails/sdk-js](https://github.com/agirails/sdk-js)
+- Contracts verified on Sourcify (Base Sepolia + Base Mainnet)
+
+Gas sponsorship is provided by Coinbase CDP (ERC-4337 Paymaster). Review Coinbase's terms at [docs.cdp.coinbase.com](https://docs.cdp.coinbase.com).
 
 ---
 
@@ -1380,8 +1450,9 @@ requiredBinaries:
   - node (>=18)
   - npm
 requiredEnvVars:
-  - ACTP_KEY_PASSWORD (decrypts encrypted keystore — required for testnet and mainnet)
+  - none for mock mode
 optionalEnvVars:
+  - ACTP_KEY_PASSWORD (required only when decrypting .actp/keystore.json or ACTP_KEYSTORE_BASE64 for testnet/mainnet)
   - ACTP_PRIVATE_KEY (raw private key — testnet only, blocked on mainnet by SDK fail-closed policy)
   - ACTP_KEYSTORE_BASE64 (base64-encoded keystore — for Docker/Railway/serverless deployments)
   - BASE_SEPOLIA_RPC (custom testnet RPC endpoint — defaults to public Base Sepolia)
@@ -1396,7 +1467,7 @@ install:
   - pip install agirails (Python alternative)
   - npx actp init -m <network> (creates keystore and config)
 credentials:
-  - ACTP_KEY_PASSWORD (required — decrypts AES-128-CTR encrypted keystore for transaction signing)
+  - ACTP_KEY_PASSWORD (conditional — required only with encrypted keystore/.actp/keystore.json or ACTP_KEYSTORE_BASE64; not needed in mock mode)
   - ACTP_PRIVATE_KEY (optional, testnet only — SDK hard-fails on mainnet, warns once on testnet)
   - ACTP_KEYSTORE_BASE64 (optional — base64-encoded keystore for containerized/serverless deployments)
 filesystemWrites:
