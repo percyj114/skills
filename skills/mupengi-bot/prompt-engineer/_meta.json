@@ -1,0 +1,11 @@
+{
+  "owner": "mupengi-bot",
+  "slug": "prompt-engineer",
+  "displayName": "Prompt Engineer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771383005654,
+    "commit": null
+  },
+  "history": []
+}
