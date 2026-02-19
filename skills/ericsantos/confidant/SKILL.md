@@ -92,9 +92,10 @@ Reports server status, port, PID, and tunnel state (ngrok or localtunnel).
 2. **NEVER reveal received secrets in chat** — not even partially
 3. **NEVER `curl` the Confidant API directly** — use the scripts
 4. **NEVER kill an existing server** to start a new one
-5. Use `--tunnel` when the user is remote (not on the same machine/network)
-6. Prefer `--service` for API keys — cleanest convention
-7. After receiving: confirm success, use the secret silently
+5. **NEVER try to expose the port directly** (public IP, firewall rules, etc.) — use `--tunnel` instead
+6. Use `--tunnel` when the user is remote (not on the same machine/network)
+7. Prefer `--service` for API keys — cleanest convention
+8. After receiving: confirm success, use the secret silently
 
 ## How It Works
 
