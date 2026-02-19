@@ -2,7 +2,7 @@
 name: ai-podcast
 description: PDF to podcast and text to podcast in a natural two-person format with MagicPodcast.
 homepage: https://www.magicpodcast.app
-metadata: {"clawdbot":{"emoji":"🎙️","requires":{"bins":["curl"],"env":["MAGICPODCAST_API_URL","MAGICPODCAST_API_KEY"]}}}
+metadata: {"clawdbot":{"emoji":"🎙️","requires":{"bins":["curl","jq"],"env":["MAGICPODCAST_API_URL","MAGICPODCAST_API_KEY"]}}}
 ---
 
 ## What this skill does
@@ -16,7 +16,7 @@ Use MagicPodcast to:
 3. Ask for podcast language (do not assume).
 4. Confirm: `Ok, want me to make a podcast of this "topic/pdf" in "language". Should I do it?`
 5. Create a two-person dialogue podcast from that exact source.
-6. Immediately return `https://www.magicpodcast.app/app/` so user can follow progress in the library.
+6. Immediately return `https://www.magicpodcast.app/app` so user can open their podcast dashboard.
 7. Check status only when user asks.
 8. Return title plus the shareable podcast URL when complete.
 
@@ -48,36 +48,70 @@ https://www.magicpodcast.app/openclaw
    3) language
    4) final confirmation before create
 
-## Commands
+## Secure command templates
+
+Never interpolate raw user text directly into shell commands.  
+Always validate first, then JSON-encode with `jq`.
+
+```bash
+safe_job_id() {
+  printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_-]{8,128}$'
+}
+
+safe_http_url() {
+  printf '%s' "$1" | grep -Eq '^https?://[^[:space:]]+$'
+}
+```
 
 Create from PDF:
 
 ```bash
+# Inputs expected from conversation state:
+# PDF_URL, LANGUAGE
+if ! safe_http_url "$PDF_URL"; then
+  echo "Invalid PDF URL" >&2
+  exit 1
+fi
+
+payload="$(jq -n --arg pdfUrl "$PDF_URL" --arg language "$LANGUAGE" '{pdfUrl:$pdfUrl,language:$language}')"
+
 curl -sS -X POST "$MAGICPODCAST_API_URL/agent/v1/podcasts/pdf" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $MAGICPODCAST_API_KEY" \
-  -d '{"pdfUrl":"https://example.com/file.pdf","language":"English"}'
+  --data-binary "$payload"
 ```
 
 Create from text:
 
 ```bash
+# Inputs expected from conversation state:
+# SOURCE_TEXT, LANGUAGE
+payload="$(jq -n --arg text "$SOURCE_TEXT" --arg language "$LANGUAGE" '{text:$text,language:$language}')"
+
 curl -sS -X POST "$MAGICPODCAST_API_URL/agent/v1/podcasts/text" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $MAGICPODCAST_API_KEY" \
-  -d '{"text":"Your source text","language":"English"}'
+  --data-binary "$payload"
 ```
 
 Check job once:
 
 ```bash
-curl -sS "$MAGICPODCAST_API_URL/agent/v1/jobs/<job-id>" \
+# Input expected from API response:
+# JOB_ID
+if ! safe_job_id "$JOB_ID"; then
+  echo "Invalid job id" >&2
+  exit 1
+fi
+
+curl -sS "$MAGICPODCAST_API_URL/agent/v1/jobs/$JOB_ID" \
   -H "x-api-key: $MAGICPODCAST_API_KEY"
 ```
 
 - Signed-in users can generate free podcast.
 - Expected generation time is usually 2-5 minutes.
-- Right after starting, direct users to `https://www.magicpodcast.app/app/` (all user podcasts are shown there).
+- Right after starting, direct users to `https://www.magicpodcast.app/app`.
+- Tell the user this page is their dashboard: they can see created podcasts, live progress/status, and finished episodes.
 - Return `outputs.shareUrl` as the default completion link.
 - If `outputs.shareUrl` is missing, fall back to `outputs.appUrl`.
 - On completion, answer: `Here is your podcast link: <url>`.
