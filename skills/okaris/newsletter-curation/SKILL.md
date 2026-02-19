@@ -1,12 +1,6 @@
 ---
 name: newsletter-curation
-description: |
-  Newsletter curation with content sourcing, editorial structure, and subscriber growth strategies.
-  Covers issue formatting, link roundups, commentary style, and sending cadence.
-  Use for: email newsletters, link roundups, weekly digests, curated content, creator newsletters.
-  Triggers: newsletter, email newsletter, newsletter curation, weekly digest, link roundup,
-  curated newsletter, newsletter writing, newsletter format, subscriber growth,
-  newsletter strategy, content curation, newsletter template
+description: "Newsletter curation with content sourcing, editorial structure, and subscriber growth strategies. Covers issue formatting, link roundups, commentary style, and sending cadence. Use for: email newsletters, link roundups, weekly digests, curated content, creator newsletters. Triggers: newsletter, email newsletter, newsletter curation, weekly digest, link roundup, curated newsletter, newsletter writing, newsletter format, subscriber growth, newsletter strategy, content curation, newsletter template"
 allowed-tools: Bash(infsh *)
 ---
 
@@ -29,6 +23,8 @@ infsh app run infsh/html-to-image --input '{
   "html": "<div style=\"width:600px;height:200px;background:linear-gradient(135deg,#1e293b,#334155);display:flex;align-items:center;padding:40px;font-family:system-ui;color:white\"><div><h1 style=\"font-size:32px;margin:0;font-weight:800\">The Weekly Signal</h1><p style=\"font-size:16px;opacity:0.7;margin-top:8px\">Issue #47 — January 15, 2025</p></div></div>"
 }'
 ```
+
+> **Install note:** The [install script](https://cli.inference.sh) only detects your OS/architecture, downloads the matching binary from `dist.inference.sh`, and verifies its SHA-256 checksum. No elevated permissions or background processes. [Manual install & verification](https://dist.inference.sh/cli/checksums.txt) available.
 
 ## Newsletter Formats
 
@@ -289,9 +285,9 @@ infsh app run x/post-create --input '{
 ## Related Skills
 
 ```bash
-npx skills add inferencesh/skills@email-design
-npx skills add inferencesh/skills@content-repurposing
-npx skills add inferencesh/skills@seo-content-brief
+npx skills add inference-sh/skills@email-design
+npx skills add inference-sh/skills@content-repurposing
+npx skills add inference-sh/skills@seo-content-brief
 ```
 
 Browse all apps: `infsh app list`
