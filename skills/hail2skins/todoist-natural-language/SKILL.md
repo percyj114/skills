@@ -1,6 +1,11 @@
 ---
 name: todoist
-description: Integrate with Todoist task management using natural language. Use when the user wants to manage Todoist tasks or projects through conversational commands like "show my tasks for today", "add 'call dentist' to my todo list", "complete my task about the meeting", or any mention of Todoist, tasks, due dates, or project management. Requires TODOIST_API_KEY environment variable.
+description: Integrate with Todoist task management using natural language. Use when the user wants to manage Todoist tasks or projects through conversational commands like "show my tasks for today", "add 'call dentist' to my todo list", "complete my task about the meeting", or any mention of Todoist, tasks, due dates, or project management.
+credentials:
+  - name: TODOIST_API_KEY
+    description: Todoist API token from https://todoist.com/app/settings/integrations/developer
+    required: true
+    sensitive: true
 ---
 
 # Todoist Skill — Natural Language Task Management
