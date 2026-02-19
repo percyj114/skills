@@ -11,18 +11,18 @@ const CREDS_FILE = path.join(process.env.HOME, '.config/xmihome/credentials.json
 const CONFIG_FILE = path.join(__dirname, '..', 'config.json');
 
 const PROPS = {
-    power: { siid: 2, piid: 1 },
-    mode: { siid: 2, piid: 4 },
-    humidity: { siid: 3, piid: 1 },
-    pm25: { siid: 3, piid: 4 },
-    temperature: { siid: 3, piid: 7 },
-    filterLife: { siid: 4, piid: 1 },
-    filterLeft: { siid: 4, piid: 4 },
-    buzzer: { siid: 6, piid: 1 },
-    childLock: { siid: 8, piid: 1 },
-    motorRpm: { siid: 9, piid: 1 },
-    favoriteLevel: { siid: 9, piid: 11 },
-    brightness: { siid: 13, piid: 2 },
+    power: { siid: 2, piid: 1, access: ['read', 'write', 'notify'] },
+    mode: { siid: 2, piid: 4, access: ['read', 'write', 'notify'] },
+    humidity: { siid: 3, piid: 1, access: ['read', 'notify'] },
+    pm25: { siid: 3, piid: 4, access: ['read', 'notify'] },
+    temperature: { siid: 3, piid: 7, access: ['read', 'notify'] },
+    filterLife: { siid: 4, piid: 1, access: ['read', 'notify'] },
+    filterLeft: { siid: 4, piid: 4, access: ['read', 'notify'] },
+    buzzer: { siid: 6, piid: 1, access: ['read', 'write', 'notify'] },
+    childLock: { siid: 8, piid: 1, access: ['read', 'write', 'notify'] },
+    motorRpm: { siid: 9, piid: 1, access: ['read', 'notify'] },
+    favoriteLevel: { siid: 9, piid: 11, access: ['read', 'write', 'notify'] },
+    brightness: { siid: 13, piid: 2, access: ['read', 'write', 'notify'] },
 };
 
 const MODE_NAMES = ['Auto', 'Sleep', 'Favorite'];
@@ -219,7 +219,11 @@ async function run() {
         const setProp = async (key, val) => {
             const p = PROPS[key];
             if (mode === 'local') {
-                return await device.setProperty(p.siid, p.piid, val);
+                return await device.device.call('set_properties', [{
+                    siid: p.siid,
+                    piid: p.piid,
+                    value: val
+                }]);
             } else {
                 return await client.miot.request('/v2/miot/set_properties', { params: [{ did, siid: p.siid, piid: p.piid, value: val }] });
             }

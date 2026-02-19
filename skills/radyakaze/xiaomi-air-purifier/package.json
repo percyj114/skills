@@ -9,6 +9,6 @@
     "off": "node scripts/purifier.js off"
   },
   "dependencies": {
-    "xmihome": "*"
+    "xmihome": "^1.4.0"
   }
 }
