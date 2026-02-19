@@ -56,9 +56,16 @@ else
 fi
 
 echo ""
-echo "✅ Persistent Memory installed!"
+echo "✅ Persistent Memory 3-layer system installed!"
+echo ""
+echo "🔧 CRITICAL NEXT STEP: Configure OpenClaw integration"
+echo "   This ensures OpenClaw automatically searches your directive files (SOUL.md, AGENTS.md, etc.)"
+echo ""
+echo "   Run: python skills/persistent-memory/scripts/configure_openclaw.py"
 echo ""
 echo "Usage:"
 echo "  Index:  vector_memory/venv/bin/python vector_memory/indexer.py"
 echo "  Search: vector_memory/venv/bin/python vector_memory/search.py \"your query\""
 echo "  Status: vector_memory/venv/bin/python vector_memory/auto_retrieve.py --status"
+echo ""
+echo "⚠️  Without OpenClaw configuration, agents may ignore workspace directives!"

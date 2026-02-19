@@ -17,15 +17,29 @@ Adds persistent three-layer memory to any OpenClaw workspace. The agent gains se
 
 All three layers sync together. The indexer updates L2 and L3 from L1 automatically.
 
+## ⚠️ Critical Integration: OpenClaw Memory Configuration
+
+**Problem:** OpenClaw has its own built-in memory search system, but by default it only indexes `MEMORY.md` and `memory/*.md` files. Critical workspace files like `SOUL.md` (agent directives), `AGENTS.md` (behavior rules), and `PROJECTS.md` (active work) are **ignored**.
+
+**Impact:** Agents can violate explicit directives because they're not found in memory searches. This causes operational failures where agents ignore their own rules.
+
+**Solution:** The `configure_openclaw.py` script adds a `memorySearch` configuration block to OpenClaw that indexes all critical workspace files. This makes directive compliance **automatic** rather than optional.
+
 ## Setup
 
 Run once from workspace root:
 
 ```bash
+# Step 1: Create the 3-layer memory system
 bash skills/persistent-memory/scripts/setup.sh
+
+# Step 2: Configure OpenClaw integration (CRITICAL)
+python skills/persistent-memory/scripts/configure_openclaw.py
 ```
 
-This creates `vector_memory/` with a Python venv, ChromaDB database, and knowledge graph. It indexes MEMORY.md if one exists.
+**Step 1** creates `vector_memory/` with a Python venv, ChromaDB database, and knowledge graph. It indexes MEMORY.md if one exists.
+
+**Step 2** configures OpenClaw's built-in memory system to automatically index all critical workspace files (SOUL.md, AGENTS.md, etc.). This prevents the "directive ignorance" problem where the agent ignores important rules because they're not in the memory search results.
 
 ## Daily Usage
 
@@ -65,6 +79,8 @@ Add these to AGENTS.md or SOUL.md:
 
 ### Pre-Response (mandatory)
 Before answering questions about prior work, decisions, dates, people, or preferences — search memory first. Use `memory_search` or run `auto_retrieve.py` with the query. Never say "I don't remember" without checking.
+
+**CRITICAL:** OpenClaw's built-in memory search should now automatically find directive files (SOUL.md, AGENTS.md) if `configure_openclaw.py` was run. If memory searches are not finding agent rules or workspace directives, the OpenClaw integration is missing or broken.
 
 ### Pre-Action (mandatory)
 Before executing any action that references an external identifier (URL, handle, email, repo name, address) — query `reference/` files for the exact value. If not found, query vector memory. If still not found, ask the user. **Never fabricate identifiers.**
@@ -124,3 +140,6 @@ workspace/
 - **OUT_OF_SYNC status** — Run the indexer: `vector_memory/venv/bin/python vector_memory/indexer.py`
 - **Empty search results** — Check that MEMORY.md has content and the indexer has been run at least once
 - **SIGSEGV on indexing** — Usually caused by incompatible ML libs. The setup script pins known-good versions.
+- **Agent ignoring SOUL.md/AGENTS.md directives** — OpenClaw integration missing. Run `python skills/persistent-memory/scripts/configure_openclaw.py` to fix.
+- **Memory searches not finding workspace files** — Check OpenClaw configuration: `openclaw config get | grep memorySearch`
+- **"Configuration verification failed"** — Restart OpenClaw manually: `openclaw gateway restart`
