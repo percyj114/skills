@@ -3,6 +3,7 @@
 import json
 import secrets
 import sys
+from datetime import datetime
 from typing import Optional
 
 import click
@@ -84,20 +85,27 @@ def create(ctx, title, when, date_input, priority, description, team_id, state_i
         click.echo("Error: Cannot use both --when and --date. Choose one.", err=True)
         sys.exit(1)
     
-    # Calculate due date
+    # Calculate due date using configured timezone
     due_date = None
     display_timing = None
-    
+
+    # Get current time in configured timezone (or UTC if not set)
+    tz = config.get_timezone()
+    if tz:
+        base_datetime = datetime.now(tz)
+    else:
+        base_datetime = datetime.utcnow()
+
     if when:
-        due_date = DateParser.get_relative_date(when)
+        due_date = DateParser.get_relative_date(when, base_datetime)
         display_timing = when.capitalize()
     elif date_input:
-        parsed_date = DateParser.parse(date_input)
+        parsed_date = DateParser.parse(date_input, base_datetime)
         if not parsed_date:
             click.echo(f"Error: Could not parse date: {date_input}", err=True)
             click.echo('Try formats like: YYYY-MM-DD, tomorrow, Friday, next Monday, in 3 days', err=True)
             sys.exit(1)
-        due_date = DateParser.to_iso_datetime(parsed_date)
+        due_date = DateParser.to_iso_datetime(parsed_date, end_of_day=True, tz=tz)
         display_timing = f"Due: {parsed_date}"
     
     # Convert priority to number
@@ -241,29 +249,36 @@ def done(ctx, issue_id):
 @click.pass_context
 def snooze(ctx, issue_id, when):
     """Snooze a todo to a later date.
-    
+
     ISSUE_ID is the Linear issue identifier (e.g., TODO-123)
     WHEN is a natural language date (default: tomorrow)
-    
+
     Examples:
         linear-todo snooze TODO-123 "tomorrow"
         linear-todo snooze TODO-123 "next Friday"
         linear-todo snooze TODO-123 "in 3 days"
     """
     config = ctx.obj['config']
-    
+
+    # Get current time in configured timezone (or UTC if not set)
+    tz = config.get_timezone()
+    if tz:
+        base_datetime = datetime.now(tz)
+    else:
+        base_datetime = datetime.utcnow()
+
     # Parse the new date
-    new_date = DateParser.parse(when)
+    new_date = DateParser.parse(when, base_datetime)
     if not new_date:
         click.echo(f"Error: Could not parse date: {when}", err=True)
         click.echo('Try formats like: tomorrow, Friday, next Monday, in 3 days', err=True)
         sys.exit(1)
-    
+
     click.echo(f"Snoozing {issue_id} to {new_date}...")
-    
+
     try:
         api = LinearAPI(config=config)
-        due_date = DateParser.to_iso_datetime(new_date)
+        due_date = DateParser.to_iso_datetime(new_date, end_of_day=True, tz=tz)
         result = api.update_issue(issue_id, due_date=due_date)
         
         if result.get('success'):

@@ -31,6 +31,7 @@ metadata:
 | `LINEAR_TEAM_ID` | No | Default team ID for todos |
 | `LINEAR_STATE_ID` | No | Default state for new todos |
 | `LINEAR_DONE_STATE_ID` | No | State for completed todos |
+| `LINEAR_TIMEZONE` | No | Your local timezone (e.g., `America/New_York`, `Europe/London`). Used for "end of day" calculations. Falls back to OpenClaw `USER.md` timezone if available. |
 
 **Config Path:** `~/.config/linear-todos/config.json` (created by `setup`, permissions 0o600)
 
@@ -138,7 +139,8 @@ Or create `~/.config/linear-todos/config.json`:
   "apiKey": "lin_api_...",
   "teamId": "team-uuid",
   "stateId": "todo-state-uuid",
-  "doneStateId": "done-state-uuid"
+  "doneStateId": "done-state-uuid",
+  "timezone": "America/New_York"
 }
 ```
 
@@ -322,6 +324,29 @@ uv run python main.py done ISSUE-123
 | Normal | 3 | 📌 | Standard tasks (default) |
 | Low | 4 | 💤 | Nice-to-have, can wait |
 | None | 0 | 📋 | No priority set |
+
+## Timezone Support
+
+By default, due dates are calculated in UTC (end of day = 23:59:59 UTC). To use your local timezone for "end of day" calculations:
+
+```bash
+# Set via environment variable
+export LINEAR_TIMEZONE="America/New_York"
+
+# Or add to config.json
+{
+  "timezone": "America/New_York"
+}
+```
+
+**OpenClaw Integration:** If running inside an OpenClaw workspace, the skill will automatically detect your timezone from `USER.md` (e.g., `timezone: America/New_York`). No manual configuration needed!
+
+When a timezone is configured:
+- `--when day` sets due date to end of today in your timezone (converted to UTC for Linear)
+- `--when week` sets due date to 7 days from now, end of day in your timezone
+- `--date "tomorrow"` sets due date to end of tomorrow in your timezone
+
+Common timezone values: `America/New_York`, `America/Los_Angeles`, `Europe/London`, `Europe/Paris`, `Asia/Tokyo`
 
 ## Configuration Precedence
 

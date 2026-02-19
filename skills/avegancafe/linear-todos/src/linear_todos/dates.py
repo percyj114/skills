@@ -1,8 +1,9 @@
 """Smart date parsing for natural language dates."""
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import dateparser
 
@@ -129,19 +130,42 @@ class DateParser:
         return None
     
     @classmethod
-    def to_iso_datetime(cls, date_str: str, end_of_day: bool = True) -> str:
+    def to_iso_datetime(cls, date_str: str, end_of_day: bool = True, tz: Optional[ZoneInfo] = None) -> str:
         """Convert a date string to ISO datetime format for Linear API.
         
         Args:
             date_str: Date in YYYY-MM-DD format
-            end_of_day: If True, set time to 23:59:59
+            end_of_day: If True, set time to 23:59:59 in the specified timezone
+            tz: Timezone to use for end-of-day calculation (default: UTC)
             
         Returns:
-            ISO datetime string
+            ISO datetime string in UTC (with Z suffix)
         """
+        # Parse the date
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        
+        if tz is None:
+            # Default to UTC behavior for backward compatibility
+            if end_of_day:
+                return f"{date_str}T23:59:59.000Z"
+            return f"{date_str}T00:00:00.000Z"
+        
+        # Create datetime in the specified timezone
         if end_of_day:
-            return f"{date_str}T23:59:59.000Z"
-        return f"{date_str}T00:00:00.000Z"
+            # End of day is 23:59:59 in local timezone
+            local_dt = datetime.combine(date_obj, datetime.strptime("23:59:59", "%H:%M:%S").time())
+        else:
+            # Start of day is 00:00:00 in local timezone
+            local_dt = datetime.combine(date_obj, datetime.min.time())
+        
+        # Localize to the specified timezone
+        local_dt = local_dt.replace(tzinfo=tz)
+        
+        # Convert to UTC using the imported timezone.utc
+        utc_dt = local_dt.astimezone(timezone.utc)
+        
+        # Format as ISO string with Z suffix
+        return utc_dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     
     @classmethod
     def get_relative_date(cls, when: str, base_date: Optional[datetime] = None) -> Optional[str]:
@@ -149,14 +173,21 @@ class DateParser:
         
         Args:
             when: One of 'day', 'week', 'month'
-            base_date: Base date for calculations (default: now)
+            base_date: Base date for calculations (default: now). If timezone-aware,
+                      calculations are done in that timezone.
             
         Returns:
-            ISO datetime string or None
+            ISO datetime string in UTC or None
         """
+        # Extract timezone if base_date is timezone-aware
+        tz = None
+        if base_date is not None and base_date.tzinfo is not None:
+            tz = base_date.tzinfo
+        
         if base_date is None:
             base_date = datetime.utcnow()
         
+        # Get the date in local timezone (or UTC if no timezone)
         today = base_date.date()
         
         if when == "day":
@@ -171,7 +202,7 @@ class DateParser:
         else:
             return None
         
-        return cls.to_iso_datetime(date.isoformat())
+        return cls.to_iso_datetime(date.isoformat(), end_of_day=True, tz=tz)
     
     @classmethod
     def parse_to_datetime(cls, when: str, base_date: Optional[datetime] = None) -> Optional[str]:
@@ -181,11 +212,17 @@ class DateParser:
         
         Args:
             when: Natural language date or relative time ('day', 'week', 'month')
-            base_date: Base date for calculations
+            base_date: Base date for calculations. If timezone-aware, the result
+                      will be end-of-day in that timezone, converted to UTC.
             
         Returns:
-            ISO datetime string or None
+            ISO datetime string in UTC or None
         """
+        # Extract timezone if base_date is timezone-aware
+        tz = None
+        if base_date is not None and base_date.tzinfo is not None:
+            tz = base_date.tzinfo
+        
         # Handle relative keywords
         if when in ("day", "week", "month"):
             return cls.get_relative_date(when, base_date)
@@ -193,6 +230,6 @@ class DateParser:
         # Parse as natural language date
         date_str = cls.parse(when, base_date)
         if date_str:
-            return cls.to_iso_datetime(date_str)
+            return cls.to_iso_datetime(date_str, end_of_day=True, tz=tz)
         
         return None
