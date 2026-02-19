@@ -1,0 +1,11 @@
+{
+  "owner": "ecashprotoc",
+  "slug": "ecashprotocol",
+  "displayName": "ECASH Protocol",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1771467819071,
+    "commit": null
+  },
+  "history": []
+}
