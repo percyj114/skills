@@ -1,6 +1,6 @@
-
 const { ethers } = require('ethers');
 const crypto = require('crypto');
+require('dotenv').config();
 
 // --- CONFIGURATION ---
 const RPC_URL = "https://sepolia.base.org";
@@ -25,39 +25,60 @@ const BORROWER_MANAGER_ABI = [
 
 async function main() {
     // 1. Load Signer from Environment
-    const privateKey = process.env['borrower-1'];
+    const privateKey = process.env.PRIVATE_KEY || process.env.SOHO_TEST_PRIVATE_KEY;
     if (!privateKey) {
-        console.error("❌ FATAL: 'borrower-1' environment variable not set. This skill cannot sign transactions.");
+        console.error("❌ FATAL: PRIVATE_KEY / SOHO_TEST_PRIVATE_KEY environment variable not set. This skill cannot sign transactions.");
         process.exit(1);
     }
 
     // 2. Parse Command-Line Arguments
     if (process.argv.length < 4) {
-        console.error("❌ USAGE: node pay.js <amount> <merchant_name_or_address>");
+        console.error("❌ USAGE: node pay.js <amount> <merchant_address>");
         process.exit(1);
     }
     const amountString = process.argv[2];
-    let merchantInput = process.argv[3];
+    const merchantInput = process.argv[3];
+
+    if (!ethers.isAddress(merchantInput)) {
+        console.error("❌ ERROR: merchant_address must be a valid EVM address (0x...). No name-to-address or random generation is allowed.");
+        process.exit(1);
+    }
+
     const amount = ethers.parseUnits(amountString, USDC_DECIMALS);
 
     // 3. Setup Provider & Wallet
     const provider = new ethers.JsonRpcProvider(RPC_URL);
+
+    // Safety guard: ensure we are on Base Sepolia and never on mainnet
+    const network = await provider.getNetwork();
+    const chainIdBigInt = network.chainId;
+
+    if (chainIdBigInt === 1n) {
+        console.error("❌ FATAL: Connected to Ethereum mainnet. This script is TESTNET ONLY. Aborting.");
+        process.exit(1);
+    }
+
+    if (chainIdBigInt !== BigInt(CHAIN_ID)) {
+        console.error(`❌ FATAL: Unexpected chainId ${chainIdBigInt}. Expected Base Sepolia (${CHAIN_ID}). Aborting.`);
+        process.exit(1);
+    }
+
     const wallet = new ethers.Wallet(privateKey, provider);
     const payerAddress = wallet.address;
 
-    console.log(`--- Initializing SOHO Pay Transaction ---`);
-    console.log(`- Signer (borrower-1): ${payerAddress}`);
-
-    // 4. Resolve Merchant Address
-    let merchantAddress;
-    if (ethers.isAddress(merchantInput)) {
-        merchantAddress = merchantInput;
-        console.log(`- Merchant (Address): ${merchantAddress}`);
-    } else {
-        const randomWallet = ethers.Wallet.createRandom();
-        merchantAddress = randomWallet.address;
-        console.log(`- Merchant (Name): '${merchantInput}' -> Resolved to NEW RANDOM address: ${merchantAddress}`);
+    // Safety guard: warn if native balance looks too large for a test key
+    const nativeBalance = await provider.getBalance(payerAddress);
+    const nativeBalanceEth = Number(ethers.formatEther(nativeBalance));
+    if (nativeBalanceEth > 0.5) {
+        console.warn(`⚠️  WARNING: Signer native balance is ${nativeBalanceEth} ETH-equivalent, which is high for a testnet key. Ensure this is NOT a mainnet or real-funds wallet.`);
     }
+
+    console.log(`--- Initializing SOHO Pay Transaction ---`);
+    console.log(`- Signer (PRIVATE_KEY/SOHO_TEST_PRIVATE_KEY): ${payerAddress}`);
+
+    // 4. Merchant Address (explicit only)
+    const merchantAddress = merchantInput;
+    console.log(`- Merchant (Address): ${merchantAddress}`);
     console.log(`- Amount: ${amountString} USDC (${amount.toString()} atomic units)`);
     console.log(`-------------------------------------------`);
 
