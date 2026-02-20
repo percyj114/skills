@@ -51,16 +51,20 @@ The skill runs 4 sequential phases. Each phase must complete before the next beg
 Determine number of experts and paper batches:
 
 ```
-if paper_count <= 6:
+if paper_count <= 4:
     num_experts = 1
-elif paper_count <= 12:
+elif paper_count <= 10:
     num_experts = 2
-elif paper_count <= 24:
-    num_experts = min(4, ceil(paper_count / 6))
+elif paper_count <= 20:
+    num_experts = min(4, ceil(paper_count / 5))
 else:
-    num_experts = min(8, ceil(paper_count / 6))
+    num_experts = min(8, ceil(paper_count / 5))
 
-Distribute papers evenly across experts (max 6 per expert).
+Distribute papers evenly across experts (max 5 per expert).
+
+# ⚠️ Context contamination warning: assigning >5 papers per expert degrades
+# note quality — later papers in the batch get shallower treatment as context
+# fills up. Prefer 3-5 papers per agent for best results.
 ```
 
 ### 3. Execute Phase 1 — Paper Reading (Parallel)
@@ -169,6 +173,24 @@ If a phase fails:
 2. Use format: `(AuthorYear, §Section)` or `(AuthorYear, p.X)`
 3. Direct quotes must include section/page
 4. Discussion claims must attribute speaker: `[Expert_A]`, `[Expert_B]`, `[Junior]`
+
+### ⚠️ Anti-Fabrication Rule (Critical)
+
+**Never fabricate citations.** If an agent cannot find the exact passage in the source text:
+- Leave the field blank or write `<!-- source not found -->`
+- Do NOT paraphrase and present it as a quote
+- Do NOT infer what the paper "probably says"
+
+Fabricated citations are worse than missing citations — they corrupt the knowledge base silently. **Accuracy > Coverage.**
+
+### No Source = No Notes
+
+If a paper has no PDF or markdown source available:
+- Write a placeholder note with status `📭 未讀`
+- Leave all content sections blank
+- Do NOT attempt to write notes from memory or web search results
+
+Only write substantive notes when the actual source document is accessible.
 
 ## Scaling Guidelines
 
