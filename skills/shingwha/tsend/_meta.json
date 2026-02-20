@@ -1,0 +1,11 @@
+{
+  "owner": "shingwha",
+  "slug": "tsend",
+  "displayName": "telegram send files",
+  "latest": {
+    "version": "2.1.0",
+    "publishedAt": 1771564888341,
+    "commit": null
+  },
+  "history": []
+}
