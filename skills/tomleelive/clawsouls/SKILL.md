@@ -23,7 +23,7 @@ If not installed, install globally:
 npm install -g clawsouls
 ```
 
-Current version: **v0.3.2**
+Current version: **v0.4.0**
 
 ## Commands
 
@@ -88,10 +88,38 @@ Scaffolds a new soul directory with `soul.json`, SOUL.md, IDENTITY.md, AGENTS.md
 
 ```bash
 npx clawsouls validate ./my-soul/
-npx clawsouls check ./my-soul/   # alias
+npx clawsouls validate --soulscan ./my-soul/   # with SoulScan security analysis
+npx clawsouls check ./my-soul/                 # alias
 ```
 
-Validates against the spec: schema, required files, security scan. Also runs automatically before publish.
+Validates against the spec: schema, required files. Add `--soulscan` for full security & quality analysis with scoring. Also runs automatically before publish.
+
+### SoulScan — Security & Integrity Scanner
+
+```bash
+npx clawsouls soulscan              # scan current OpenClaw workspace
+npx clawsouls soulscan ./my-soul/   # scan a specific directory
+npx clawsouls soulscan --init       # initialize baseline checksums
+npx clawsouls soulscan -q           # quiet mode for cron (SOULSCAN_OK / SOULSCAN_ALERT)
+npx clawsouls scan                  # alias
+```
+
+SoulScan checks active soul files for:
+- **Integrity**: SHA-256 checksum comparison — detects tampering since last scan
+- **Security**: 53 pattern checks (prompt injection, code execution, XSS, data exfiltration, privilege escalation, social engineering, harmful content, secret detection)
+- **Quality**: File structure, content length, schema validation
+- **Persona Consistency**: Cross-validates name/tone across SOUL.md, IDENTITY.md, soul.json
+
+**Cron usage** — periodic tamper detection:
+```bash
+# Run every hour to monitor workspace integrity
+npx clawsouls soulscan -q
+# Exit code 0 = OK, 1 = alert (tampered or security issue)
+```
+
+**First run**: Use `--init` to establish baseline checksums without triggering alerts.
+
+SOULSCAN™ — Score: 0-100, Grades: Verified (90+) / Low Risk (70+) / Medium Risk (40+) / High Risk / Blocked
 
 ### Publish a Soul
 
