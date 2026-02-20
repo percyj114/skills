@@ -1,0 +1,392 @@
+# OpenclawCash API Endpoint Details
+
+## API Surfaces
+
+- **Agent API (`/api/agent/*`)**: authenticate with `X-Agent-Key`.
+- **Dashboard/User API (`/api/wallets/*`)**: authenticate with bearer token or session cookie.
+
+Use Agent API for autonomous execution. Use Dashboard API for user-account management actions.
+
+## List Wallets
+
+```
+GET /api/agent/wallets
+X-Agent-Key: ag_your_key
+```
+
+Response:
+```json
+[
+  { "id": 2, "label": "Trading Bot", "address": "0x14ae8d93...", "network": "sepolia", "chain": "evm" },
+  { "id": 5, "label": "SOL TEST", "address": "GmjrX8...", "network": "solana-devnet", "chain": "solana" }
+]
+```
+
+## Create Wallet (Agent API)
+
+```
+POST /api/agent/wallets/create
+Content-Type: application/json
+X-Agent-Key: ag_your_key
+```
+
+Request:
+```json
+{
+  "label": "Agent Ops Wallet",
+  "network": "sepolia"
+}
+```
+
+Response:
+```json
+{
+  "id": 12,
+  "label": "Agent Ops Wallet",
+  "address": "0x1234...",
+  "network": "sepolia",
+  "chain": "evm"
+}
+```
+
+Notes:
+- API key must have wallet creation enabled (`allowWalletCreation`).
+- Endpoint is rate-limited per API key; on limit exceeded returns `429` + `Retry-After`.
+
+## Import Wallet (Agent API)
+
+```
+POST /api/agent/wallets/import
+Content-Type: application/json
+X-Agent-Key: ag_your_key
+```
+
+Request:
+```json
+{
+  "label": "Treasury Imported",
+  "network": "solana-mainnet",
+  "privateKey": "..."
+}
+```
+
+Response:
+```json
+{
+  "id": 13,
+  "label": "Treasury Imported",
+  "address": "GmjrX8...",
+  "network": "solana-mainnet",
+  "chain": "solana"
+}
+```
+
+Notes:
+- API key must have wallet import enabled (`allowWalletImport`).
+- Supported networks: `mainnet`, `solana-mainnet`.
+- Endpoint is rate-limited per API key; on limit exceeded returns `429` + `Retry-After`.
+
+## Wallet Transaction History
+
+```
+GET /api/agent/transactions?walletId=2
+X-Agent-Key: ag_your_key
+```
+
+Alternative:
+```
+GET /api/agent/transactions?walletLabel=Trading%20Bot
+X-Agent-Key: ag_your_key
+```
+Optional:
+```
+GET /api/agent/transactions?walletId=2&chain=evm
+```
+
+Response:
+```json
+[
+  {
+    "id": 0,
+    "walletId": 2,
+    "hash": "5tS4...sig",
+    "to": "GmjrX8...",
+    "value": "1000000000",
+    "fee": "5000",
+    "type": "transfer",
+    "status": "confirmed",
+    "data": "{\"source\":\"on-chain\",\"direction\":\"incoming\",\"token\":\"SOL\"}",
+    "createdAt": "2026-02-19T17:15:00.000Z"
+  }
+]
+```
+
+## Transfer Native or Tokens
+
+```
+POST /api/agent/transfer
+Content-Type: application/json
+X-Agent-Key: ag_your_key
+```
+
+### Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| walletId | number | One of walletId/walletLabel | Wallet ID from list wallets |
+| walletLabel | string | One of walletId/walletLabel | Wallet name from dashboard |
+| chain | string | No | Optional guard: `"evm"` or `"solana"` |
+| to | string | Yes | Recipient address (0x... for EVM, base58 for Solana) |
+| token | string | No | Token symbol or token address/mint. Defaults to chain native token (ETH/SOL) |
+| amount | string | One of amount/value | Human-readable amount (e.g., "100" for 100 USDC) |
+| value | string | One of amount/value | Amount in base units (e.g., "100000000" for 100 USDC with 6 decimals) |
+
+### Examples
+
+Send 0.01 ETH:
+```json
+{ "walletId": 2, "to": "0xRecipient...", "amount": "0.01" }
+```
+
+Send 100 USDC by symbol:
+```json
+{ "walletLabel": "Trading Bot", "to": "0xRecipient...", "token": "USDC", "amount": "100" }
+```
+
+Send USDC by contract address + base units:
+```json
+{ "walletId": 2, "to": "0xRecipient...", "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "value": "100000000" }
+```
+
+Send arbitrary ERC-20 by address + human amount:
+```json
+{ "walletId": 2, "to": "0xRecipient...", "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "amount": "100" }
+```
+
+Send 0.01 SOL:
+```json
+{ "walletId": 7, "to": "9xQeWvG816bUx9EPfHmaT23yvVMY6sX3uA9wX6kM3cVG", "token": "SOL", "amount": "0.01" }
+```
+Optional chain guard example:
+```json
+{ "chain": "solana", "walletId": 7, "to": "9xQeWvG816...", "amount": "0.01" }
+```
+
+### Response
+
+```json
+{
+  "txHash": "0xabc123...",
+  "status": "confirmed",
+  "token": "USDC",
+  "tokenAddress": "0xA0b86991...",
+  "fee": "1000000",
+  "feePercent": "1%",
+  "feeAmount": "1.0",
+  "netValue": "99000000",
+  "netAmount": "99.0",
+  "feeWalletAddress": "0x...",
+  "feeTxHash": "0xdef456..."
+}
+```
+
+## Check Balances
+
+```
+POST /api/agent/token-balance
+Content-Type: application/json
+X-Agent-Key: ag_your_key
+```
+
+All balances (native + discovered/default token set):
+```json
+{ "walletId": 2 }
+```
+
+Specific token by symbol:
+```json
+{ "walletId": 2, "token": "USDC" }
+```
+
+Specific token by address/mint:
+```json
+{ "walletId": 2, "tokenAddress": "0xA0b86991..." }
+```
+
+Response:
+```json
+{
+  "balances": [
+    { "token": "0x0000...0000", "symbol": "ETH", "balance": "0.048", "decimals": 18 },
+    { "token": "0xA0b86991...", "symbol": "USDC", "balance": "250.0", "decimals": 6 },
+    { "token": "0xdAC17F...", "symbol": "USDT", "balance": "0", "decimals": 6 }
+  ]
+}
+```
+
+## Supported Tokens
+
+```
+GET /api/agent/supported-tokens?network=mainnet
+GET /api/agent/supported-tokens?network=sepolia
+GET /api/agent/supported-tokens?network=solana-mainnet
+GET /api/agent/supported-tokens?network=solana-devnet
+GET /api/agent/supported-tokens?chain=solana
+```
+
+No authentication required. Returns the **default curated tokens** available on the specified network (defaults to mainnet).
+These are defaults; EVM transfer/swap/balance endpoints also accept any valid ERC-20 token contract address, and Solana transfer/balance endpoints accept SPL mint addresses.
+
+Response:
+```json
+[
+  { "address": "0x0000...0000", "symbol": "ETH", "name": "Ether", "decimals": 18 },
+  { "address": "0xA0b86991...", "symbol": "USDC", "name": "USD Coin", "decimals": 6 }
+]
+```
+
+Notes:
+- ETH is native and represented as zero-address in API payloads.
+- ERC-20 addresses are network-specific (mainnet and sepolia differ).
+- SOL is native on Solana and represented by `native:sol`.
+
+## Get Swap Quote (Uniswap v2)
+
+```
+POST /api/agent/quote?network=mainnet
+Content-Type: application/json
+```
+
+Request:
+```json
+{
+  "chain": "evm",
+  "tokenIn": "WETH",
+  "tokenOut": "USDC",
+  "amountIn": "10000000000000000"
+}
+```
+
+Response:
+```json
+{
+  "amountOut": "31234567",
+  "amountOutHuman": "31.234567",
+  "amountIn": "10000000000000000",
+  "amountInHuman": "0.01",
+  "route": "0xC02a... -> 0xA0b8...",
+  "feePercent": "0.30%",
+  "dex": "uniswap-v2",
+  "network": "mainnet"
+}
+```
+
+## Execute Swap (DEX)
+
+```
+POST /api/agent/swap
+Content-Type: application/json
+X-Agent-Key: ag_your_key
+```
+
+Request:
+```json
+{
+  "chain": "evm",
+  "walletId": 2,
+  "tokenIn": "ETH",
+  "tokenOut": "USDC",
+  "amountIn": "10000000000000000",
+  "slippage": 0.5
+}
+```
+
+Response:
+```json
+{
+  "txHash": "0xabc123...",
+  "status": "confirmed",
+  "amountOut": "7791993",
+  "amountOutMin": "7753033",
+  "tokenIn": "ETH",
+  "tokenOut": "USDC",
+  "fee": "100000000000000",
+  "feePercent": "1%",
+  "approvalTxHash": null,
+  "feeTxHash": "0xdef456..."
+}
+```
+
+If balance is insufficient for tokenIn, API returns:
+```json
+{
+  "message": "Insufficient WETH balance in wallet 4. Available: 0 WETH, required: 0.001 WETH.",
+  "code": "insufficient_token_balance",
+  "walletId": 4,
+  "token": "WETH",
+  "available": "0",
+  "required": "0.001"
+}
+```
+
+Solana (Jupiter) example:
+```json
+{
+  "chain": "solana",
+  "walletId": 5,
+  "tokenIn": "SOL",
+  "tokenOut": "USDC",
+  "amountIn": "10000000",
+  "slippage": 0.5
+}
+```
+
+## Token Approval (ERC-20)
+
+```
+POST /api/agent/approve
+Content-Type: application/json
+X-Agent-Key: ag_your_key
+```
+
+Request:
+```json
+{
+  "chain": "evm",
+  "walletId": 2,
+  "tokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "spender": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+  "amount": "1000000000"
+}
+```
+
+Response:
+```json
+{
+  "txHash": "0xabc123...",
+  "status": "confirmed"
+}
+```
+
+Notes:
+- Use base units for `amount` (e.g., USDC 1000 with 6 decimals = `1000000000`).
+- ETH (native token) does not require approval.
+- Wallet must have ETH for gas.
+
+## Networks
+
+- **mainnet**: Ethereum Mainnet (real ETH, all tokens)
+- **sepolia**: Sepolia Testnet (test ETH, limited token selection: ETH, USDC, WETH, LINK)
+- **solana-mainnet**: Solana Mainnet (real SOL + SPL tokens)
+- **solana-devnet**: Solana Devnet (dev SOL + test SPL tokens)
+
+Network is fixed at wallet creation and cannot be changed.
+
+## Important Notes
+
+- EVM token transfers require ETH in the wallet for gas fees
+- Solana token transfers require SOL in the wallet for transaction fees
+- Swap supports EVM (Uniswap) and Solana (Jupiter); Quote/Approve are EVM-only
+- Platform fee is deducted from the token amount (not ETH), consistent with ETH transfers
+- Use `amount` for simplicity (human-readable), use `value` when you need precise base-unit control
+- Optional `chain` guard is supported on agent endpoints; mismatches return `400` with `code: "chain_mismatch"`.

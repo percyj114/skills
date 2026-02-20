@@ -1,0 +1,11 @@
+{
+  "owner": "macd2",
+  "slug": "agent-crypto-wallet",
+  "displayName": "OpenClawCash",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1771550607266,
+    "commit": null
+  },
+  "history": []
+}
