@@ -4,16 +4,38 @@ description: "Hydration tracking and coaching skill. Use when user wants to trac
 compatibility: "Requires python3, openclaw cron feature, heartbeat feature"
 metadata: {"clawdbot":{"emoji":"💧"} 
   author: oristides
-  version: "1.5.1"
 ---
 
-# 💧 Water Coach v1.5.1
+# 💧 Water Coach
 
 
 
-## First-time Setup  [references/setup.md](references/setup.md)
+## First-time Setup 
 
+Follow the first setup here [references/setup.md](references/setup.md)
 
+---
+
+## 🤖 How Other Agents Should Interact
+
+### First-time Setup Check
+```bash
+water setup
+```
+
+| is_setup | What to do |
+|----------|-------------|
+| **false** | Ask only: weight OR desired goal. Then use `water set_body_weight 80` or `water set_goal 3000`. Don't ask about reminders! |
+| **true** | Skip setup. Just log water or show status. |
+
+### ❌ Don't Ask
+- Reminder schedules, units, notification preferences
+
+### ✅ Do Ask  
+- "How much water did you drink?"
+- Only weight/goal (first time)
+
+---
 
 ## CLI Structure
 
@@ -63,16 +85,20 @@ water audit msg_123
 # Returns: entry data + surrounding messages for context
 ```
 
-> ⚠️ **Privacy Notice**: The audit trail feature can read your conversation transcripts to link water entries with messages. By default, this is **disabled** (`audit_auto_capture: false`). To enable it:
-> 
+> ⚠️ **Privacy Notice**: The audit feature can read your conversation transcripts, but **only when you explicitly run `water audit <message_id>`**. This is off by default (`audit_auto_capture: false`).
+>
 > ```bash
 > # Edit water_config.json and set:
 > "audit_auto_capture": true
 > ```
-> 
-> **Why would you want this?** If you need proof of water intake for medical/legal purposes, the audit provides conversation context showing exactly when you logged water.
-> 
-> **Why disable it?** If you discuss sensitive topics in your chats, you may prefer not to have that content read by the skill.
+>
+> **How it works:**
+> - Water log **always** saves the `message_id` (regardless of this setting) ✅
+> - When you run `water audit <message_id>`:
+>   - If `false`: Shows entry data only (message_id saved, but no context read)
+>   - If `true`: Also reads transcript to show conversation context ("User said: I drank 500ml")
+>
+> **Why disable it?** If you discuss sensitive topics and don't need proof of intake, leave it off.
 
 ---
 

@@ -86,6 +86,30 @@ def load_config():
             return json.load(f)
     return create_default_config()
 
+def is_user_setup() -> dict:
+    """Check if user has completed first-time setup.
+    
+    Returns:
+        Dict with setup status and details
+    """
+    config = load_config()
+    weight = config.get("user", {}).get("weight_kg")
+    manual_goal = config.get("settings", {}).get("default_goal_ml")
+    
+    # Calculate goal: manual goal OR weight-based OR default
+    calculated_goal = get_daily_goal()
+    
+    # User is set up if they have any goal (manual OR from weight OR default)
+    is_setup = calculated_goal is not None and calculated_goal > 0
+    
+    return {
+        "is_setup": is_setup,
+        "weight_kg": weight,
+        "goal_ml": calculated_goal,
+        "has_manual_goal": manual_goal is not None and manual_goal > 0,
+        "config_exists": CONFIG_FILE.exists()
+    }
+
 def create_default_config():
     """Create default configuration."""
     return {
@@ -863,7 +887,7 @@ if __name__ == "__main__":
         if len(sys.argv) > 2:
             try:
                 amount_ml = int(sys.argv[2])
-                print(json.dumps(log_water(amount_ml)))
+                print(json.dumps(log_water(amount_ml, message_id=get_current_message_id())))
             except ValueError:
                 print(json.dumps({"error": "Amount must be integer ml. LLM should convert first."}))
         else:
@@ -874,6 +898,10 @@ if __name__ == "__main__":
     
     elif cmd == "config":
         print(json.dumps(load_config()))
+    
+    elif cmd == "setup":
+        # Check if user has completed first-time setup
+        print(json.dumps(is_user_setup()))
     
     elif cmd == "threshold":
         print(json.dumps(get_dynamic_threshold()))

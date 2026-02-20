@@ -1,0 +1,71 @@
+{
+  "version": "3.0",
+  "units": {
+    "system": "metric",
+    "weight": "kg",
+    "height": "m",
+    "volume": "ml"
+  },
+  "user": {
+    "weight_kg": null,
+    "height_m": null,
+    "body_fat_pct": null,
+    "muscle_pct": null,
+    "water_pct": null
+  },
+  "settings": {
+    "goal_multiplier": 35,
+    "default_goal_ml": null,
+    "cutoff_hour": 22,
+    "audit_auto_capture": false,
+    "reminder_slots": [
+      {
+        "name": "morning",
+        "hour": 9
+      },
+      {
+        "name": "lunch",
+        "hour": 12
+      },
+      {
+        "name": "afternoon",
+        "hour": 15
+      },
+      {
+        "name": "predinner",
+        "hour": 18
+      },
+      {
+        "name": "evening",
+        "hour": 21
+      }
+    ]
+  },
+  "dynamic_scheduling": {
+    "enabled": true,
+    "formula": {
+      "type": "linear_time_based",
+      "margin_percent": 25,
+      "start_hour": 9,
+      "cutoff_hour": 22
+    },
+    "extra_notifications": {
+      "max_per_day": 4,
+      "interval_minutes": 30,
+      "reduce_if_catching_up": true,
+      "healthy_threshold_percent": 80
+    }
+  },
+  "status": {
+    "snoozed_until": null,
+    "skip_dates": [],
+    "extra_notifications_today": 0,
+    "last_extra_notification": null,
+    "extras_this_hour": 0,
+    "last_extra_hour": null
+  },
+  "reports": {
+    "weekly_enabled": false,
+    "monthly_enabled": false
+  }
+}

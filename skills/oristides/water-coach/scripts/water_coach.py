@@ -37,6 +37,7 @@ from water import (
     reset_daily_counters,
     get_daily_goal,
     load_config,
+    is_user_setup,
     update_user_weight,
     calculate_expected_percent,
     get_week_stats,
@@ -158,6 +159,8 @@ def main():
             print(json.dumps(should_send_extra_notification()))
         elif command == "threshold":
             print(json.dumps(get_dynamic_threshold()))
+        elif command == "setup":
+            print(json.dumps(is_user_setup()))
         elif command == "increment":
             print(json.dumps(increment_extra_notifications()))
         elif command == "reset":

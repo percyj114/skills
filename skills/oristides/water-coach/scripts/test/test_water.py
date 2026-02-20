@@ -19,8 +19,25 @@ from water import (
     get_entry_by_message_id,
     get_entries_by_date,
     calculate_cumulative_for_date,
-    get_message_context
+    get_message_context,
+    is_user_setup
 )
+
+class TestIsUserSetup:
+    """Tests for is_user_setup function."""
+    
+    def test_is_user_setup_returns_dict(self):
+        """Test that is_user_setup returns a dict."""
+        result = is_user_setup()
+        assert isinstance(result, dict)
+    
+    def test_is_user_setup_has_required_fields(self):
+        """Test that is_user_setup has all required fields."""
+        result = is_user_setup()
+        assert "is_setup" in result
+        assert "weight_kg" in result
+        assert "goal_ml" in result
+        assert "config_exists" in result
 
 class TestCalculateExpectedPercent:
     """Test the linear formula for expected progress."""
