@@ -1,6 +1,6 @@
 # IDA – Instructional Design Agent
 ### Learning Strategy & Blueprint Engine
-**Version 1.0.0**
+**Version 1.0.2**
 
 ---
 

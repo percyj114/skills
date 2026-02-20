@@ -3,11 +3,16 @@
   "slug": "ida-instructional-design-agent",
   "displayName": "IDA: Instructional Design Agent",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771503817154,
-    "commit": "https://github.com/openclaw/skills/commit/dd5dc9fc3cbe94c0f0c6b742b011a07f654e9260"
+    "version": "1.0.2",
+    "publishedAt": 1771504016155,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771503817154,
+      "commit": "https://github.com/openclaw/skills/commit/dd5dc9fc3cbe94c0f0c6b742b011a07f654e9260"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1771409317405,
