@@ -140,6 +140,68 @@ Events:    Feb 17 10:42 — Departed facility, Memphis TN
 - **Insurance**: Add "with $100 insurance" when buying
 - **Reference number**: Add "reference ORDER-123" to tag your label
 
+## API Endpoint Reference
+
+Base URL: `https://atoship.com`
+
+All requests require `Authorization: Bearer YOUR_API_KEY` header.
+
+| Action | Method | Endpoint | Description |
+|--------|--------|----------|-------------|
+| Get rates | POST | `/api/v1/rates` | Compare shipping rates across carriers |
+| Create label | POST | `/api/v1/labels` | Create a draft shipping label |
+| Purchase label | POST | `/api/v1/labels/{id}/purchase` | Purchase a draft label |
+| Get label | GET | `/api/v1/labels/{id}` | Get label details by ID |
+| List labels | GET | `/api/v1/labels` | List labels with optional filters |
+| Void label | DELETE | `/api/v1/labels/{id}` | Void/cancel an unused label |
+| Track package | GET | `/api/v1/tracking/{tracking_number}` | Track a package by tracking number |
+| Validate address | POST | `/api/v1/addresses/validate` | Validate a shipping address |
+| Create order | POST | `/api/v1/orders` | Create a new order |
+| Get order | GET | `/api/v1/orders/{id}` | Get order details by ID |
+| List orders | GET | `/api/v1/orders` | List orders with optional filters |
+| Get account | GET | `/api/v1/account` | Get account info and balance |
+| List carriers | GET | `/api/v1/carrier-accounts` | List configured carrier accounts |
+
+### Example: Track a package
+
+```bash
+curl -X GET "https://atoship.com/api/v1/tracking/9400111899223456789012" \
+  -H "Authorization: Bearer ak_live_your_key_here"
+```
+
+### Example: Get shipping rates
+
+```bash
+curl -X POST "https://atoship.com/api/v1/rates" \
+  -H "Authorization: Bearer ak_live_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from_address": {"name": "Sender", "street1": "123 Main St", "city": "Los Angeles", "state": "CA", "zip": "90001"},
+    "to_address": {"name": "Recipient", "street1": "456 Oak Ave", "city": "New York", "state": "NY", "zip": "10001"},
+    "parcel": {"weight": 16, "weight_unit": "oz"}
+  }'
+```
+
+### Example: Purchase a label
+
+```bash
+# Step 1: Create draft
+curl -X POST "https://atoship.com/api/v1/labels" \
+  -H "Authorization: Bearer ak_live_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from_address": {"name": "Sender", "street1": "123 Main St", "city": "Los Angeles", "state": "CA", "zip": "90001"},
+    "to_address": {"name": "Recipient", "street1": "456 Oak Ave", "city": "New York", "state": "NY", "zip": "10001"},
+    "parcel": {"weight": 16, "weight_unit": "oz"},
+    "carrier": "USPS",
+    "service": "Priority Mail"
+  }'
+
+# Step 2: Purchase the draft (use the id from step 1)
+curl -X POST "https://atoship.com/api/v1/labels/{id}/purchase" \
+  -H "Authorization: Bearer ak_live_your_key_here"
+```
+
 ## Why atoship?
 
 Shipping is one of the most time-consuming parts of running an online business. Every order means logging into carrier portals, comparing rates manually, copy-pasting addresses, downloading labels, and tracking updates one by one. For teams processing dozens or hundreds of shipments a day, this is a massive operational burden.
