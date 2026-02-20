@@ -1,5 +1,5 @@
 ---
-name: googleclassroom
+name: google-classroom
 description: |
   Google Classroom API integration with managed OAuth. Manage courses, assignments, students, teachers, and announcements.
   Use this skill when users want to create courses, manage coursework, track student submissions, or post announcements.
