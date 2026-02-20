@@ -3,9 +3,15 @@
   "slug": "seo-content-brief",
   "displayName": "Seo Content Brief",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770656376414,
-    "commit": "https://github.com/openclaw/skills/commit/0afaf8a179fec1d33b9dc1138c86563f65f629dd"
+    "version": "0.1.5",
+    "publishedAt": 1771403372237,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770656376414,
+      "commit": "https://github.com/openclaw/skills/commit/0afaf8a179fec1d33b9dc1138c86563f65f629dd"
+    }
+  ]
 }

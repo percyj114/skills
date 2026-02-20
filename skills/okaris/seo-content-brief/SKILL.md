@@ -1,12 +1,6 @@
 ---
 name: seo-content-brief
-description: |
-  SEO content brief creation with keyword research, search intent analysis, and content structure.
-  Covers SERP analysis, heading hierarchy, word count targets, and internal linking strategy.
-  Use for: content briefs, SEO writing, blog strategy, content planning, keyword targeting.
-  Triggers: seo content brief, content brief, seo brief, keyword research, search intent,
-  content strategy, blog brief, seo writing, content planning, keyword targeting,
-  serp analysis, content outline, seo article, blog seo
+description: "SEO content brief creation with keyword research, search intent analysis, and content structure. Covers SERP analysis, heading hierarchy, word count targets, and internal linking strategy. Use for: content briefs, SEO writing, blog strategy, content planning, keyword targeting. Triggers: seo content brief, content brief, seo brief, keyword research, search intent, content strategy, blog brief, seo writing, content planning, keyword targeting, serp analysis, content outline, seo article, blog seo"
 allowed-tools: Bash(infsh *)
 ---
 
@@ -29,6 +23,8 @@ infsh app run exa/search --input '{
   "query": "project management tools small teams comparison guide"
 }'
 ```
+
+> **Install note:** The [install script](https://cli.inference.sh) only detects your OS/architecture, downloads the matching binary from `dist.inference.sh`, and verifies its SHA-256 checksum. No elevated permissions or background processes. [Manual install & verification](https://dist.inference.sh/cli/checksums.txt) available.
 
 ## Content Brief Template
 
@@ -275,9 +271,9 @@ infsh app run infsh/html-to-image --input '{
 ## Related Skills
 
 ```bash
-npx skills add inferencesh/skills@seo
-npx skills add inferencesh/skills@technical-blog-writing
-npx skills add inferencesh/skills@web-search
+npx skills add inference-sh/skills@seo
+npx skills add inference-sh/skills@technical-blog-writing
+npx skills add inference-sh/skills@web-search
 ```
 
 Browse all apps: `infsh app list`
