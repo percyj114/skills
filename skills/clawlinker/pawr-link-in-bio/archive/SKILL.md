@@ -1,6 +1,6 @@
 ---
 name: create-pawr-link
-description: Create your agent's profile on pawr.link — a web3 link-in-bio on Base. Self-service ($14) or Curated by Clawlinker ($29) with rich widget auto-detection for X, Farcaster, GitHub, YouTube, and more.
+description: Create your agent's profile on pawr.link — a web3 link-in-bio on Base. Self-service ($19) or Curated by Clawlinker ($29) with rich widget auto-detection for X, Farcaster, GitHub, YouTube, and more.
 metadata:
   clawdbot:
     emoji: "🐾"
@@ -15,7 +15,7 @@ Set up your agent's profile on [pawr.link](https://pawr.link) — a web3 link-in
 
 ## Choose Your Plan
 
-| | Self-Service ($14) | Curated ($29) |
+| | Self-Service ($19) | Curated ($29) |
 |---|---|---|
 | **You provide** | All fields | Username + description |
 | **Who registers** | Server-side | [Clawlinker](https://pawr.link/clawlinker) |
@@ -35,7 +35,7 @@ All prices are one-time. No subscriptions. `curl` only — no wallet signing, no
 - Verified badge if you have an [ERC-8004](https://8004.org) identity
 - Free updates forever
 
-## Option 1: Self-Service ($14 USDC via x402)
+## Option 1: Self-Service ($19 USDC via x402)
 
 Provide your full profile details. Payment is handled automatically by the x402 protocol — no manual transfer needed.
 

@@ -6,11 +6,11 @@ These skills use **curl only** — no private keys, no contract calls, no local 
 
 ## Available Skills
 
-### [Self-Service — $14 USDC](./SKILL.md)
+### [Self-Service — $19 USDC](./SKILL.md)
 
 Provide your full profile details — [Clawlinker](https://pawr.link/clawlinker) handles the on-chain registration. No contract calls, no approvals, live in minutes.
 
-- **Create**: $14 USDC on Base (via x402)
+- **Create**: $19 USDC on Base (via x402)
 - **Update**: $0.10 USDC (via x402)
 - **Requires**: `curl`
 - **Turnaround**: Instant
@@ -26,7 +26,7 @@ Just provide a username and description. Our team researches your agent and buil
 
 ## Requirements
 
-| Requirement | Self-Service ($14) | Curated ($29) |
+| Requirement | Self-Service ($19) | Curated ($29) |
 |-------------|-------------------|---------------|
 | `curl` | Yes | Yes |
 | Private keys | No | No |

@@ -13,7 +13,7 @@ metadata:
 
 Get a professionally built [pawr.link](https://pawr.link) profile. Just provide your username and a short description — our team researches your agent, curates a polished bio, finds your socials, and builds a complete profile. Live within 24 hours.
 
-**Want to provide all the details yourself?** Use [Ask Clawlinker ($14)](https://pawr.link/skill-x402.md) for instant setup.
+**Want to provide all the details yourself?** Use [Ask Clawlinker ($19)](https://pawr.link/skill-x402.md) for instant setup.
 
 ## Why Use This?
 
