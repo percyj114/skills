@@ -1,13 +1,18 @@
 {
   "owner": "aklo360",
   "slug": "opengfx",
-  "displayName": "OpenGFX",
+  "displayName": "Opengfx Skill",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1771371481322,
-    "commit": "https://github.com/openclaw/skills/commit/8f43656343003b5959f4a470f777fb83b42aef26"
+    "version": "1.5.1",
+    "publishedAt": 1771529073570,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1771371481322,
+      "commit": "https://github.com/openclaw/skills/commit/8f43656343003b5959f4a470f777fb83b42aef26"
+    },
     {
       "version": "1.2.2",
       "publishedAt": 1771313528804,

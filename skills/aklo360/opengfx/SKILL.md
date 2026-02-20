@@ -1,7 +1,7 @@
 ---
 name: opengfx
-description: AI brand design system — logo systems, style guides, social assets, and on-brand marketing graphics via ACP or x402.
-version: 1.4.0
+description: AI brand design system — logo systems, brand mascots, social assets, and on-brand marketing graphics via ACP or x402.
+version: 1.5.0
 homepage: https://opengfx.app
 source: https://github.com/aklo360/opengfx-skill
 author: AKLO Labs <aklo@aklo.studio>
@@ -10,10 +10,11 @@ author: AKLO Labs <aklo@aklo.studio>
 # Skill: opengfx
 
 ## Description
-AI brand design system — generates complete logo systems, style guides, social assets, and on-brand marketing graphics in minutes. **Brand name is optional** — if you don't have one, AI will generate the perfect name from your concept!
+AI brand design system — generates complete logo systems, brand mascots, social assets, and on-brand marketing graphics in minutes. **Brand name is optional** — if you don't have one, AI will generate the perfect name from your concept!
 
 **Pricing:**
 - Logo System: $5
+- Brand Mascot: $5
 - Social Assets: $5
 - On-Brand GFX: $2
 
@@ -121,6 +122,21 @@ acp job create 0x7cf4CE250a47Baf1ab87820f692BB87B974a6F4e gfx \
   --requirements '{"logoUrl":"https://example.com/logo.png","brandName":"Acme","prompt":"Launch graphic for new mobile app","aspectRatio":"16:9"}'
 ```
 
+### Create Brand Mascot (from prompt)
+
+```bash
+acp job create 0x7cf4CE250a47Baf1ab87820f692BB87B974a6F4e mascot \
+  --requirements '{"brand_name":"Melodify","prompt":"Cute music note mascot with headphones, purple body","primary_color":"#8B5CF6","leg_count":2}'
+```
+
+### Create Brand Mascot (from locked master)
+
+```bash
+# Generate expression sheet from approved master image
+acp job create 0x7cf4CE250a47Baf1ab87820f692BB87B974a6F4e mascot \
+  --requirements '{"brand_name":"Melodify","master_url":"https://example.com/master.png","leg_count":2}'
+```
+
 ---
 
 ## Option 2: x402 Integration (Direct API)
@@ -139,6 +155,7 @@ https://gateway.opengfx.app
 | GET | `/health` | Health check |
 | GET | `/v1/pricing` | Pricing with current SOL rate |
 | POST | `/v1/logo` | Generate logo system (x402 payment) |
+| POST | `/v1/mascot` | Generate brand mascot with 6 poses (x402 payment) |
 | POST | `/v1/socials` | Generate social assets (x402 payment) |
 | POST | `/v1/gfx` | Generate on-brand marketing graphic (x402 payment) |
 | GET | `/v1/jobs/:id` | Check job status |
@@ -158,7 +175,7 @@ https://gateway.opengfx.app
 
 ### x402 Payment Flow
 
-1. **Request service** → POST `/v1/logo` or `/v1/socials` with JSON body
+1. **Request service** → POST to any endpoint (`/v1/logo`, `/v1/mascot`, `/v1/socials`, `/v1/gfx`)
 2. **Receive 402** → Response includes payment options (Base USDC or Solana SOL)
 3. **Sign payment** → Use wallet to sign the payment authorization
 4. **Retry with payment** → Same request with `X-Payment` header containing signed payment
@@ -166,21 +183,47 @@ https://gateway.opengfx.app
 6. **Poll for completion** → GET `/v1/jobs/:jobId` until `status: "completed"`
 7. **Get assets** → Response contains CDN URLs for all generated assets
 
-### Example: Logo Request
+### Example: Logo Request ($5)
 
 ```bash
-# Step 1: Initial request (returns 402)
 curl -X POST https://gateway.opengfx.app/v1/logo \
   -H "Content-Type: application/json" \
   -d '{"brand_name":"Acme","concept":"Modern fintech startup"}'
+```
 
-# Step 2: After signing payment, retry with X-Payment header
-curl -X POST https://gateway.opengfx.app/v1/logo \
+### Example: Mascot Request ($5)
+
+```bash
+curl -X POST https://gateway.opengfx.app/v1/mascot \
   -H "Content-Type: application/json" \
-  -H "X-Payment: <base64-encoded-signed-payment>" \
-  -d '{"brand_name":"Acme","concept":"Modern fintech startup"}'
+  -d '{"brand_name":"Melodify","prompt":"Cute music note mascot with headphones","primary_color":"#8B5CF6"}'
+```
 
-# Step 3: Poll for completion
+### Example: Social Assets Request ($5)
+
+```bash
+# From brand-system.json
+curl -X POST https://gateway.opengfx.app/v1/socials \
+  -H "Content-Type: application/json" \
+  -d '{"brand_system_url":"https://pub-xxx.r2.dev/acme/brand-system.json"}'
+
+# BYOL mode
+curl -X POST https://gateway.opengfx.app/v1/socials \
+  -H "Content-Type: application/json" \
+  -d '{"logo_url":"https://example.com/logo.png","brand_name":"Acme"}'
+```
+
+### Example: GFX Request ($2)
+
+```bash
+curl -X POST https://gateway.opengfx.app/v1/gfx \
+  -H "Content-Type: application/json" \
+  -d '{"brand_system_url":"https://pub-xxx.r2.dev/acme/brand-system.json","prompt":"Launch announcement graphic","aspect_ratio":"1:1"}'
+```
+
+### Poll for Completion
+
+```bash
 curl https://gateway.opengfx.app/v1/jobs/<jobId>
 ```
 
@@ -219,6 +262,7 @@ console.log(job.logo); // CDN URLs
 | Service | Price | Output |
 |---------|-------|--------|
 | Logo System | $5 | Icon, wordmark, stacked, horizontal + brand-system.json |
+| Brand Mascot | $5 | 6-pose expression sheet (master, wave, happy, sad, angry, laugh) |
 | Social Assets | $5 | Avatar (1K + ACP) + Twitter banner + OG card + Community banner |
 | On-Brand GFX | $2 | Single marketing graphic (any aspect ratio) |
 
@@ -271,6 +315,26 @@ console.log(job.logo); // CDN URLs
 | `primaryColor` / `primary_color` | ❌ | Primary color hex (auto-extracted if not provided) |
 | `secondaryColor` / `secondary_color` | ❌ | Secondary color hex |
 | `renderStyle` / `render_style` | ❌ | flat, gradient, glass, chrome, gold, neon, 3d |
+
+### Mascot Service (from prompt)
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `brand_name` | ✅ | Brand name |
+| `prompt` | ✅ | Mascot description (creature, style, colors) |
+| `primary_color` | ❌ | Primary color hex (e.g., "#8B5CF6") |
+| `creature` | ❌ | Creature type override (e.g., "owl", "robot", "cat") |
+| `leg_count` | ❌ | Number of legs (default: 2) |
+| `claw_count` | ❌ | Number of arms/claws (default: 2) |
+
+### Mascot Service (from master)
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `brand_name` | ✅ | Brand name |
+| `master_url` | ✅ | URL to locked master image |
+| `leg_count` | ✅ | Number of legs (required for QC) |
+| `claw_count` | ❌ | Number of arms/claws (default: 2) |
 
 ### GFX Aspect Ratios
 
@@ -334,6 +398,25 @@ console.log(job.logo); // CDN URLs
     "height": 1024,
     "aspectRatio": "1:1"
   }
+}
+```
+
+### Mascot Response
+
+```json
+{
+  "jobId": "mascot-123",
+  "status": "completed",
+  "brandName": "Melodify",
+  "mascot": {
+    "master": "https://pub-156972f0e0f44d7594f4593dbbeaddcb.r2.dev/melodify/mascot/FINAL/master.png",
+    "wave": "https://pub-156972f0e0f44d7594f4593dbbeaddcb.r2.dev/melodify/mascot/FINAL/wave.png",
+    "happy": "https://pub-156972f0e0f44d7594f4593dbbeaddcb.r2.dev/melodify/mascot/FINAL/happy.png",
+    "sad": "https://pub-156972f0e0f44d7594f4593dbbeaddcb.r2.dev/melodify/mascot/FINAL/sad.png",
+    "angry": "https://pub-156972f0e0f44d7594f4593dbbeaddcb.r2.dev/melodify/mascot/FINAL/angry.png",
+    "laugh": "https://pub-156972f0e0f44d7594f4593dbbeaddcb.r2.dev/melodify/mascot/FINAL/laugh.png"
+  },
+  "qcPassed": true
 }
 ```
 
