@@ -19,6 +19,15 @@
 
 set -euo pipefail
 
+# Smart CLI resolution: global binary > npx fallback
+confidant_cmd() {
+  if command -v confidant &>/dev/null; then
+    confidant "$@"
+  else
+    npx @aiconnect/confidant "$@"
+  fi
+}
+
 LABEL=""
 SERVICE=""
 SAVE_PATH=""
@@ -44,10 +53,37 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$LABEL" ]]; then
-  echo "Error: --label is required" >&2
-  echo "Usage: $0 --label \"API Key\" [--service name] [--save path] [--env VAR] [--tunnel]" >&2
+  if $JSON_OUTPUT; then
+    echo '{"error":"--label is required","code":"MISSING_LABEL","hint":"Usage: request-secret.sh --label \"API Key\" [--service name] [--save path]"}' >&2
+  else
+    echo "Error: --label is required" >&2
+    echo "Usage: $0 --label \"API Key\" [--service name] [--save path] [--env VAR] [--tunnel]" >&2
+  fi
   exit 1
 fi
+
+# --- Dependency check ---
+
+if ! command -v jq &>/dev/null; then
+  if $JSON_OUTPUT; then
+    echo '{"error":"jq is required but not installed","code":"MISSING_DEPENDENCY","hint":"Ubuntu/Debian: apt-get install -y jq | macOS: brew install jq"}' >&2
+  else
+    echo "Error: jq is required but not installed." >&2
+    echo "  Ubuntu/Debian: apt-get install -y jq" >&2
+    echo "  macOS: brew install jq" >&2
+  fi
+  exit 2
+fi
+
+# --- Cleanup trap ---
+
+SERVER_PID=""
+LT_PID=""
+cleanup() {
+  [[ -n "${LT_PID:-}" ]] && kill "$LT_PID" 2>/dev/null || true
+  [[ "$STARTED_SERVER" == true && -n "${SERVER_PID:-}" ]] && kill "$SERVER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 
 # --- Step 1: Ensure server is running ---
 
@@ -60,7 +96,7 @@ STARTED_SERVER=false
 if server_running; then
   : # Server already running
 else
-  npx @aiconnect/confidant serve --port "$PORT" > /dev/null 2>&1 &
+  confidant_cmd serve --port "$PORT" > /dev/null 2>&1 &
   SERVER_PID=$!
   STARTED_SERVER=true
 
@@ -69,9 +105,12 @@ else
     sleep 1
     elapsed=$((elapsed + 1))
     if [[ $elapsed -ge $TIMEOUT ]]; then
-      echo "Error: Server failed to start within ${TIMEOUT}s" >&2
-      kill "$SERVER_PID" 2>/dev/null || true
-      exit 1
+      if $JSON_OUTPUT; then
+        echo "{\"error\":\"Server failed to start within ${TIMEOUT}s\",\"code\":\"SERVER_TIMEOUT\",\"hint\":\"Try increasing --timeout or check if port ${PORT} is in use\"}" >&2
+      else
+        echo "Error: Server failed to start within ${TIMEOUT}s" >&2
+      fi
+      exit 3
     fi
   done
 fi
@@ -92,19 +131,24 @@ if [[ -n "$ENV_VAR" ]]; then
   REQUEST_ARGS+=(--env "$ENV_VAR")
 fi
 
-REQUEST_OUTPUT=$(npx @aiconnect/confidant request "${REQUEST_ARGS[@]}" 2>/dev/null)
+REQUEST_OUTPUT=$(confidant_cmd request "${REQUEST_ARGS[@]}" 2>/dev/null)
 
 LOCAL_URL=$(echo "$REQUEST_OUTPUT" | jq -r '.url // .formUrl // empty' 2>/dev/null || echo "")
 REQUEST_ID=$(echo "$REQUEST_OUTPUT" | jq -r '.id // empty' 2>/dev/null || echo "")
+REQUEST_HASH=$(echo "$REQUEST_OUTPUT" | jq -r '.hash // empty' 2>/dev/null || echo "")
 
-if [[ -z "$LOCAL_URL" && -n "$REQUEST_ID" ]]; then
-  LOCAL_URL="http://localhost:${PORT}/requests/${REQUEST_ID}"
+if [[ -z "$LOCAL_URL" && -n "$REQUEST_HASH" ]]; then
+  LOCAL_URL="http://localhost:${PORT}/requests/${REQUEST_HASH}"
 fi
 
 if [[ -z "$LOCAL_URL" ]]; then
-  echo "Error: Failed to create request. CLI output:" >&2
-  echo "$REQUEST_OUTPUT" >&2
-  exit 1
+  if $JSON_OUTPUT; then
+    echo "{\"error\":\"Failed to create request\",\"code\":\"REQUEST_FAILED\",\"hint\":\"$(echo "$REQUEST_OUTPUT" | tr '\n' ' ')\"}" >&2
+  else
+    echo "Error: Failed to create request. CLI output:" >&2
+    echo "$REQUEST_OUTPUT" >&2
+  fi
+  exit 4
 fi
 
 # --- Step 3: Detect or start tunnel ---
@@ -149,7 +193,12 @@ if detect_tunnel; then
 elif $START_TUNNEL; then
   # Start localtunnel in background
   LT_LOG="/tmp/confidant-lt-log-${PORT}"
-  npx localtunnel --port "$PORT" > "$LT_LOG" 2>&1 &
+  # Use global lt if available, otherwise npx
+  if command -v lt &>/dev/null; then
+    lt --port "$PORT" > "$LT_LOG" 2>&1 &
+  else
+    npx localtunnel --port "$PORT" > "$LT_LOG" 2>&1 &
+  fi
   LT_PID=$!
   STARTED_TUNNEL=true
 
@@ -158,7 +207,7 @@ elif $START_TUNNEL; then
   while [[ $elapsed -lt $TIMEOUT ]]; do
     sleep 1
     elapsed=$((elapsed + 1))
-    lt_url=$(grep -oP 'https://[^\s]+' "$LT_LOG" 2>/dev/null | head -1 || echo "")
+    lt_url=$(grep -oE 'https://[^[:space:]]+' "$LT_LOG" 2>/dev/null | head -1 || echo "")
     if [[ -n "$lt_url" ]]; then
       echo "$lt_url" > "/tmp/confidant-lt-url-${PORT}"
       PUBLIC_URL="${LOCAL_URL/http:\/\/localhost:${PORT}/${lt_url}}"
@@ -168,7 +217,11 @@ elif $START_TUNNEL; then
   done
 
   if [[ -z "$PUBLIC_URL" ]]; then
-    echo "Warning: localtunnel failed to start. Using local URL only." >&2
+    if $JSON_OUTPUT; then
+      echo "{\"error\":\"localtunnel failed to capture a URL\",\"code\":\"TUNNEL_FAILED\",\"hint\":\"Check localtunnel logs at ${LT_LOG}\"}" >&2
+    else
+      echo "Warning: localtunnel failed to start. Using local URL only." >&2
+    fi
   fi
 fi
 
@@ -191,6 +244,7 @@ if $JSON_OUTPUT; then
     --arg publicUrl "$PUBLIC_URL" \
     --arg tunnelProvider "$TUNNEL_PROVIDER" \
     --arg requestId "$REQUEST_ID" \
+    --arg requestHash "$REQUEST_HASH" \
     --arg saveTo "$SAVE_INFO" \
     --argjson startedServer "$STARTED_SERVER" \
     --argjson startedTunnel "$STARTED_TUNNEL" \
@@ -200,6 +254,7 @@ if $JSON_OUTPUT; then
       publicUrl: (if $publicUrl == "" then null else $publicUrl end),
       tunnelProvider: (if $tunnelProvider == "" then null else $tunnelProvider end),
       requestId: $requestId,
+      requestHash: $requestHash,
       saveTo: (if $saveTo == "" then null else $saveTo end),
       startedServer: $startedServer,
       startedTunnel: $startedTunnel
