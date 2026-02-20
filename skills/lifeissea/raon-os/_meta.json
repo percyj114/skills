@@ -1,13 +1,18 @@
 {
   "owner": "lifeissea",
   "slug": "raon-os",
-  "displayName": "Raon Os",
+  "displayName": "Raon OS",
   "latest": {
-    "version": "0.7.17",
-    "publishedAt": 1771494993971,
-    "commit": "https://github.com/openclaw/skills/commit/871e6f4b3fb36ae2ea0b6becfb190f20328528cb"
+    "version": "0.7.23",
+    "publishedAt": 1771509980597,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.7.17",
+      "publishedAt": 1771494993971,
+      "commit": "https://github.com/openclaw/skills/commit/871e6f4b3fb36ae2ea0b6becfb190f20328528cb"
+    },
     {
       "version": "0.7.10",
       "publishedAt": 1771415071334,
