@@ -1,13 +1,18 @@
 {
   "owner": "abdullah4ai",
   "slug": "apple-dev-docs",
-  "displayName": "Apple Dev Docs",
+  "displayName": "Apple Developer Docs",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1771308270865,
-    "commit": "https://github.com/openclaw/skills/commit/944ae5596d95934770a8d64830e8982dd7f13366"
+    "version": "1.0.2",
+    "publishedAt": 1771505642283,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1771308270865,
+      "commit": "https://github.com/openclaw/skills/commit/944ae5596d95934770a8d64830e8982dd7f13366"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1771307520444,
