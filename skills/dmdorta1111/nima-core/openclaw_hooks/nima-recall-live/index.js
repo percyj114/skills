@@ -16,7 +16,9 @@ import { execPython } from "../utils/async-python.js"; // Async wrapper
 import { existsSync, writeFileSync, readFileSync, unlinkSync, mkdtempSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import os from "node:os";
-import { resilientHook, withRetry } from "../shared/resilient.js";
+
+// Debug flag - gate ALL verbose logging behind this
+const DEBUG_RECALL = process.env.NIMA_DEBUG_RECALL === "1";
 
 const GRAPH_DB = join(os.homedir(), ".nima", "memory", "graph.sqlite");
 const LADYBUG_DB = join(os.homedir(), ".nima", "memory", "ladybug.lbug");
@@ -30,7 +32,7 @@ const USE_LADYBUG = true; // Use LadybugDB backend (default: true)
 
 // Session-level memory tracking for deduplication and budget
 const SESSION_MEMORY_IDS = new Set();
-const SESSION_TOKEN_BUDGET = 500; // Max memory tokens per session
+const SESSION_TOKEN_BUDGET = 3000; // Max memory tokens per session (increased from 500)
 const USE_COMPRESSED_FORMAT = true; // Compressed format saves ~80% tokens
 let sessionTokensUsed = 0;
 let lastConversationId = null; // Track conversation changes
@@ -102,10 +104,17 @@ function sanitizeFTS5(query) {
 }
 
 /**
- * Strip channel prefix from message (e.g., [Telegram UserName id:123 ...] → actual message)
+ * Strip channel prefix from message (e.g., [Telegram David id:123 ...] → actual message)
  */
 function stripChannelPrefix(text) {
   return text.replace(/^\[(?:Telegram|Discord|Signal|SMS|Slack|Matrix|WhatsApp|iMessage|Email)\s+[^\]]*\]\s*/i, "").trim();
+}
+
+/**
+ * Strip timestamp prefix from message (e.g., [Mon 2026-02-16 21:16 EST] → actual message)
+ */
+function stripTimestampPrefix(text) {
+  return text.replace(/^\[[A-Z][a-z]{2}\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+[A-Z]{3}\]\s*/i, "").trim();
 }
 
 /**
@@ -137,7 +146,9 @@ function extractUserMessage(prompt) {
     if (line.includes("[NIMA RECALL")) continue; // Don't re-query our own output
     
     // Strip channel prefix to get actual message content
-    const cleaned = stripChannelPrefix(line);
+    let cleaned = stripChannelPrefix(line);
+    // Also strip timestamp prefix (e.g., [Mon 2026-02-16 21:16 EST])
+    cleaned = stripTimestampPrefix(cleaned);
     if (cleaned.length > 5) {
       userLines.unshift(cleaned);
     }
@@ -520,8 +531,8 @@ export default function nimaRecallLivePlugin(api, config) {
   
   log.info?.("[nima-recall-live] Live recall hook loaded");
   
-  api.on("before_agent_start", withRetry("before_agent_start", async (event, ctx) => {
-    // Extract conversation ID from prompt format: [Telegram UserName id:1234567890 ...]
+  api.on("before_agent_start", async (event, ctx) => {
+    // Extract conversation ID from prompt format: [Telegram David Dorta id:5556407150 ...]
     const promptText = typeof event?.prompt === 'string' ? event.prompt : '';
     const channelMatch = promptText.match(/\[(Telegram|Discord|Signal|WhatsApp)\s+[^\]]*id:(\d+)/i);
     let conversationId = ctx?.conversationId || ctx?.channelId || ctx?.chatId || null;
@@ -530,85 +541,106 @@ export default function nimaRecallLivePlugin(api, config) {
       const id = channelMatch[2];
       conversationId = `${channel}_${id}`;
     }
-
+    
     // TRACE: Log full context to find conversation ID
-    console.error(`[nima-recall-live] 🔍 CTX: conversationId=${conversationId}, ctx.conversationId=${ctx?.conversationId}`);
-
+    if (DEBUG_RECALL) {
+      console.error(`[nima-recall-live] 🔍 CTX: conversationId=${conversationId}, ctx.conversationId=${ctx?.conversationId}`);
+    }
+    
     // Reset session state if conversation changed
     resetSessionIfNeeded(conversationId);
-
-    // Debug: log that we fired
-    console.error(`[nima-recall-live] FIRED. event keys: ${Object.keys(event || {}).join(",")}, ctx keys: ${Object.keys(ctx || {}).join(",")}`);
-    console.error(`[nima-recall-live] event.prompt type: ${typeof event?.prompt}, length: ${event?.prompt?.length || 0}`);
-    console.error(`[nima-recall-live] event.prompt first 200: ${String(event?.prompt || "").substring(0, 200)}`);
-
-    // Skip subagents and heartbeats
-    if (skipSubagents && ctx.sessionKey?.includes(":subagent:")) return;
-    if (ctx.sessionKey?.includes("heartbeat")) return;
-
-    const userMessage = extractUserMessage(event.prompt);
-    console.error(`[nima-recall-live] extracted userMessage (${userMessage.length}): ${userMessage.substring(0, 100)}`);
-    console.error(`[nima-recall-live] 🚀 Running ${FTS_ONLY_MODE ? 'FTS-only' : 'HYBRID'} recall (max ${MAX_RESULTS} results)`);
-    if (!userMessage || userMessage.length < MIN_QUERY_LENGTH) {
-      console.error(`[nima-recall-live] SKIP: too short (${userMessage.length} < ${MIN_QUERY_LENGTH})`);
-      return;
-    }
-
-    // Cooldown — don't query if same topic recently
-    const now = Date.now();
-    const queryKey = userMessage.substring(0, 100);
-    if (queryKey === lastQuery && (now - lastQueryTime) < COOLDOWN_MS) {
-      // Return cached result, but still apply bleed
-      if (lastBleed && Object.keys(lastBleed).length > 0) {
-        const conversationId = ctx.conversationId || ctx.channelId || ctx.chatId || null;
-        const identityName = config?.identity_name || "agent";
-        applyAffectBleed(lastBleed, identityName, conversationId);
-      }
-      if (lastResult) return { prependContext: lastResult };
-      return;
-    }
-
-    console.error(`[nima-recall-live] 🚀 About to call quickRecall with: "${userMessage.substring(0,30)}"`);
-    const result = await quickRecall(userMessage);
-    console.error(`[nima-recall-live] ✅ Recall complete: ${result?.memories?.length || 0} memories returned`);
-
-    // Handle both old array format and new {memories, affect_bleed} format
-    const memories = Array.isArray(result) ? result : (result?.memories || []);
-    const affectBleed = result?.affect_bleed || null;
-    const formatted = formatMemories(memories);
-
-    // Debug: ALWAYS write to file to trace execution
-    const debugPath = join(os.homedir(), ".nima", "recall_trace.log");
+    
     try {
-      writeFileSync(debugPath, JSON.stringify({
-        timestamp: new Date().toISOString(),
-        userMessage: userMessage.substring(0, 50),
-        hasResult: !!result,
-        memoriesCount: memories?.length || 0,
-        affectBleed: affectBleed,
-      }, null, 2) + "\n", { flag: "a" });
-    } catch (e) {}
-
-    // Apply affect bleed if present (memories nudge current emotional state)
-    if (affectBleed && Object.keys(affectBleed).length > 0) {
-      const identityName = config?.identity_name || "agent";  // Match nima-affect default
-
-      // Use conversationId extracted from prompt at top of hook
-      console.error(`[nima-recall-live] 🎭 Applying bleed: identity=${identityName}, convId=${conversationId}`);
-      applyAffectBleed(affectBleed, identityName, conversationId);
+      // Debug: log that we fired
+      if (DEBUG_RECALL) {
+        console.error(`[nima-recall-live] FIRED. event keys: ${Object.keys(event || {}).join(",")}, ctx keys: ${Object.keys(ctx || {}).join(",")}`);
+        console.error(`[nima-recall-live] event.prompt type: ${typeof event?.prompt}, length: ${event?.prompt?.length || 0}`);
+        console.error(`[nima-recall-live] event.prompt first 200: ${String(event?.prompt || "").substring(0, 200)}`);
+      }
+      
+      // Skip subagents and heartbeats
+      if (skipSubagents && ctx.sessionKey?.includes(":subagent:")) return;
+      if (ctx.sessionKey?.includes("heartbeat")) return;
+      
+      const userMessage = extractUserMessage(event.prompt);
+      if (DEBUG_RECALL) {
+        console.error(`[nima-recall-live] extracted userMessage (${userMessage.length}): ${userMessage.substring(0, 100)}`);
+        console.error(`[nima-recall-live] 🚀 Running ${FTS_ONLY_MODE ? 'FTS-only' : 'HYBRID'} recall (max ${MAX_RESULTS} results)`);
+      }
+      if (!userMessage || userMessage.length < MIN_QUERY_LENGTH) {
+        if (DEBUG_RECALL) {
+          console.error(`[nima-recall-live] SKIP: too short (${userMessage.length} < ${MIN_QUERY_LENGTH})`);
+        }
+        return;
+      }
+      
+      // Cooldown — don't query if same topic recently
+      const now = Date.now();
+      const queryKey = userMessage.substring(0, 100);
+      if (queryKey === lastQuery && (now - lastQueryTime) < COOLDOWN_MS) {
+        // Return cached result, but still apply bleed
+        if (lastBleed && Object.keys(lastBleed).length > 0) {
+          const conversationId = ctx.conversationId || ctx.chatId || ctx.channelId || null;
+          const identityName = config?.identity_name || "agent";
+          applyAffectBleed(lastBleed, identityName, conversationId);
+        }
+        if (lastResult) return { prependContext: lastResult };
+        return;
+      }
+      
+      if (DEBUG_RECALL) {
+        console.error(`[nima-recall-live] 🚀 About to call quickRecall with: "${userMessage.substring(0,30)}"`);
+      }
+      const result = await quickRecall(userMessage);
+      if (DEBUG_RECALL) {
+        console.error(`[nima-recall-live] ✅ Recall complete: ${result?.memories?.length || 0} memories returned`);
+      }
+      
+      // Handle both old array format and new {memories, affect_bleed} format
+      const memories = Array.isArray(result) ? result : (result?.memories || []);
+      const affectBleed = result?.affect_bleed || null;
+      const formatted = formatMemories(memories);
+      
+      // Debug: ONLY write to file when debug is enabled
+      if (DEBUG_RECALL) {
+        const debugPath = join(os.homedir(), ".nima", "recall_trace.log");
+        try {
+          writeFileSync(debugPath, JSON.stringify({
+            timestamp: new Date().toISOString(),
+            userMessage: userMessage.substring(0, 50),
+            hasResult: !!result,
+            memoriesCount: memories?.length || 0,
+            affectBleed: affectBleed,
+          }, null, 2) + "\n", { flag: "a" });
+        } catch (e) {}
+      }
+      
+      // Apply affect bleed if present (memories nudge current emotional state)
+      if (affectBleed && Object.keys(affectBleed).length > 0) {
+        const identityName = config?.identity_name || "agent";  // Match nima-affect default
+        
+        // Use conversationId extracted from prompt at top of hook
+        if (DEBUG_RECALL) {
+          console.error(`[nima-recall-live] 🎭 Applying bleed: identity=${identityName}, convId=${conversationId}`);
+        }
+        applyAffectBleed(affectBleed, identityName, conversationId);
+      }
+      
+      // Cache (including bleed for re-application on cache hit)
+      lastQuery = queryKey;
+      lastQueryTime = now;
+      lastResult = formatted;
+      lastBleed = affectBleed;
+      
+      if (formatted) {
+        log.info?.(`[nima-recall-live] Injected ${memories.length} memories`);
+        return { prependContext: formatted };
+      }
+    } catch (err) {
+      console.error(`[nima-recall-live] Error: ${err.message}`);
+      return undefined;
     }
-
-    // Cache (including bleed for re-application on cache hit)
-    lastQuery = queryKey;
-    lastQueryTime = now;
-    lastResult = formatted;
-    lastBleed = affectBleed;
-
-    if (formatted) {
-      log.info?.(`[nima-recall-live] Injected ${memories.length} memories`);
-      return { prependContext: formatted };
-    }
-  }, 3, 200), { priority: 15 }); // After nima-affect (priority 10)
+  }, { priority: 15 }); // After nima-affect (priority 10)
   
   // Register before_compaction handler for memory flush
   api.on("before_compaction", async (event, ctx) => {

@@ -1,11 +1,11 @@
 ---
 name: nima-core
-description: Neural Integrated Memory Architecture — Graph-based memory with LadybugDB, semantic search, dynamic affect, lazy recall. Production-ready for AI agents. Learn more at nima-core.ai
-version: 2.0.12
-metadata: {"clawdbot":{"emoji":"🧠","requires":{"bins":["python3","node"],"env":["NIMA_DATA_DIR"]},"optional_env":{"NIMA_EMBEDDER":"voyage|openai|local (default: local)","VOYAGE_API_KEY":"Required when NIMA_EMBEDDER=voyage","OPENAI_API_KEY":"Required when NIMA_EMBEDDER=openai"},"permissions":{"reads":["~/.openclaw/agents/*/sessions/*.jsonl"],"writes":["~/.nima/"],"network":["voyage.ai (conditional)","openai.com (conditional)"]}}}
+description: Neural Integrated Memory Architecture — Persistent memory, emotional intelligence, and semantic recall for AI agents. Memory pruner, VADER affect, 5 embedding providers, zero-config install. Learn more at nima-core.ai
+version: 2.4.0
+metadata: {"openclaw":{"emoji":"🧠","requires":{"bins":["python3","node"],"env":["NIMA_DATA_DIR"]},"optional_env":{"NIMA_EMBEDDER":"voyage|openai|local (default: local)","VOYAGE_API_KEY":"Required when NIMA_EMBEDDER=voyage","OPENAI_API_KEY":"Required when NIMA_EMBEDDER=openai"},"permissions":{"reads":["~/.openclaw/agents/*/sessions/*.jsonl"],"writes":["~/.nima/"],"network":["voyage.ai (conditional)","openai.com (conditional)"]}}}
 ---
 
-# NIMA Core 2.0
+# NIMA Core 2.3
 
 **Neural Integrated Memory Architecture** — A complete memory system for AI agents with emotional intelligence.
 
@@ -71,6 +71,26 @@ openclaw restart
 
 **To disable:** Remove `nima-memory` from `plugins.allow` in `openclaw.json`
 
+## What's New in 2.1
+
+### VADER Affect Analyzer
+- **Contextual Analysis**: Caps boost (1.5x), punctuation emphasis (`!!!`), negation handling, degree modifiers
+- **30+ Idiom Recognition**: Understands phrases like "not bad", "kind of", "sort of"
+- **Panksepp 7-Affect Mapping**: Direct mapping from VADER sentiment to SEEKING, RAGE, FEAR, LUST, CARE, PANIC, PLAY
+- **Guardian Archetype Transformation**: User anger → Agent concern/care response modulation
+- Replaces previous lexicon-based emotion detection
+
+### Noise Remediation (4-Phase)
+1. **Empty Validation** — Filters out null/empty messages
+2. **Heartbeat Filters** — Excludes system noise (`HEARTBEAT_OK`, polling messages)
+3. **Deduplication** — Removes duplicate content within sessions
+4. **Metrics Collection** — Tracks capture quality and filter effectiveness
+
+### Performance Improvements
+- **LadybugDB Circular Import Fix**: Resolved import issues in LadybugDB backend
+- **Increased Token Budget**: Recall budget increased from 500 to 3000 tokens
+- **Connection Pooling**: Improved connection management for LadybugDB backend
+
 ## What's New in 2.0
 
 ### LadybugDB Backend
@@ -99,19 +119,19 @@ openclaw restart
 
 ```text
 OPENCLAW HOOKS
-├── nima-memory      — Three-layer capture (input/contemplation/output)
+├── nima-memory      — Three-layer capture with 4-phase noise remediation
 ├── nima-recall-live — Lazy recall injection (before_agent_start)
-└── nima-affect      — Real-time emotion detection
+└── nima-affect      — VADER-based real-time affect analysis
 
 PYTHON CORE
 ├── nima_core/cognition/
-│   ├── dynamic_affect.py     — Panksepp 7-affect system
+│   ├── dynamic_affect.py       — Panksepp 7-affect system
 │   ├── personality_profiles.py — JSON personality configs
-│   ├── emotion_detection.py  — Lexicon-based emotion→affect mapping
-│   └── archetypes.py         — Baseline affect profiles
+│   ├── vader_affect.py         — VADER sentiment analyzer (NEW v2.1)
+│   └── archetypes.py           — Baseline affect profiles
 └── scripts/
     ├── nima_ladybug_backend.py — LadybugDB CLI
-    └── ladybug_parallel.py    — Parallel migration
+    └── ladybug_parallel.py     — Parallel migration
 
 DATABASE (SQLite or LadybugDB)
 ├── memory_nodes   — Messages with embeddings
@@ -125,13 +145,14 @@ DATABASE (SQLite or LadybugDB)
 |--------|--------|-----------|
 | Text Search | 31ms | **9ms** (3.4x) |
 | Vector Search | External | **18ms** (native) |
-| Database Size | 91MB | **50MB** (44% smaller) |
 | Context Tokens | ~180 | **~30** (6x smaller) |
+| Recall Token Budget | 500 | **3000** (v2.1+) |
 
 ## API
 
 ```python
 from nima_core import DynamicAffectSystem, get_affect_system
+from nima_core.cognition.vader_affect import VaderAffectAnalyzer
 
 # Get singleton instance (thread-safe)
 affect = get_affect_system(identity_name="lilu")
@@ -139,6 +160,11 @@ affect = get_affect_system(identity_name="lilu")
 # Process input and get affect state
 state = affect.process_input("I'm so excited about this project!")
 print(state.current)  # {"SEEKING": 0.72, "PLAY": 0.65, ...}
+
+# Use VADER analyzer directly
+analyzer = VaderAffectAnalyzer()
+result = analyzer.analyze("This is AMAZING!!!")
+print(result.affects)  # {'PLAY': 0.78, 'SEEKING': 0.71, ...}
 
 # Recall memories (via hooks - automatic)
 # Or manually via CLI:
@@ -159,6 +185,7 @@ print(state.current)  # {"SEEKING": 0.72, "PLAY": 0.65, ...}
 
 ### nima-memory (Capture)
 - Captures input, contemplation, output on every turn
+- 4-phase noise remediation (empty validation, heartbeat filters, dedup, metrics)
 - Stores to SQLite or LadybugDB
 - Computes and stores embeddings
 
@@ -166,11 +193,14 @@ print(state.current)  # {"SEEKING": 0.72, "PLAY": 0.65, ...}
 - Injects relevant memories before agent starts
 - Lazy loading — only top N results
 - Deduplicates with injected context
+- Token budget: 3000 (increased from 500 in v2.1)
 
 ### nima-affect (Emotion)
-- Real-time emotion detection from text
+- VADER-based real-time affect analysis from text
+- Contextual analysis (caps, punctuation, negation, degree modifiers)
+- 30+ idiom recognition
 - Maintains Panksepp 7-affect state
-- Modulates response style
+- Guardian archetype transformation (user anger → agent care)
 
 ## Installation Options
 
@@ -195,6 +225,7 @@ pip install nima-core[vector]
 | [docs/DATABASE_OPTIONS.md](./docs/DATABASE_OPTIONS.md) | SQLite vs LadybugDB |
 | [docs/EMBEDDING_PROVIDERS.md](./docs/EMBEDDING_PROVIDERS.md) | Voyage, OpenAI, Local |
 | [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) | Migrate from old versions |
+| [CHANGELOG.md](./CHANGELOG.md) | Release history |
 
 ## Security & Privacy
 
@@ -232,6 +263,17 @@ The `install.sh` script:
 ---
 
 ## Changelog
+
+### v2.1.0 — VADER Affect Analyzer (Feb 17, 2026)
+- **Added:** VADER-based affect analyzer replacing lexicon-based detection
+  - Contextual analysis: caps boost (1.5x), punctuation (!!!), negation, degree modifiers
+  - 30+ idiom recognition
+  - Panksepp 7-affect mapping (SEEKING, RAGE, FEAR, LUST, CARE, PANIC, PLAY)
+  - Guardian archetype transformation (user anger → agent concern/care)
+- **Added:** 4-phase noise remediation (empty validation, heartbeat filters, dedup, metrics)
+- **Fixed:** LadybugDB circular import issue
+- **Changed:** Recall token budget increased from 500 to 3000
+- **Improved:** Connection pooling for LadybugDB backend
 
 ### v2.0.3 — Security Hardening (Feb 15, 2026)
 - **Security:** Fixed path traversal vulnerability in affect_history.py (CRITICAL)

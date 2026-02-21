@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="nima-core",
-    version="2.0.8",
+    version="2.4.0",
     description="Biologically-inspired Dynamic Affect System for AI agents",
     long_description=open("README.md").read() if __import__("os").path.exists("README.md") else "",
     long_description_content_type="text/markdown",
@@ -25,4 +25,10 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Programming Language :: Python :: 3",
     ],
+    entry_points={
+        'console_scripts': [
+            'nima-core=nima_core:main',
+            'nima-dream=nima_core.dream_consolidation:main',
+        ],
+    },
 )

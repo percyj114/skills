@@ -15,7 +15,7 @@
  * Hook Events:
  *   agent_end → extract 3 layers from messages snapshot, bind affect, store
  *
- * Author: NIMA Core Team
+ * Author: David Dorta + Lilu
  * Date: 2026-02-13
  * Updated: 2026-02-13 (Security & correctness fixes)
  */
@@ -55,6 +55,43 @@ let log = console;
 const writeQueue = [];
 let isWriting = false;
 let initPromise = null;
+
+// PHASE 4 FIX: Memory capture metrics for monitoring noise filtering
+const captureMetrics = {
+  totalProcessed: 0,
+  stored: 0,
+  filteredEmpty: 0,
+  filteredNoise: 0,
+  filteredFE: 0,
+  filteredHeartbeat: 0,
+  errors: 0,
+  lastReset: Date.now(),
+  
+  // Log and reset daily
+  logAndReset() {
+    const log = console;
+    log.info?.(`[nima-memory] 📊 Daily Stats: processed=${this.totalProcessed}, stored=${this.stored}, ` +
+      `filtered={empty:${this.filteredEmpty}, noise:${this.filteredNoise}, fe:${this.filteredFE}, hb:${this.filteredHeartbeat}}, ` +
+      `errors=${this.errors}`);
+    
+    // Reset counters
+    this.totalProcessed = 0;
+    this.stored = 0;
+    this.filteredEmpty = 0;
+    this.filteredNoise = 0;
+    this.filteredFE = 0;
+    this.filteredHeartbeat = 0;
+    this.errors = 0;
+    this.lastReset = Date.now();
+  }
+};
+
+// Schedule daily metrics log (if not in test environment)
+if (typeof process !== 'undefined' && !process.env.NIMA_TEST_MODE) {
+  setInterval(() => {
+    captureMetrics.logAndReset();
+  }, 24 * 60 * 60 * 1000); // 24 hours
+}
 
 // =============================================================================
 // CONFIGURATION
@@ -253,17 +290,17 @@ function createMemoryRecord(input, contemplation, output, affect, metadata) {
     timestamp: Date.now(),
     layers: {
       input: {
-        text: truncateText(input.text || "", MAX_TEXT_LENGTH),
-        summary: summarize(input.text, MAX_SUMMARY_INPUT),
-        who: truncateText(input.who || "unknown", 100),
+        text: truncateText(input?.text || "", MAX_TEXT_LENGTH),
+        summary: summarize(input?.text, MAX_SUMMARY_INPUT),
+        who: truncateText(input?.who || "unknown", 100),
       },
       contemplation: {
-        text: truncateText(contemplation.text || "", MAX_TEXT_LENGTH),
-        summary: summarize(contemplation.text, MAX_THINKING_SUMMARY),
+        text: truncateText(contemplation?.text || "", MAX_TEXT_LENGTH),
+        summary: summarize(contemplation?.text, MAX_THINKING_SUMMARY),
       },
       output: {
-        text: truncateText(output.text || "", MAX_TEXT_LENGTH),
-        summary: summarize(output.text, MAX_OUTPUT_SUMMARY),
+        text: truncateText(output?.text || "", MAX_TEXT_LENGTH),
+        summary: summarize(output?.text, MAX_OUTPUT_SUMMARY),
       },
     },
     affect: affect ? { ...affect } : null,
@@ -423,8 +460,21 @@ function isSystemNoise(text) {
     /HEARTBEAT_OK/i,
     /NO_REPLY/i,
     
+    // PHASE 2 FIX: HEARTBEAT instruction mentions (not the literal OK, but context)
+    /Read HEARTBEAT\.md if it exists/i,
+    /If nothing needs attention.*HEARTBEAT_OK/i,
+    
+    // PHASE 2 FIX: Tool output noise
+    /\[object Object\]/,
+    /^undefined$/,
+    /^null$/,
+    /^\[?[\s\S]*"tool":\s*"exec"[\s\S]*\]?$/, // Raw tool JSON
+    /^\{[\s\S]*"tool"[\s\S]*\}$/, // Tool result JSON
+    
     // Empty or too short after cleaning
     /^\.+$/,  // Just dots
+    /^!+$/,   // Just exclamation marks
+    /^\?+$/,  // Just question marks
   ];
 
   return noisePatterns.some(p => p.test(text));
@@ -433,21 +483,53 @@ function isSystemNoise(text) {
 /**
  * Check if a memory would be low quality (not worth storing).
  * Uses FE score heuristic and content quality checks.
+ * PHASE 1 FIX: Added empty string validation and contemplation checks
  */
 function isLowQualityMemory(input, output, contemplation) {
+  // PHASE 1 FIX: Skip empty strings in any layer
+  const inputTrimmed = (input || "").trim();
+  const outputTrimmed = (output || "").trim();
+  const contemplationTrimmed = (contemplation || "").trim();
+  
+  // Skip if ALL layers are empty (nothing to store)
+  if (!inputTrimmed && !outputTrimmed && !contemplationTrimmed) return true;
+  
+  // PHASE 1 FIX: Skip if input is empty string (not just falsy)
+  if (input === "" || (inputTrimmed === "" && input !== undefined)) return true;
+  
+  // PHASE 1 FIX: Skip empty contemplation unless input/output have substance
+  if (contemplation === "" && !inputTrimmed && !outputTrimmed) return true;
+  
   // Skip if input is system noise
   if (isSystemNoise(input)) return true;
   
   // Skip if output is system noise (gateway restarts, etc.)
   if (isSystemNoise(output)) return true;
   
+  // PHASE 1 FIX: Skip if contemplation is system noise
+  if (isSystemNoise(contemplation)) return true;
+  
   // Skip if both input and output are empty
   if (!input && !output) return true;
   
   // Skip very short exchanges (likely noise)
-  const inputLen = (input || "").trim().length;
-  const outputLen = (output || "").trim().length;
+  const inputLen = inputTrimmed.length;
+  const outputLen = outputTrimmed.length;
   if (inputLen < 5 && outputLen < 20) return true;
+  
+  // PHASE 1 FIX: Skip if contemplation is very short and input is also short
+  const contemplationLen = contemplationTrimmed.length;
+  if (contemplationLen < 3 && inputLen < 10 && outputLen < 30) return true;
+  
+  // Skip single-word inputs (likely routine acknowledgment)
+  const inputWords = inputTrimmed.split(/\s+/).filter(w => w.length > 0);
+  if (inputWords.length <= 1 && inputLen < 10) return true;
+  
+  // PHASE 2 FIX: Skip punctuation-only content
+  const isJustPunctuation = /^[^a-zA-Z0-9]*$/.test(inputTrimmed) 
+    && /^[^a-zA-Z0-9]*$/.test(outputTrimmed)
+    && inputLen > 0;
+  if (isJustPunctuation) return true;
   
   return false;
 }
@@ -525,6 +607,12 @@ function extractLayers(messages, ctx) {
         // Last resort: Use conversationId as part of attribution
         inputWho = "user";
       }
+    }
+    
+    // HEURISTIC: If still "unknown" and in main session, default to owner
+    // This handles messages with timestamp prefixes (no channel prefix) in direct chats
+    if (inputWho === "unknown" && ctx?.sessionKey === "agent:main:main") {
+      inputWho = "David Dorta";
     }
 
     // Clean injected context blocks (NIMA RECALL, AFFECT STATE) to prevent feedback loops
@@ -1212,35 +1300,74 @@ export default function nimaMemoryPlugin(api, config) {
   // ─── Single Hook: agent_end ───
   api.on("agent_end", async (event, ctx) => {
     try {
+      // PHASE 4 FIX: Track total processed
+      captureMetrics.totalProcessed++;
+      
       // CONCURRENCY FIX: Atomic initialization with double-check locking
       try {
         await ensureInitialized();
       } catch (initErr) {
         log.error?.(`[nima-memory] DB init failed, skipping capture: ${initErr.message}`);
+        captureMetrics.errors++;
         return;
       }
 
       // Skip subagents and heartbeats
       if (skipSubagents && ctx.sessionKey?.includes(":subagent:")) return;
-      if (skipHeartbeats && ctx.sessionKey?.includes("heartbeat")) return;
+      if (skipHeartbeats && ctx.sessionKey?.includes("heartbeat")) {
+        captureMetrics.filteredHeartbeat++;
+        return;
+      }
 
       // Skip failed runs
-      if (!event.success) return;
+      if (!event.success) {
+        captureMetrics.errors++;
+        return;
+      }
 
       // Extract all three layers from messages
       const layers = extractLayers(event.messages, ctx);
-      if (!layers) return;
+      if (!layers) {
+        captureMetrics.filteredEmpty++;
+        return;
+      }
+
+      // PHASE 1 FIX: Validate contemplation layer - skip if empty but allow if input/output have content
+      if (layers.contemplation && (!layers.contemplation.text || layers.contemplation.text.trim() === "")) {
+        // Contemplation is empty - check if we still have meaningful input/output
+        const hasInput = layers.input?.text?.trim()?.length > 5;
+        const hasOutput = layers.output?.text?.trim()?.length > 20;
+        if (!hasInput && !hasOutput) {
+          log.debug?.(`[nima-memory] Skipping turn with empty contemplation and minimal content`);
+          captureMetrics.filteredEmpty++;
+          return;
+        }
+        // If we have good input/output, set contemplation to null rather than empty string
+        layers.contemplation = null;
+      }
 
       // Skip if no meaningful content (heartbeat acks, etc.)
-      if (!layers.input.text && !layers.output.text) return;
-      if (layers.output.text === "HEARTBEAT_OK" || layers.output.text === "NO_REPLY") return;
+      if (!layers.input?.text && !layers.output?.text) {
+        captureMetrics.filteredEmpty++;
+        return;
+      }
+      if (layers.output.text === "HEARTBEAT_OK" || layers.output.text === "NO_REPLY") {
+        captureMetrics.filteredHeartbeat++;
+        return;
+      }
       
       // Skip if input was purely heartbeat instruction (already filtered by cleanInputText)
-      if (!layers.input.text && !layers.contemplation.text) return;
+      // Guard against null/undefined contemplation
+      const contemplationText = layers.contemplation?.text || "";
+      if (!layers.input.text && !contemplationText) {
+        captureMetrics.filteredEmpty++;
+        return;
+      }
 
       // Skip system noise (gateway restarts, doctor hints, JSON system messages)
-      if (isLowQualityMemory(layers.input.text, layers.output.text, layers.contemplation.text)) {
+      if (isLowQualityMemory(layers.input.text, layers.output.text, contemplationText)) {
         log.debug?.(`[nima-memory] Skipping system noise memory`);
+        captureMetrics.filteredNoise++;
         return;
       }
 
@@ -1260,6 +1387,7 @@ export default function nimaMemoryPlugin(api, config) {
       // Skip monotonous memories (very low FE = repetitive/routine)
       if (feScore < feConfig.minThreshold) {
         log.info?.(`[nima-memory] Skipping low-FE memory (fe=${feScore.toFixed(2)}, threshold=${feConfig.minThreshold})`);
+        captureMetrics.filteredFE++;
         return;
       }
 
@@ -1282,11 +1410,13 @@ export default function nimaMemoryPlugin(api, config) {
       // storeMemory now throws on failure instead of returning false
       try {
         await storeMemory(record);
+        captureMetrics.stored++;
         const topAffect = affect ? Object.entries(affect).sort((a,b) => b[1]-a[1])[0]?.[0] : 'none';
         log.info?.(`[nima-memory] ✅ Stored turn: ${layers.input?.who || 'user'} → thinking → response (affect: ${topAffect})`);
       } catch (storeErr) {
         // AUDIT FIX: Log but don't crash the hook (Issue #1)
         // Error is already logged and backed up by storeMemory
+        captureMetrics.errors++;
         log.error?.(`[nima-memory] ❌ Failed to store memory turn: ${storeErr.message}`);
         
         // If there's a backup file, mention it
@@ -1299,6 +1429,7 @@ export default function nimaMemoryPlugin(api, config) {
       }
     } catch (err) {
       // AUDIT FIX: Log full context on unexpected errors (Issue #1)
+      captureMetrics.errors++;
       log.error?.(`[nima-memory] agent_end error: ${err.message}`);
       if (err.stack) {
         log.debug?.(`[nima-memory] Stack: ${err.stack}`);

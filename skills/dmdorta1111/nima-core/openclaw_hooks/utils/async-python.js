@@ -13,6 +13,8 @@
 
 import { promisify } from "node:util";
 import { execFile } from "node:child_process";
+import { homedir } from "node:os";
+import { join } from "node:path";
 const execFileAsync = promisify(execFile);
 
 // =============================================================================
@@ -142,9 +144,21 @@ export async function execPython(scriptPath, args = [], options = {}) {
 
   try {
     // 3. Execution
-    // Handle case where scriptPath is just "python3" and script is in args
-    const cmd = scriptPath.endsWith(".py") ? "python3" : scriptPath;
-    const finalArgs = scriptPath.endsWith(".py") ? [scriptPath, ...args] : args;
+    // COMPATIBILITY FIX: Use venv Python because real-ladybug only installed there
+    // (system python3 → 3.14.2 doesn't have real-ladybug module)
+    const venvPython = path.join(os.homedir(), ".openclaw", "workspace", ".venv", "bin", "python3");
+    let cmd, finalArgs;
+    if (scriptPath.endsWith(".py")) {
+      cmd = venvPython;
+      finalArgs = [scriptPath, ...args];
+    } else if (scriptPath === "python3") {
+      // Also handle explicit "python3" command → redirect to venv
+      cmd = venvPython;
+      finalArgs = args;
+    } else {
+      cmd = scriptPath;
+      finalArgs = args;
+    }
 
     const { stdout, stderr } = await execFileAsync(cmd, finalArgs, {
       encoding: "utf-8",

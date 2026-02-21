@@ -132,9 +132,26 @@ function sleep(ms) {
 }
 
 /**
+ * Calculate exponential backoff delay with jitter.
+ * Jitter helps prevent thundering herd when multiple processes retry simultaneously.
+ * @param {number} attempt - Retry attempt number (1-indexed)
+ * @param {number} baseDelay - Base delay in milliseconds
+ * @returns {number} Delay with jitter applied
+ */
+function calculateBackoffWithJitter(attempt, baseDelay) {
+  // Exponential backoff: baseDelay * 2^(attempt-1)
+  const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+  // Add +/- 25% jitter to distribute retries
+  const jitter = 0.25;
+  const randomFactor = 1 + (Math.random() * 2 - 1) * jitter; // 0.75 to 1.25
+  return Math.floor(exponentialDelay * randomFactor);
+}
+
+/**
  * Retry wrapper for hook handlers with exponential backoff.
  *
- * Retries the hook function on transient failures with exponential backoff.
+ * Retries the hook function on transient failures with exponential backoff
+ * and jitter to prevent thundering herd when multiple processes fail simultaneously.
  * Uses a simplified transient error check suitable for hook operations.
  *
  * @param {string} hookName - Name of the hook (for logging)
@@ -150,9 +167,11 @@ function sleep(ms) {
  */
 export function withRetry(hookName, hookFn, maxRetries = 3, retryDelay = 100) {
   return async function(event, ctx) {
+    // Clamp maxRetries to ensure at least one attempt
+    const attempts = Math.max(1, maxRetries);
     let lastError;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
       try {
         return await hookFn(event, ctx);
       } catch (err) {
@@ -161,21 +180,21 @@ export function withRetry(hookName, hookFn, maxRetries = 3, retryDelay = 100) {
         // Check if this might be a transient error worth retrying
         const isTransient = isTransientError(err);
 
-        if (!isTransient || attempt >= maxRetries) {
+        if (!isTransient || attempt >= attempts) {
           // Either not transient or out of retries
           break;
         }
 
-        // Calculate exponential backoff delay
-        const delay = retryDelay * Math.pow(2, attempt - 1);
-        console.error(`[withRetry] Hook '${hookName}' failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms: ${err.message}`);
+        // Calculate exponential backoff delay with jitter
+        const delay = calculateBackoffWithJitter(attempt, retryDelay);
+        console.error(`[withRetry] Hook '${hookName}' failed (attempt ${attempt}/${attempts}), retrying in ${delay}ms: ${err.message}`);
 
         await sleep(delay);
       }
     }
 
     // All retries exhausted or non-transient error
-    logHookError(hookName, lastError);
+    logHookError(hookName, lastError || new Error(`Hook '${hookName}' failed without capturing an error`));
     return undefined;
   };
 }

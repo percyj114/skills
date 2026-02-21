@@ -1,31 +1,44 @@
 #!/usr/bin/env python3
 """
-NIMA Lazy Reconstruction Recall v4 - LadybugDB Backend
+NIMA Living Memory Recall v6 - LadybugDB Backend
 =======================================================
 
-Uses LadybugDB with HNSW vector index for memory retrieval.
+Phase 3: Spontaneous Recall (Serendipity)
+- Adds weighted scoring: Similarity + Strength + Recency + Surprise
+- Adds dismissal tracking (negative feedback loop)
 
-Author: NIMA Core Team
-Date: 2026-02-14
+Author: Lilu + David Dorta
+Date: 2026-02-17
 """
 
 import sys
 import os
 import time
 import json
+import math
+import random
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
-# Add venv path
-sys.path.insert(0, os.path.expanduser("~/.openclaw/workspace/.venv/lib/python3.11/site-packages"))
-
-import real_ladybug as lb
+# Import real_ladybug — try system-wide first, then venv fallback
+try:
+    import real_ladybug as lb
+except ImportError:
+    sys.path.insert(0, os.path.expanduser("~/.openclaw/workspace/.venv/lib/python3.13/site-packages"))
+    import real_ladybug as lb
 
 # Config
 LADYBUG_DB = os.path.expanduser("~/.nima/memory/ladybug.lbug")
 MAX_RESULTS = 7
 TIME_WINDOW_DAYS = 90
 EMBEDDING_THRESHOLD = 0.35
+GHOST_THRESHOLD = 0.1
+
+# Phase 3 Weights
+W_SIMILARITY = 0.5
+W_STRENGTH = 0.2
+W_RECENCY = 0.2
+W_SURPRISE = 0.1
 
 # =============================================================================
 # CONNECTION MANAGEMENT
@@ -41,12 +54,10 @@ def connect():
     if _conn is None:
         _db = lb.Database(LADYBUG_DB)
         _conn = lb.Connection(_db)
-        # Load vector extension
         try:
             _conn.execute("LOAD VECTOR")
         except:
             pass
-    
     return _conn
 
 def disconnect():
@@ -56,31 +67,100 @@ def disconnect():
     _conn = None
 
 # =============================================================================
+# ECOLOGY LOGIC
+# =============================================================================
+
+def calculate_current_strength(strength: float, decay_rate: float, last_accessed: int, timestamp: int) -> float:
+    """Apply Ebbinghaus forgetting curve."""
+    start_time = last_accessed if last_accessed > 0 else timestamp
+    if start_time == 0:
+        return strength
+    
+    now_ms = int(time.time() * 1000)
+    elapsed_ms = max(0, now_ms - start_time)
+    elapsed_hours = elapsed_ms / 3600000.0
+    
+    try:
+        retention = math.exp(-decay_rate * elapsed_hours)
+        return strength * retention
+    except OverflowError:
+        return 0.0
+
+def calculate_ecology_score(base_similarity: float, strength: float, timestamp: int, dismissal_count: int) -> float:
+    """
+    Phase 3: Weighted Scoring Algorithm
+    
+    Score = (Sim * 0.5) + (Strength * 0.2) + (Recency * 0.2) + (Surprise * 0.1)
+    
+    Penalties:
+    - Dismissals: exponential penalty (0.5 ^ count)
+    """
+    now_ms = int(time.time() * 1000)
+    
+    # 1. Recency (0.0 to 1.0)
+    # Decay over ~100 days
+    age_days = (now_ms - timestamp) / 86_400_000
+    recency = math.exp(-0.01 * age_days)
+    
+    # 2. Surprise (Serendipity)
+    # Random factor to surface unexpected memories
+    # 10% chance of a high surprise boost, otherwise low
+    if random.random() < 0.1:
+        surprise = random.uniform(0.5, 1.0)
+    else:
+        surprise = random.uniform(0.0, 0.2)
+        
+    # 3. Dismissal Penalty
+    # If user has dismissed this memory before, kill the score
+    penalty = math.pow(0.5, dismissal_count)
+    
+    # Weighted Sum
+    score = (
+        (base_similarity * W_SIMILARITY) +
+        (strength * W_STRENGTH) +
+        (recency * W_RECENCY) +
+        (surprise * W_SURPRISE)
+    )
+    
+    return score * penalty
+
+def update_memory_stats(memory_ids: List[int]):
+    """Hebbian Reinforcement."""
+    if not memory_ids:
+        return
+    conn = connect()
+    now = int(time.time() * 1000)
+    ids_str = "[" + ",".join(str(mid) for mid in memory_ids) + "]"
+    
+    try:
+        conn.execute(f"""
+            MATCH (n:MemoryNode)
+            WHERE n.id IN {ids_str}
+            SET n.strength = CASE WHEN n.strength + 0.1 > 1.0 THEN 1.0 ELSE n.strength + 0.1 END,
+                n.decay_rate = CASE WHEN n.decay_rate * 0.9 < 0.001 THEN 0.001 ELSE n.decay_rate * 0.9 END,
+                n.last_accessed = {now}
+        """)
+    except Exception as e:
+        print(f"[ladybug_recall] Stats update warning: {e}", file=sys.stderr)
+
+# =============================================================================
 # SEARCH FUNCTIONS
 # =============================================================================
 
 def text_search(query: str, limit: int = MAX_RESULTS) -> List[Dict]:
-    """Search memories by text content (CONTAINS).
-    
-    SECURITY: Uses parameterized queries to prevent Cypher injection.
-    Fixed 2026-02-16 - CVE pending assignment.
-    """
     conn = connect()
-    
     start = time.time()
-    # SECURITY FIX: No string escaping - use parameterized queries instead
-    
     min_timestamp = int((datetime.now() - timedelta(days=TIME_WINDOW_DAYS)).timestamp() * 1000)
     
     try:
-        # SECURITY FIX: Parameterized query prevents injection
         result = conn.execute("""
             MATCH (n:MemoryNode)
             WHERE (n.text CONTAINS $query OR n.summary CONTAINS $query)
             AND n.timestamp >= $min_ts
-            RETURN n.id, n.text, n.summary, n.who, n.layer, n.timestamp
+            RETURN n.id, n.text, n.summary, n.who, n.layer, n.timestamp, 
+                   n.strength, n.decay_rate, n.last_accessed, n.is_ghost, n.dismissal_count
             LIMIT $result_limit
-        """, {"query": query, "min_ts": min_timestamp, "result_limit": limit * 2})
+        """, {"query": query, "min_ts": min_timestamp, "result_limit": limit * 3})
         
         memories = []
         for row in result:
@@ -91,107 +171,44 @@ def text_search(query: str, limit: int = MAX_RESULTS) -> List[Dict]:
                 'who': row[3] or "unknown",
                 'layer': row[4] or "unknown",
                 'timestamp': row[5] or 0,
+                'strength': row[6] if row[6] is not None else 1.0,
+                'decay_rate': row[7] if row[7] is not None else 0.01,
+                'last_accessed': row[8] if row[8] is not None else 0,
+                'is_ghost': row[9] if row[9] is not None else False,
+                'dismissal_count': row[10] if row[10] is not None else 0,
                 'fts_score': 1.0
             })
         
-        elapsed = (time.time() - start) * 1000
-        return memories, elapsed
+        return memories, (time.time() - start) * 1000
     except Exception as e:
         print(f"[ladybug_recall] Text search error: {e}", file=sys.stderr)
         return [], 0
 
 def vector_search(query_embedding: List[float], limit: int = MAX_RESULTS) -> List[Dict]:
-    """Search memories by vector similarity (HNSW).
-    
-    SECURITY: Uses parameterized queries to prevent injection.
-    Fixed 2026-02-16 - CVE pending assignment.
-    """
     conn = connect()
-    
     start = time.time()
     
-    # SECURITY FIX: Validate embedding is a list of floats only
     if not isinstance(query_embedding, list):
-        print(f"[ladybug_recall] Invalid embedding type: {type(query_embedding)}", file=sys.stderr)
         return [], 0
-    
-    # Sanitize: ensure all values are valid floats (no injection via array elements)
-    try:
-        sanitized_embedding = [float(x) for x in query_embedding]
-    except (ValueError, TypeError) as e:
-        print(f"[ladybug_recall] Invalid embedding values: {e}", file=sys.stderr)
-        return [], 0
-    
     min_timestamp = int((datetime.now() - timedelta(days=TIME_WINDOW_DAYS)).timestamp() * 1000)
     
     try:
-        # SECURITY FIX: Parameterized query for vector search
-        # Note: LadybugDB QUERY_VECTOR_INDEX uses positional params for vectors
         result = conn.execute("""
-            CALL QUERY_VECTOR_INDEX(
-                'MemoryNode',
-                'embedding_idx',
-                $embedding,
-                $top_k
-            )
-            RETURN node.id, node.text, node.summary, node.who, node.layer, node.timestamp, distance
+            CALL QUERY_VECTOR_INDEX('MemoryNode', 'embedding_idx', $embedding, $top_k)
+            RETURN node.id, node.text, node.summary, node.who, node.layer, node.timestamp, distance,
+                   node.strength, node.decay_rate, node.last_accessed, node.is_ghost, node.dismissal_count
             ORDER BY distance
-        """, {"embedding": sanitized_embedding, "top_k": limit * 3})
+        """, {"embedding": query_embedding, "top_k": limit * 4})
         
         memories = []
         for row in result:
-            # Convert distance to similarity score (1 - distance for cosine)
             distance = row[6] if row[6] is not None else 1.0
             score = 1.0 - distance
-            
             if score < EMBEDDING_THRESHOLD:
                 continue
-            
-            timestamp = row[5] or 0
-            if timestamp < min_timestamp:
+            if (row[5] or 0) < min_timestamp:
                 continue
             
-            memories.append({
-                'id': row[0],
-                'text': row[1] or "",
-                'summary': row[2] or "",
-                'who': row[3] or "unknown",
-                'layer': row[4] or "unknown",
-                'timestamp': timestamp,
-                'emb_score': score
-            })
-        
-        elapsed = (time.time() - start) * 1000
-        return memories[:limit], elapsed
-    except Exception as e:
-        print(f"[ladybug_recall] Vector search error: {e}", file=sys.stderr)
-        return [], 0
-
-def who_search(who: str, limit: int = MAX_RESULTS) -> List[Dict]:
-    """Search memories by who said it.
-    
-    SECURITY: Uses parameterized queries to prevent Cypher injection.
-    Fixed 2026-02-16 - CVE pending assignment.
-    """
-    conn = connect()
-    
-    start = time.time()
-    # SECURITY FIX: No string escaping - use parameterized queries instead
-    
-    min_timestamp = int((datetime.now() - timedelta(days=TIME_WINDOW_DAYS)).timestamp() * 1000)
-    
-    try:
-        # SECURITY FIX: Parameterized query prevents injection
-        result = conn.execute("""
-            MATCH (n:MemoryNode {who: $who_param})
-            WHERE n.timestamp >= $min_ts
-            RETURN n.id, n.text, n.summary, n.who, n.layer, n.timestamp
-            ORDER BY n.timestamp DESC
-            LIMIT $result_limit
-        """, {"who_param": who, "min_ts": min_timestamp, "result_limit": limit})
-        
-        memories = []
-        for row in result:
             memories.append({
                 'id': row[0],
                 'text': row[1] or "",
@@ -199,124 +216,95 @@ def who_search(who: str, limit: int = MAX_RESULTS) -> List[Dict]:
                 'who': row[3] or "unknown",
                 'layer': row[4] or "unknown",
                 'timestamp': row[5] or 0,
-                'who_score': 1.0
+                'emb_score': score,
+                'strength': row[7] if row[7] is not None else 1.0,
+                'decay_rate': row[8] if row[8] is not None else 0.01,
+                'last_accessed': row[9] if row[9] is not None else 0,
+                'is_ghost': row[10] if row[10] is not None else False,
+                'dismissal_count': row[11] if row[11] is not None else 0
             })
         
-        elapsed = (time.time() - start) * 1000
-        return memories, elapsed
+        return memories, (time.time() - start) * 1000
     except Exception as e:
-        print(f"[ladybug_recall] Who search error: {e}", file=sys.stderr)
+        print(f"[ladybug_recall] Vector search error: {e}", file=sys.stderr)
         return [], 0
 
 def hybrid_search(query: str, query_embedding: List[float], 
                   limit: int = MAX_RESULTS,
                   text_weight: float = 0.3,
                   who_boost: float = 1.2) -> List[Dict]:
-    """
-    Hybrid search combining text, vector, and who-based signals.
     
-    Strategy:
-    1. Get vector search results (semantic similarity)
-    2. Get text search results (keyword matches)
-    3. Combine and deduplicate, scoring each
-    4. Boost score for "self" or known users
-    5. Return top N by combined score
-    """
-    # Get results from both methods
     text_results, text_time = text_search(query, limit * 2)
     vector_results, vector_time = vector_search(query_embedding, limit * 2)
     
-    # Combine and deduplicate
     seen_ids = {}
     
-    # Add vector results (higher priority for semantic matches)
-    for m in vector_results:
-        score = m.get('emb_score', 0.5) * (1 - text_weight)
+    # Helper to process result
+    def process_result(m, base_score):
+        curr_strength = calculate_current_strength(
+            m['strength'], m['decay_rate'], m['last_accessed'], m['timestamp']
+        )
+        is_ghost = m['is_ghost'] or (curr_strength < GHOST_THRESHOLD)
+        
+        # Phase 3: Spontaneous Scoring
+        eco_score = calculate_ecology_score(
+            base_score, curr_strength, m['timestamp'], m['dismissal_count']
+        )
+        
         if m.get('who') == 'self':
-            score *= who_boost
-        m['combined_score'] = score
-        seen_ids[m['id']] = m
-    
-    # Add/boost text results
-    for m in text_results:
+            eco_score *= who_boost
+            
+        # Boost existing
         if m['id'] in seen_ids:
-            # Boost existing score
-            seen_ids[m['id']]['combined_score'] += text_weight
+            seen_ids[m['id']]['combined_score'] += (eco_score * 0.5) # Diminishing returns
         else:
-            # Add new result
-            score = text_weight
-            if m.get('who') == 'self':
-                score *= who_boost
-            m['combined_score'] = score
+            m['combined_score'] = eco_score
+            m['current_strength'] = curr_strength
+            m['is_ghost'] = is_ghost
             seen_ids[m['id']] = m
-    
-    # Sort by combined score
+
+    for m in vector_results:
+        process_result(m, m.get('emb_score', 0.5))
+        
+    for m in text_results:
+        # Text matches get fixed relevance of 1.0 * text_weight
+        process_result(m, 1.0 * text_weight)
+        
+    # Sort
     combined = sorted(seen_ids.values(), key=lambda x: x['combined_score'], reverse=True)
     
-    # Format output
     results = []
+    ids_to_reinforce = []
+    
     for m in combined[:limit]:
+        summary = m['summary'] or m['text']
+        text = m['text']
+        
+        if m['is_ghost']:
+            summary = "👻 [Faded Memory] " + summary[:50] + "..."
+            text = "[Memory has faded. Details are ghostly.]"
+            
         results.append({
             'turn_id': f"ladybug:{m['id']}",
             'timestamp': m['timestamp'],
             'who': m['who'],
             'layer': m['layer'],
-            'summary': m['summary'][:200] if m['summary'] else m['text'][:200],
-            'text': m['text'][:500],
+            'summary': summary[:200],
+            'text': text[:500],
             'score': m['combined_score'],
+            'strength': m['current_strength'],
+            'is_ghost': m['is_ghost'],
             'time_ms': text_time + vector_time
         })
+        ids_to_reinforce.append(m['id'])
+        
+    if ids_to_reinforce:
+        update_memory_stats(ids_to_reinforce)
     
     return results
 
-def get_related(node_id: int, limit: int = 5) -> List[Dict]:
-    """Get related memories through graph edges.
-    
-    SECURITY: Uses parameterized queries to prevent Cypher injection.
-    Fixed 2026-02-16 - CVE pending assignment.
-    """
-    conn = connect()
-    
-    start = time.time()
-    
-    # SECURITY FIX: Validate node_id is an integer
-    try:
-        validated_node_id = int(node_id)
-    except (ValueError, TypeError):
-        print(f"[ladybug_recall] Invalid node_id: {node_id}", file=sys.stderr)
-        return [], 0
-    
-    try:
-        # SECURITY FIX: Parameterized query prevents injection
-        result = conn.execute("""
-            MATCH (n:MemoryNode {id: $node_id})-[r:relates_to]-(related:MemoryNode)
-            RETURN related.id, related.text, related.summary, related.who, related.layer, 
-                   related.timestamp, r.weight, r.relation
-            ORDER BY r.weight DESC
-            LIMIT $result_limit
-        """, {"node_id": validated_node_id, "result_limit": limit})
-        
-        memories = []
-        for row in result:
-            memories.append({
-                'id': row[0],
-                'text': row[1] or "",
-                'summary': row[2] or "",
-                'who': row[3] or "unknown",
-                'layer': row[4] or "unknown",
-                'timestamp': row[5] or 0,
-                'weight': row[6] if row[6] else 1.0,
-                'relation': row[7] or "related"
-            })
-        
-        elapsed = (time.time() - start) * 1000
-        return memories, elapsed
-    except Exception as e:
-        print(f"[ladybug_recall] Get related error: {e}", file=sys.stderr)
-        return [], 0
-
 # =============================================================================
-# COMPATIBILITY LAYER (drop-in replacement for lazy_recall_v3)
+# COMPATIBILITY LAYER
 # =============================================================================
 
 def lazy_recall(query: str, 
@@ -324,41 +312,47 @@ def lazy_recall(query: str,
                  who: Optional[str] = None,
                  top_k: int = MAX_RESULTS,
                  verbose: bool = False) -> List[Dict]:
-    """
-    Main recall function - compatible with lazy_recall_v3 interface.
-    
-    Args:
-        query: Text query
-        query_embedding: Optional embedding vector for semantic search
-        who: Optional who filter
-        top_k: Maximum results to return
-        verbose: Print timing info
-    
-    Returns:
-        List of memory dicts with turn_id, timestamp, who, summary, score
-    """
     start = time.time()
+    if verbose: print(f"[ladybug_recall] Query: '{query[:50]}...'", file=sys.stderr)
     
-    if verbose:
-        print(f"[ladybug_recall] Query: '{query[:50]}...'", file=sys.stderr)
-    
-    # If we have an embedding, do hybrid search
     if query_embedding:
         results = hybrid_search(query, query_embedding, limit=top_k)
     else:
-        # Text-only search
-        text_results, text_time = text_search(query, limit=top_k)
-        results = [{
-            'turn_id': f"ladybug:{m['id']}",
-            'timestamp': m['timestamp'],
-            'who': m['who'],
-            'layer': m['layer'],
-            'summary': m['summary'][:200] if m['summary'] else m['text'][:200],
-            'text': m['text'][:500],
-            'score': m.get('fts_score', 1.0),
-            'time_ms': text_time
-        } for m in text_results]
+        # Text-only fallback
+        raw_results, text_time = text_search(query, limit=top_k)
+        results = []
+        ids_to_reinforce = []
+        for m in raw_results:
+            curr_strength = calculate_current_strength(m['strength'], m['decay_rate'], m['last_accessed'], m['timestamp'])
+            eco_score = calculate_ecology_score(1.0, curr_strength, m['timestamp'], m['dismissal_count'])
+            is_ghost = m['is_ghost'] or (curr_strength < GHOST_THRESHOLD)
+            
+            summary = m['summary'] or m['text']
+            text = m['text']
+            if is_ghost:
+                summary = "👻 " + summary[:50]
+                text = "[Ghost]"
+                
+            results.append({
+                'turn_id': f"ladybug:{m['id']}",
+                'timestamp': m['timestamp'],
+                'who': m['who'],
+                'layer': m['layer'],
+                'summary': summary[:200],
+                'text': text[:500],
+                'score': eco_score,
+                'strength': curr_strength,
+                'time_ms': text_time
+            })
+            ids_to_reinforce.append(m['id'])
+            
+        if ids_to_reinforce:
+            update_memory_stats(ids_to_reinforce)
     
+    # Apply who filter if specified
+    if who:
+        results = [r for r in results if r.get("who") == who]
+            
     if verbose:
         total_time = (time.time() - start) * 1000
         print(f"[ladybug_recall] Found {len(results)} results in {total_time:.1f}ms", file=sys.stderr)
@@ -371,22 +365,15 @@ def lazy_recall(query: str,
 
 def main():
     import argparse
-    
     parser = argparse.ArgumentParser(description="NIMA LadybugDB Recall")
     parser.add_argument("query", nargs="?", default="memory", help="Search query")
     parser.add_argument("--top", type=int, default=5, help="Top results")
     parser.add_argument("--who", type=str, help="Filter by who")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
-    
     args = parser.parse_args()
     
-    results = lazy_recall(
-        args.query,
-        who=args.who,
-        top_k=args.top,
-        verbose=args.verbose
-    )
+    results = lazy_recall(args.query, who=args.who, top_k=args.top, verbose=args.verbose)
     
     if args.json:
         print(json.dumps(results, indent=2))
@@ -394,8 +381,9 @@ def main():
         print(f"\n🔍 Query: '{args.query}'")
         print(f"   Found {len(results)} results\n")
         for i, r in enumerate(results):
+            strength_bar = "█" * int(r.get('strength', 0) * 10)
             print(f"{i+1}. [{r.get('who', '?')}] {r.get('summary', '')[:100]}...")
-            print(f"   Score: {r.get('score', 0):.3f} | Time: {r.get('time_ms', 0):.1f}ms\n")
+            print(f"   Life: {strength_bar} ({r.get('strength',0):.2f}) | Score: {r.get('score', 0):.3f}\n")
 
 if __name__ == "__main__":
     main()

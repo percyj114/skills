@@ -24,6 +24,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "
 import { join } from "node:path";
 import os from "node:os";
 import { LEXICON, EMOJI_AFFECTS } from "./emotion-lexicon.js";
+import { analyzeAffect } from "./vader-affect.js";
 import { resilientHook, resilientHookSync } from "../shared/resilient.js";
 
 // =============================================================================
@@ -79,10 +80,10 @@ function sanitizePathComponent(name, maxLength = 100) {
   return name;
 }
 
-// Dynamics
-const MOMENTUM = 0.85;
-const BLEND_STRENGTH = 0.25;
-const BASELINE_PULL = 0.02;
+// Dynamics — tuned for responsive emotional shifts
+const MOMENTUM = 0.3;
+const BLEND_STRENGTH = 0.8;
+const BASELINE_PULL = 0.005;
 const DECAY_RATE = 0.1; // per hour
 
 // =============================================================================
@@ -328,48 +329,156 @@ function blendAffect(currentVals, inputAffects, intensity, baseline) {
   });
 }
 
+/**
+ * Sleep helper for retry backoff.
+ * @param {number} ms - Milliseconds to sleep
+ * @returns {Promise<void>}
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate exponential backoff delay with jitter.
+ * Jitter helps prevent thundering herd when multiple processes retry simultaneously.
+ * @param {number} attempt - Retry attempt number (0-indexed)
+ * @param {number} baseDelay - Base delay in milliseconds
+ * @returns {number} Delay with jitter applied
+ */
+function calculateBackoff(attempt, baseDelay = 10) {
+  // Exponential backoff: baseDelay * 2^attempt
+  const exponentialDelay = baseDelay * Math.pow(2, attempt);
+  // Add +/- 25% jitter to distribute retries
+  const jitter = 0.25;
+  const randomFactor = 1 + (Math.random() * 2 - 1) * jitter; // 0.75 to 1.25
+  return Math.floor(exponentialDelay * randomFactor);
+}
+
+/**
+ * Synchronous busy-wait for very short delays in sync context.
+ * Only used for sub-millisecond waits; for longer delays we skip the retry.
+ * @param {number} ms - Milliseconds to wait (max 5ms recommended)
+ */
+function busyWait(ms) {
+  const start = Date.now();
+  while (Date.now() - start < ms) {
+    // Spin
+  }
+}
+
+/**
+ * Core affect state update logic with optimistic locking.
+ * Shared between sync and async variants.
+ * @returns {Object} - { success: boolean, current: Object, shouldRetry: boolean }
+ */
+function updateAffectStateCore(statePath, detectedAffects, intensity, baseline, attempt) {
+  const state = loadState(statePath, baseline);
+  const initialVersion = state.version;
+
+  let values = applyDecay(state.current.values, baseline, state.current.timestamp);
+
+  if (Object.keys(detectedAffects).length > 0) {
+    values = blendAffect(values, detectedAffects, intensity, baseline);
+  }
+
+  state.current = {
+    values,
+    timestamp: Date.now() / 1000,
+    source: "plugin_lexicon",
+    named: Object.fromEntries(AFFECTS.map((name, i) => [name, values[i]])),
+  };
+  state.saved_at = new Date().toISOString();
+
+  // OPTIMISTIC LOCK CHECK
+  // Verify version hasn't changed on disk before writing
+  try {
+    if (existsSync(statePath)) {
+      const onDisk = JSON.parse(readFileSync(statePath, "utf-8"));
+      if ((onDisk.version || 1) !== initialVersion) {
+        // Conflict: Version mismatch (someone else wrote)
+        return { success: false, shouldRetry: true, conflict: true };
+      }
+    }
+  } catch (e) {
+    // Read failed (locked/deleted), treat as conflict
+    return { success: false, shouldRetry: true, conflict: false, error: e };
+  }
+
+  state.version = initialVersion + 1;
+  saveState(statePath, state);
+  return { success: true, current: state.current };
+}
+
+/**
+ * Update affect state with exponential backoff retry (synchronous version).
+ * Uses busy-wait for very short delays only; skips retry for longer delays.
+ * This is safe for message_received hook which must be sync.
+ */
 function updateAffectState(identityName, detectedAffects, intensity, baseline, conversationId = null) {
   const statePath = getStatePath(identityName, conversationId);
   const MAX_RETRIES = 5;
-  
+  const BASE_DELAY_MS = 5; // Start very small for sync context
+  const MAX_SYNC_DELAY_MS = 10; // Only busy-wait up to 10ms per retry
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const state = loadState(statePath, baseline);
-    const initialVersion = state.version;
-    
-    let values = applyDecay(state.current.values, baseline, state.current.timestamp);
-    
-    if (Object.keys(detectedAffects).length > 0) {
-      values = blendAffect(values, detectedAffects, intensity, baseline);
+    const result = updateAffectStateCore(statePath, detectedAffects, intensity, baseline, attempt);
+
+    if (result.success) {
+      return result.current;
     }
-    
-    state.current = {
-      values,
-      timestamp: Date.now() / 1000,
-      source: "plugin_lexicon",
-      named: Object.fromEntries(AFFECTS.map((name, i) => [name, values[i]])),
-    };
-    state.saved_at = new Date().toISOString();
-    
-    // OPTIMISTIC LOCK CHECK
-    // Verify version hasn't changed on disk before writing
-    try {
-      if (existsSync(statePath)) {
-        const onDisk = JSON.parse(readFileSync(statePath, "utf-8"));
-        if ((onDisk.version || 1) !== initialVersion) {
-          // Conflict: Version mismatch (someone else wrote), retry
-          continue;
-        }
-      }
-    } catch (e) {
-      // Read failed (locked/deleted), treat as conflict and retry
-      continue;
+
+    if (!result.shouldRetry || attempt >= MAX_RETRIES - 1) {
+      break;
     }
-    
-    state.version = initialVersion + 1;
-    saveState(statePath, state);
-    return state.current;
+
+    // Calculate backoff delay
+    const delay = calculateBackoff(attempt, BASE_DELAY_MS);
+
+    if (delay <= MAX_SYNC_DELAY_MS) {
+      // Short enough for busy-wait
+      busyWait(delay);
+      const reason = result.conflict ? "contention" : "read error";
+      console.error(`[nima-affect] ${reason} retry ${attempt + 1}/${MAX_RETRIES} after ${delay}ms wait`);
+    } else {
+      // Too long for sync context, skip retry but log it
+      const reason = result.conflict ? "contention" : "read error";
+      console.error(`[nima-affect] ${reason} detected (would wait ${delay}ms, skipping retry ${attempt + 1}/${MAX_RETRIES} in sync context)`);
+      break;
+    }
   }
-  
+
+  console.error("[nima-affect] Failed to update state after retries (contention)");
+  return loadState(statePath, baseline).current;
+}
+
+/**
+ * Update affect state with exponential backoff retry (async version).
+ * Uses proper async sleep for backoff delays.
+ * This is safe for before_agent_start hook which is async.
+ */
+async function updateAffectStateAsync(identityName, detectedAffects, intensity, baseline, conversationId = null) {
+  const statePath = getStatePath(identityName, conversationId);
+  const MAX_RETRIES = 5;
+  const BASE_DELAY_MS = 10; // Can afford longer delays in async context
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const result = updateAffectStateCore(statePath, detectedAffects, intensity, baseline, attempt);
+
+    if (result.success) {
+      return result.current;
+    }
+
+    if (!result.shouldRetry || attempt >= MAX_RETRIES - 1) {
+      break;
+    }
+
+    // Calculate backoff with jitter and sleep
+    const delay = calculateBackoff(attempt, BASE_DELAY_MS);
+    const reason = result.conflict ? "contention" : "read error";
+    console.error(`[nima-affect] ${reason} retry ${attempt + 1}/${MAX_RETRIES} after ${delay}ms wait`);
+    await sleep(delay);
+  }
+
   console.error("[nima-affect] Failed to update state after retries (contention)");
   return loadState(statePath, baseline).current;
 }
@@ -520,21 +629,34 @@ export default function register(api) {
     log.info(`[nima-affect] ${detectMs}ms | ${matchCount} words | [${topAffects}] → ${dominant.name}(${dominant.val.toFixed(2)}) | intensity=${signals?.intensityMultiplier?.toFixed(2) || "1.00"}x`);
   }, undefined));
   
-  // ─── Hook 2: before_agent_start (blocking, injects context) ───
+  // ─── Hook 2: before_agent_start (blocking, VADER detection + inject context) ───
   api.on("before_agent_start", resilientHook("before_agent_start", async (event, ctx) => {
     if (skipSubagents && ctx.sessionKey?.includes(":subagent:")) return;
 
     // Extract conversation ID for isolation (if available)
     const conversationId = ctx.conversationId || ctx.channelId || ctx.chatId || null;
 
-    // Also detect from prompt (belt & suspenders with message_received)
-    const { affects, matchCount } = detectEmotions(event.prompt);
+    // Extract user message from event.prompt
+    // Format: "[Tue 2026-02-17 08:18 EST] message text\n[message_id: xxx]"
+    let detectTarget = "";
+    const prompt = event.prompt || "";
+    if (prompt) {
+      detectTarget = prompt
+        // Remove [message_id: ...] suffix
+        .replace(/\[message_id:[^\]]*\]/g, "")
+        // Remove timestamp prefix [Day YYYY-MM-DD HH:MM TZ]
+        .replace(/^\[[\w\s:+-]+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}[^\]]*\]\s*/gm, "")
+        // Remove [Telegram ...] prefix
+        .replace(/^\[Telegram[^\]]*\]\s*/gm, "")
+        .trim();
+    }
 
-    if (matchCount > 0) {
-      const intensity = Math.min(1.0,
-        Object.values(affects).reduce((sum, v) => sum + v, 0) / Math.max(1, Object.keys(affects).length)
-      );
-      updateAffectState(identityName, affects, intensity, baseline, conversationId);
+    // VADER analysis — deterministic, no API calls
+    const result = analyzeAffect(detectTarget);
+
+    if (result.matchCount > 0) {
+      // Use async variant for proper backoff in async context
+      await updateAffectStateAsync(identityName, result.affects, result.intensity, baseline, conversationId);
     }
 
     const affect = getCurrentAffect(identityName, baseline, conversationId);

@@ -3,7 +3,7 @@
 LadybugDB storage for NIMA Memory.
 Called from index.js via execFileSync.
 
-Author: NIMA Core Team
+Author: Lilu
 Date: 2026-02-15
 """
 import sys
@@ -11,62 +11,41 @@ import json
 import os
 import time
 
-# Add venv path for real_ladybug
-VENV_PATHS = [
-    os.path.expanduser("~/.openclaw/workspace/.venv/lib/python3.11/site-packages"),
-    os.path.expanduser("~/.openclaw/workspace/.venv/lib/python3.13/site-packages"),
-    os.path.expanduser("~/.openclaw/workspace/.venv/lib/python3.14/site-packages"),
-]
-for vp in VENV_PATHS:
-    if os.path.exists(vp):
-        sys.path.insert(0, vp)
-        break
-
+# Try importing real_ladybug directly (installed for python3.13 system-wide)
+# Avoid injecting venv paths — causes circular import when wrong Python version's
+# partially-initialized package gets loaded first
 try:
     import real_ladybug as lb
     LADYBUG_AVAILABLE = True
 except ImportError:
+    # Fallback: try venv paths
+    VENV_PATHS = [
+        os.path.expanduser("~/.openclaw/workspace/.venv/lib/python3.13/site-packages"),
+        os.path.expanduser("~/.openclaw/workspace/.venv/lib/python3.11/site-packages"),
+    ]
     LADYBUG_AVAILABLE = False
+    for vp in VENV_PATHS:
+        if os.path.exists(vp) and vp not in sys.path:
+            sys.path.insert(0, vp)
+            try:
+                import real_ladybug as lb
+                LADYBUG_AVAILABLE = True
+                break
+            except ImportError:
+                continue
 
 LADYBUG_DB = os.path.expanduser("~/.nima/memory/ladybug.lbug")
 MAX_TEXT_LENGTH = 2000
 MAX_SUMMARY_LENGTH = 500
 
 
-def get_next_id(conn, retry_offset: int = 0) -> int:
-    """
-    Get next available node ID with retry offset for concurrency.
-    
-    Args:
-        conn: Database connection
-        retry_offset: Offset to add for retry attempts (0 for first try)
-        
-    Returns:
-        Next available ID
-    """
+def get_next_id(conn) -> int:
+    """Get next available node ID."""
     result = conn.execute("MATCH (n:MemoryNode) RETURN max(n.id) as max_id")
     for row in result:
         max_id = row[0]
-        return (max_id or 0) + 1 + retry_offset
-    return 1 + retry_offset
-
-
-def get_next_turn_id(conn, retry_offset: int = 0) -> int:
-    """
-    Get next available Turn ID with retry offset for concurrency.
-    
-    Args:
-        conn: Database connection
-        retry_offset: Offset to add for retry attempts (0 for first try)
-        
-    Returns:
-        Next available ID
-    """
-    result = conn.execute("MATCH (t:Turn) RETURN max(t.id) as max_id")
-    for row in result:
-        max_id = row[0]
-        return (max_id or 0) + 1 + retry_offset
-    return 1 + retry_offset
+        return (max_id or 0) + 1
+    return 1
 
 
 def truncate(text: str, max_len: int) -> str:
@@ -76,18 +55,44 @@ def truncate(text: str, max_len: int) -> str:
     return text[:max_len] if len(text) <= max_len else text[:max_len-3] + "..."
 
 
-def _store_memory_attempt(data: dict, conn, retry_offset: int = 0) -> tuple[bool, list[int]]:
+def store_memory(data_file: str) -> bool:
     """
-    Single attempt to store memory (for retry logic).
+    Store memory turn to LadybugDB.
+    
+    AUDIT FIX 2026-02-16: Added proper transaction rollback (Issue #2)
     
     Args:
-        data: Parsed JSON memory data
-        conn: Database connection
-        retry_offset: ID offset for retry attempts
+        data_file: Path to JSON file with memory data
         
     Returns:
-        (success: bool, created_node_ids: list)
+        True if stored successfully
+        
+    Raises:
+        Exception: On failure (error is also printed to stderr)
     """
+    if not LADYBUG_AVAILABLE:
+        print("error:real_ladybug not installed", file=sys.stderr)
+        return False
+    
+    if not os.path.exists(LADYBUG_DB):
+        print(f"error:database not found at {LADYBUG_DB}", file=sys.stderr)
+        return False
+    
+    # AUDIT FIX: Parse JSON with explicit error handling
+    try:
+        with open(data_file, 'r') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"error:invalid JSON in data file: {e}", file=sys.stderr)
+        return False
+    except FileNotFoundError:
+        print(f"error:data file not found: {data_file}", file=sys.stderr)
+        return False
+    
+    db = lb.Database(LADYBUG_DB)
+    conn = lb.Connection(db)
+    
+    # Track created nodes for potential cleanup
     created_nodes = []
     
     try:
@@ -97,12 +102,11 @@ def _store_memory_attempt(data: dict, conn, retry_offset: int = 0) -> tuple[bool
         except:
             pass
         
-        # Get next IDs with retry offset
-        base_id = get_next_id(conn, retry_offset)
+        # Get next IDs
+        base_id = get_next_id(conn)
         input_id = base_id
         contemplation_id = base_id + 1
         output_id = base_id + 2
-        turn_db_id = get_next_turn_id(conn, retry_offset)
         
         timestamp = data.get("timestamp", int(time.time() * 1000))
         turn_id = data.get("turn_id", f"turn_{timestamp}")
@@ -215,132 +219,45 @@ def _store_memory_attempt(data: dict, conn, retry_offset: int = 0) -> tuple[bool
             CREATE (a)-[:relates_to {relation: 'responded_to', weight: 1.0}]->(b)
         """, {"source": output_id, "target": input_id})
         
-        # Create turn node and relationships in a single atomic query
+        # Create turn (schema: id, turn_id, timestamp, affect_json only)
         conn.execute("""
             CREATE (t:Turn {
-                id: $id,
+                id: $turn_id_int,
                 turn_id: $turn_id,
                 timestamp: $timestamp,
                 affect_json: $affect_json
             })
-            WITH t
-            MATCH (input_node:MemoryNode {id: $input_id})
-            MATCH (contemplation_node:MemoryNode {id: $contemplation_id})
-            MATCH (output_node:MemoryNode {id: $output_id})
-            CREATE (t)-[:has_input]->(input_node)
-            CREATE (t)-[:has_contemplation]->(contemplation_node)
-            CREATE (t)-[:has_output]->(output_node)
         """, {
-            "id": turn_db_id,
+            "turn_id_int": timestamp,  # Use full millisecond timestamp as ID
             "turn_id": turn_id,
             "timestamp": timestamp,
-            "affect_json": affect_json,
-            "input_id": input_id,
-            "contemplation_id": contemplation_id,
-            "output_id": output_id
+            "affect_json": affect_json
         })
         
-        # Success
-        return (True, created_nodes, f"{input_id},{contemplation_id},{output_id}")
+        print(f"stored:{input_id},{contemplation_id},{output_id}")
+        return True
         
     except Exception as e:
         # AUDIT FIX: Attempt cleanup of partially created nodes (Issue #2)
-        # Check if this is a constraint violation (ID conflict)
-        error_msg = str(e).lower()
-        is_constraint_violation = any(keyword in error_msg for keyword in [
-            'duplicate', 'constraint', 'unique', 'primary key', 'already exists'
-        ])
-        
-        if not is_constraint_violation:
-            print(f"error:{e}", file=sys.stderr)
-            import traceback
-            traceback.print_exc(file=sys.stderr)
+        print(f"error:{e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         
         # Try to clean up any nodes that were created before the failure
         if created_nodes:
+            print(f"[ladybug_store] Attempting cleanup of {len(created_nodes)} partial nodes...", file=sys.stderr)
             for node_id in created_nodes:
                 try:
                     conn.execute("MATCH (n:MemoryNode {id: $id}) DETACH DELETE n", {"id": node_id})
-                except:
-                    pass  # Cleanup errors are not critical
+                except Exception as cleanup_err:
+                    print(f"[ladybug_store] Cleanup failed for node {node_id}: {cleanup_err}", file=sys.stderr)
         
-        return (False, created_nodes, str(e))
-
-
-def store_memory(data_file: str, max_retries: int = 5) -> bool:
-    """
-    Store memory turn to LadybugDB with retry-on-conflict for concurrent writes.
-    
-    CONCURRENCY FIX 2026-02-16: Added retry logic for race conditions in ID generation
-    
-    Args:
-        data_file: Path to JSON file with memory data
-        max_retries: Maximum number of retry attempts (default: 5)
-        
-    Returns:
-        True if stored successfully
-        
-    Raises:
-        Exception: On non-recoverable failure
-    """
-    if not LADYBUG_AVAILABLE:
-        print("error:real_ladybug not installed", file=sys.stderr)
         return False
-    
-    if not os.path.exists(LADYBUG_DB):
-        print(f"error:database not found at {LADYBUG_DB}", file=sys.stderr)
-        return False
-    
-    # Parse JSON with explicit error handling
-    try:
-        with open(data_file, 'r') as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        print(f"error:invalid JSON in data file: {e}", file=sys.stderr)
-        return False
-    except FileNotFoundError:
-        print(f"error:data file not found: {data_file}", file=sys.stderr)
-        return False
-    
-    # Retry loop for constraint violations
-    for attempt in range(max_retries):
-        db = lb.Database(LADYBUG_DB)
-        conn = lb.Connection(db)
-        
+    finally:
         try:
-            success, created_nodes, result = _store_memory_attempt(data, conn, retry_offset=attempt * 3)
-            
-            if success:
-                print(f"stored:{result}")
-                return True
-            
-            # Check if we should retry
-            error_msg = result.lower()
-            is_constraint_violation = any(keyword in error_msg for keyword in [
-                'duplicate', 'constraint', 'unique', 'primary key', 'already exists'
-            ])
-            
-            if not is_constraint_violation:
-                # Non-retryable error
-                print(f"error:{result}", file=sys.stderr)
-                return False
-            
-            # Constraint violation - retry with offset
-            if attempt < max_retries - 1:
-                time.sleep(0.01 * (2 ** attempt))  # Exponential backoff
-                continue
-            else:
-                # Max retries exceeded
-                print(f"error:max retries ({max_retries}) exceeded due to ID conflicts", file=sys.stderr)
-                return False
-                
-        finally:
-            try:
-                conn.close()
-            except:
-                pass
-    
-    return False
+            conn.close()
+        except:
+            pass
 
 
 def health_check() -> dict:
