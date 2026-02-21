@@ -1,0 +1,36 @@
+{
+  "name": "@wipcomputer/universal-installer",
+  "version": "2.1.1",
+  "type": "module",
+  "description": "The reference installer for agent-native software. Detects interfaces (CLI, Module, MCP, OpenClaw, Skill, CC Hook) and installs them all.",
+  "main": "detect.mjs",
+  "bin": {
+    "wip-install": "./install.mjs"
+  },
+  "exports": {
+    ".": "./detect.mjs",
+    "./detect": "./detect.mjs",
+    "./install": "./install.mjs"
+  },
+  "scripts": {
+    "test": "node install.mjs --help"
+  },
+  "keywords": [
+    "installer",
+    "agent-native",
+    "sensor",
+    "actuator",
+    "universal-interface",
+    "claude-code",
+    "openclaw",
+    "mcp",
+    "cli"
+  ],
+  "author": "Parker Todd Brooks",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wipcomputer/wip-universal-installer.git"
+  },
+  "homepage": "https://github.com/wipcomputer/wip-universal-installer"
+}
