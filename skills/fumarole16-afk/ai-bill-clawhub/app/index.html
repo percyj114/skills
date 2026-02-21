@@ -63,9 +63,25 @@
     </header>
     <main class="max-w-7xl mx-auto"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="card-container"></div></main>
 
+    <footer class="max-w-7xl mx-auto mt-20 pb-12 text-center">
+        <div class="h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent mb-8"></div>
+        <p class="text-slate-500 text-[9px] font-medium tracking-[0.2em] mb-4 uppercase">
+            ⚠️ Disclaimer: Estimates based on session logs. Actual billing from providers may vary.
+        </p>
+        <p class="text-slate-600 text-[10px] font-black tracking-[0.4em] uppercase">
+            Autonomous Infrastructure Management • Chloe AI Engine 2026
+        </p>
+    </footer>
+
     <script>
-        let SECURE_CODE = "0119";
-        window.onload = function() { if(localStorage.getItem('bill_unlocked') === 'true') document.getElementById('lock-screen').classList.add('unlocked'); };
+        let SECURE_CODE = "1234";
+        window.onload = function() { 
+            // 신규 접속 시 항상 잠금 상태로 시작 (자동 로그인 해제)
+            localStorage.removeItem('bill_unlocked');
+            document.getElementById('lock-screen').classList.remove('unlocked');
+            document.getElementById('pass-input').value = "";
+            document.getElementById('pass-input').focus();
+        };
         function checkPass(v) {
             const s = document.getElementById('lock-status');
             if(v.length===4) {
@@ -85,10 +101,10 @@
         function setTheme(m) { if(m==='light') document.body.classList.add('light'); else document.body.classList.remove('light'); toggleSettings(); }
         async function refreshData(btn) { btn.style.transform='rotate(360deg)'; try { await fetch('/usage_live.json?t='+Date.now()); setTimeout(async()=>{ await fetchAndUpdate(); btn.style.transform='rotate(0deg)'; }, 1000); } catch(e){console.error(e);} }
         
-        const config = [{id:'openai',name:'OpenAI',color:'#10b981'},{id:'claude',name:'Claude',color:'#fb923c'},{id:'gemini',name:'Gemini',color:'#3b82f6'},{id:'kimi',name:'Kimi',color:'#a855f7'},{id:'deepseek',name:'DeepSeek',color:'#06b6d4'},{id:'grok',name:'Grok',color:'#ffffff'}];
+        const config = [{id:'openai',name:'OpenAI',color:'#10b981'},{id:'claude',name:'Claude',color:'#fb923c'},{id:'gemini',name:'Gemini',color:'#3b82f6'},{id:'kimi',name:'Kimi',color:'#a855f7'},{id:'deepseek',name:'DeepSeek',color:'#06b6d4'},{id:'groq',name:'Groq',color:'#ffffff'}];
         async function fetchAndUpdate() {
             try {
-                const res = await fetch('/usage_live.json?t=' + Date.now());
+                const res = await fetch('/usage.json?t=' + Date.now());
                 const data = await res.json();
                 let total = 0; let html = '';
                 config.forEach(m => {

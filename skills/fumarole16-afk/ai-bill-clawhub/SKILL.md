@@ -1,60 +1,29 @@
----
-name: ai-bill-intelligence
-description: Real-time AI API usage tracking and cost monitoring for OpenClaw. Track spending across OpenAI, Claude, Gemini, Kimi, DeepSeek, and Grok with live dashboard. Use when users need to monitor AI API costs, track token usage, or manage budgets for multiple AI providers.
-version: 2.0.0
----
-
 # AI Bill Intelligence
 
-Real-time AI API usage tracking and cost monitoring dashboard for OpenClaw.
+Real-time billing dashboard for OpenClaw. Accurate token-based cost tracking across 12+ AI providers.
 
-## Quick Start
-
-1. Install the skill
-2. Configure your API balances in `vault.json`
-3. Start the services: `systemctl start ai-bill ai-bill-collector`
-4. View dashboard at `http://localhost:8003`
-
-## Configuration
-
-Edit `vault.json` to set your initial balances:
-```json
-{
-  "openai": 10.0,
-  "claude": 20.0,
-  "kimi": 15.0,
-  "deepseek": 8.0,
-  "grok": 10.0,
-  "gemini": 0
-}
-```
-
-## Services
-
-- **ai-bill.service**: Web dashboard (port 8003)
-- **ai-bill-collector.service**: Usage data collector (updates every 30s)
-
-## Usage
-
-The collector automatically reads OpenClaw session data and calculates costs in real-time. View the dashboard to see:
-
-- Real-time spending by provider
-- Remaining balances
-- Token usage statistics
-- Cost trends
-
-## Pricing
-
-Default pricing is configured in `prices.json`. Update this file to match current API rates.
-
-## Troubleshooting
-
-Check service status:
+## 🚀 Installation
 ```bash
-systemctl status ai-bill ai-bill-collector
+openclaw skill install https://github.com/fumabot16-max/bill-project
 ```
 
-View collector logs:
-```bash
-journalctl -u ai-bill-collector -f
-```
+## 🛠 Usage
+The skill operates via a background collector. As an agent, you can help the user by:
+1. **Reporting Usage**: Read `/root/.openclaw/workspace/bill_project/dist/usage.json` to summarize spending.
+2. **Updating Balances**: Redirect the user to the `/setup` page or update `vault.json` on their behalf.
+3. **Checking Health**: Ensure the `ai-bill` service and `collector.js` are running.
+
+## ⚙️ Configuration
+- **Port**: Default is `8003`.
+- **Modes**: `prepaid`, `postpaid`, `subscribe`, `unused` (off).
+
+## 📂 Managed Files (Declarations)
+This skill manages the following data files inside the `app/` directory:
+- `app/vault.json`: User-defined balances and payment modes.
+- `app/prices.json`: AI model pricing data.
+- `app/cumulative_usage.json`: Archived costs from expired sessions.
+- `app/dist/usage.json`: Real-time aggregated usage data for the dashboard.
+- `app/debug.log`: Collector activity logs.
+
+Built by Tiger Jung & Chloe (@fumarole16-afk).
+<!-- Sync trigger: Fri Feb 20 22:36:10 KST 2026 -->
