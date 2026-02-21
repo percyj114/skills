@@ -1,0 +1,11 @@
+{
+  "owner": "mikel",
+  "slug": "distil",
+  "displayName": "Distil the web & PDFs into markdown",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1771681470095,
+    "commit": null
+  },
+  "history": []
+}
