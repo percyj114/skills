@@ -3,9 +3,15 @@
   "slug": "agent-crypto-wallet",
   "displayName": "OpenClawCash",
   "latest": {
-    "version": "1.8.0",
-    "publishedAt": 1771550607266,
-    "commit": "https://github.com/openclaw/skills/commit/3c1c9a4aa7214bb832524e8ab899a8afc5d37fd2"
+    "version": "1.9.0",
+    "publishedAt": 1771638324503,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.8.0",
+      "publishedAt": 1771550607266,
+      "commit": "https://github.com/openclaw/skills/commit/3c1c9a4aa7214bb832524e8ab899a8afc5d37fd2"
+    }
+  ]
 }

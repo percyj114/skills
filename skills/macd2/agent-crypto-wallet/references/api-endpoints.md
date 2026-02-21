@@ -1,5 +1,20 @@
 # OpenclawCash API Endpoint Details
 
+## Requirements
+
+- Required env var: `AGENTWALLETAPI_KEY`
+- Optional env var: `AGENTWALLETAPI_URL` (default `https://openclawcash.com`)
+- Required local binary for bundled CLI script: `curl`
+- Optional local binary: `jq` (used for pretty JSON output when available)
+- Network access: `https://openclawcash.com`
+
+## Security Notes
+
+- Start with read-only calls first (`wallets`, `wallet`, `balance`, `supported-tokens`), preferably on testnets.
+- Write actions (`create`, `import`, `transfer`, `swap`, `approve`) are high-risk and should use explicit confirmation in the CLI (`--yes`).
+- `POST /api/agent/wallets/import` sends a private key to OpenclawCash for encrypted storage and managed execution.
+- Wallet import and wallet creation are disabled unless the API key has permission enabled in dashboard (`allowWalletImport`, `allowWalletCreation`).
+
 ## API Surfaces
 
 - **Agent API (`/api/agent/*`)**: authenticate with `X-Agent-Key`.
@@ -14,12 +29,50 @@ GET /api/agent/wallets
 X-Agent-Key: ag_your_key
 ```
 
+Returns discovery data only (id/label/address/network/chain). Use `GET /api/agent/wallet` for balances.
+
 Response:
 ```json
 [
   { "id": 2, "label": "Trading Bot", "address": "0x14ae8d93...", "network": "sepolia", "chain": "evm" },
   { "id": 5, "label": "SOL TEST", "address": "GmjrX8...", "network": "solana-devnet", "chain": "solana" }
 ]
+```
+
+## Get Wallet Detail + Balances
+
+```
+GET /api/agent/wallet?walletId=2
+X-Agent-Key: ag_your_key
+```
+
+Alternative:
+```
+GET /api/agent/wallet?walletLabel=Trading%20Bot
+X-Agent-Key: ag_your_key
+```
+
+Optional:
+```
+GET /api/agent/wallet?walletId=2&chain=evm
+```
+
+Response:
+```json
+{
+  "id": 2,
+  "label": "Trading Bot",
+  "address": "0x14ae8d93...",
+  "network": "sepolia",
+  "chain": "evm",
+  "balance": "0.048 ETH",
+  "nativeSymbol": "ETH",
+  "otherTokenCount": 1,
+  "tokenBalances": [
+    { "token": "0x0000...0000", "symbol": "ETH", "balance": "0.048", "decimals": 18 },
+    { "token": "0xA0b86991...", "symbol": "USDC", "balance": "250.0", "decimals": 6 }
+  ]
+}
 ```
 
 ## Create Wallet (Agent API)
@@ -234,15 +287,22 @@ GET /api/agent/supported-tokens?network=solana-devnet
 GET /api/agent/supported-tokens?chain=solana
 ```
 
-No authentication required. Returns the **default curated tokens** available on the specified network (defaults to mainnet).
-These are defaults; EVM transfer/swap/balance endpoints also accept any valid ERC-20 token contract address, and Solana transfer/balance endpoints accept SPL mint addresses.
+No authentication required. Returns **recommended common, well-known tokens** for the specified network (defaults to mainnet).
+Agents can still use any valid ERC-20 token contract address on EVM and any valid SPL mint on Solana.
 
 Response:
 ```json
-[
-  { "address": "0x0000...0000", "symbol": "ETH", "name": "Ether", "decimals": 18 },
-  { "address": "0xA0b86991...", "symbol": "USDC", "name": "USD Coin", "decimals": 6 }
-]
+{
+  "recommendedTokens": [
+    { "address": "0x0000...0000", "symbol": "ETH", "name": "Ether", "decimals": 18 },
+    { "address": "0xA0b86991...", "symbol": "USDC", "name": "USD Coin", "decimals": 6 }
+  ],
+  "guidance": {
+    "message": "These are recommended common, well-known tokens. You can still use any valid ERC-20 token on EVM or any valid SPL mint on Solana.",
+    "evm": "Any valid ERC-20 token contract address is supported in agent wallet operations.",
+    "solana": "Any valid SPL token mint address is supported in agent wallet operations."
+  }
+}
 ```
 
 Notes:

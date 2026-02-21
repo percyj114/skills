@@ -5,12 +5,36 @@ license: Proprietary
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
-  version: "1.8"
+  version: "1.9.0"
+  required_env_vars:
+    - AGENTWALLETAPI_KEY
+  optional_env_vars:
+    - AGENTWALLETAPI_URL
+  required_binaries:
+    - curl
+  optional_binaries:
+    - jq
 ---
 
 # OpenclawCash Agent API
 
 Interact with OpenclawCash-managed wallets to send native assets and tokens, check balances, and execute agent-safe wallet operations across EVM and Solana networks.
+
+## Requirements
+
+- Required env var: `AGENTWALLETAPI_KEY`
+- Optional env var: `AGENTWALLETAPI_URL` (default: `https://openclawcash.com`)
+- Required local binary: `curl`
+- Optional local binary: `jq` (for pretty JSON output in CLI)
+- Network access required: `https://openclawcash.com`
+
+## Safety Model
+
+- Start with read-only calls (`wallets`, `wallet`, `balance`, `tokens`) on testnets first.
+- High-risk actions are gated:
+  - API key permissions in dashboard (`allowWalletCreation`, `allowWalletImport`)
+  - Explicit CLI confirmation (`--yes`) for write actions
+- Wallet import sends a private key to OpenclawCash for encrypted storage and managed execution. Only use this if you understand and accept that trust model.
 
 ## Setup
 
@@ -29,14 +53,21 @@ Interact with OpenclawCash-managed wallets to send native assets and tokens, che
 Use the included tool script to make API calls directly:
 
 ```bash
+# Read-only (recommended first)
 bash scripts/agentwalletapi.sh wallets
-bash scripts/agentwalletapi.sh transactions 2
+bash scripts/agentwalletapi.sh wallet 2
+bash scripts/agentwalletapi.sh wallet "Trading Bot"
 bash scripts/agentwalletapi.sh balance 2
-bash scripts/agentwalletapi.sh transfer 2 0xRecipient 0.01
-bash scripts/agentwalletapi.sh transfer 2 0xRecipient 100 USDC
+bash scripts/agentwalletapi.sh transactions 2
 bash scripts/agentwalletapi.sh tokens mainnet
+
+# Write actions (require explicit --yes)
+bash scripts/agentwalletapi.sh create "Ops Wallet" sepolia --yes
+bash scripts/agentwalletapi.sh import "Treasury Imported" mainnet --yes
+bash scripts/agentwalletapi.sh transfer 2 0xRecipient 0.01 --yes
+bash scripts/agentwalletapi.sh transfer 2 0xRecipient 100 USDC --yes
 bash scripts/agentwalletapi.sh quote mainnet WETH USDC 10000000000000000
-bash scripts/agentwalletapi.sh swap 2 WETH USDC 10000000000000000 0.5
+bash scripts/agentwalletapi.sh swap 2 WETH USDC 10000000000000000 0.5 --yes
 ```
 
 ## Base URL
@@ -80,23 +111,25 @@ Content-Type: application/json
 
 ## Workflow
 
-1. `GET /api/agent/wallets` - Discover available wallets (id, label, address, network, chain)
-2. Optional wallet lifecycle actions:
+1. `GET /api/agent/wallets` - Discover available wallets (id, label, address, network, chain; no balances)
+2. `GET /api/agent/wallet?walletId=...` or `?walletLabel=...` - Fetch one wallet with native/token balances
+3. Optional wallet lifecycle actions:
    - `POST /api/agent/wallets/create` - Create a new wallet under API-key policy controls
    - `POST /api/agent/wallets/import` - Import a `mainnet` or `solana-mainnet` wallet under API-key policy controls
-3. `GET /api/agent/transactions?walletId=...` - Read merged wallet transaction history (on-chain + app-recorded)
-4. `GET /api/agent/supported-tokens?network=...` or `?chain=evm|solana` - Get default curated token list
-5. `POST /api/agent/token-balance` - Check wallet balances (native + token balances; specific token by symbol/address supported)
-6. `POST /api/agent/quote` - Get a Uniswap quote before execution (EVM only)
-7. `POST /api/agent/swap` - Execute token swap on Uniswap (EVM) or Jupiter (Solana)
-8. `POST /api/agent/transfer` - Send native coin or token on the wallet's chain (optional `chain` guard)
-9. Use returned `txHash` values to confirm transactions
+4. `GET /api/agent/transactions?walletId=...` - Read merged wallet transaction history (on-chain + app-recorded)
+5. `GET /api/agent/supported-tokens?network=...` or `?chain=evm|solana` - Get recommended common, well-known token list + guidance
+6. `POST /api/agent/token-balance` - Check wallet balances (native + token balances; specific token by symbol/address supported)
+7. `POST /api/agent/quote` - Get a Uniswap quote before execution (EVM only)
+8. `POST /api/agent/swap` - Execute token swap on Uniswap (EVM) or Jupiter (Solana)
+9. `POST /api/agent/transfer` - Send native coin or token on the wallet's chain (optional `chain` guard)
+10. Use returned `txHash` values to confirm transactions
 
 ## Quick Reference
 
 | Endpoint | Method | Auth | Purpose |
 |---|---|---|---|
-| `/api/agent/wallets` | GET | Yes | List wallets |
+| `/api/agent/wallets` | GET | Yes | List wallets (discovery only, no balances) |
+| `/api/agent/wallet` | GET | Yes | Get one wallet detail with native/token balances |
 | `/api/agent/wallets/create` | POST | Yes | Create a new API-key-managed wallet |
 | `/api/agent/wallets/import` | POST | Yes | Import a mainnet/solana-mainnet wallet via API key |
 | `/api/agent/transactions` | GET | Yes | List per-wallet transaction history |
@@ -104,7 +137,7 @@ Content-Type: application/json
 | `/api/agent/swap` | POST | Yes | Execute DEX swap (Uniswap on EVM, Jupiter on Solana) |
 | `/api/agent/quote` | POST | No | Get Uniswap quote (EVM only) |
 | `/api/agent/token-balance` | POST | Yes | Check balances |
-| `/api/agent/supported-tokens` | GET | No | List default curated tokens per network |
+| `/api/agent/supported-tokens` | GET | No | List recommended common, well-known tokens per network |
 | `/api/agent/approve` | POST | Yes | Approve spender for ERC-20 token (EVM only) |
 
 ## Agent Wallet Create/Import (Agent API)
@@ -149,7 +182,7 @@ Use optional `chain: "evm" | "solana"` in agent payloads for explicit chain rout
 
 ## Token Support Model
 
-- `GET /api/agent/supported-tokens` returns the default curated set for each network.
+- `GET /api/agent/supported-tokens` returns recommended common, well-known tokens plus guidance fields.
 - EVM transfer/swap/balance endpoints support **any valid ERC-20 token contract address**.
 - Solana transfer/balance endpoints support **any valid SPL mint address**.
 - Native tokens appear as `ETH` on EVM and `SOL` on Solana (with chain-specific native token IDs in balance payloads).
@@ -180,7 +213,7 @@ Violations return HTTP 401 with an explanation message.
 - A platform fee (default 1%) is deducted from the token amount
 - Use `amount` for simplicity, use `value` for precise base-unit control
 - For robust agent behavior:
-  - First call `wallets`, then `token-balance`, then `quote`, then `swap`.
+  - First call `wallets`, then `wallet` (or `token-balance`), then `quote`, then `swap`.
   - On 400 with `insufficient_token_balance`, reduce amount or change token.
 - The `.env` file in this skill folder stores your API key — never commit it to version control
 

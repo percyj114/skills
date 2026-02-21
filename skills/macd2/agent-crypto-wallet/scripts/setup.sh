@@ -19,6 +19,10 @@ fi
 
 cat > "$ENV_FILE" << 'EOF'
 # OpenclawCash Configuration
+# Required binary: curl
+# Optional binary: jq (for pretty JSON output in CLI)
+# Required env var: AGENTWALLETAPI_KEY
+# Optional env var: AGENTWALLETAPI_URL
 # Get your API key at https://openclawcash.com (API Keys page)
 AGENTWALLETAPI_KEY=ag_your_api_key_here
 AGENTWALLETAPI_URL=https://openclawcash.com
