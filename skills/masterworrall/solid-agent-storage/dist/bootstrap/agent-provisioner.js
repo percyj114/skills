@@ -43,6 +43,8 @@ export async function provisionAgent(config) {
     return {
         webId,
         podUrl,
+        email,
+        password,
         clientCredentials: { id: creds.id, secret: creds.secret },
         config,
     };

@@ -18,3 +18,17 @@ export declare function createClientCredentials(serverUrl: string, cookie: strin
     id: string;
     secret: string;
 }>;
+export declare function loginWithPassword(serverUrl: string, email: string, password: string): Promise<string>;
+/**
+ * Fully dismantles a CSS account by deleting all its components.
+ *
+ * CSS v7 has no single "delete account" endpoint. Instead, you delete
+ * each component individually via resource URLs returned by GET on the
+ * list endpoints:
+ *   1. DELETE each client credential
+ *   2. DELETE each pod
+ *   3. DELETE each WebID link
+ *   4. DELETE each password login
+ *   5. POST logout to invalidate the session
+ */
+export declare function deleteAccount(serverUrl: string, cookie: string): Promise<void>;

@@ -1,5 +1,5 @@
 import { randomBytes, createCipheriv, createDecipheriv, pbkdf2Sync } from 'node:crypto';
-import { mkdirSync, writeFileSync, readFileSync, readdirSync, chmodSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, chmodSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 const ALGORITHM = 'aes-256-gcm';
@@ -87,6 +87,12 @@ export function loadCredentials(name) {
     const payload = JSON.parse(raw);
     const decrypted = decrypt(payload, passphrase);
     return JSON.parse(decrypted);
+}
+export function deleteAgentCredentials(name) {
+    const agentDir = join(getStoreDir(), name);
+    if (existsSync(agentDir)) {
+        rmSync(agentDir, { recursive: true, force: true });
+    }
 }
 export function listAgents() {
     const dir = getStoreDir();
