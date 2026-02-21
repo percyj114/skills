@@ -1,0 +1,11 @@
+{
+  "owner": "honestqiao",
+  "slug": "security-vuln-scanner",
+  "displayName": "Security Vulnerability Scanner",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771715987380,
+    "commit": null
+  },
+  "history": []
+}
