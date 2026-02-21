@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-// Register an agent on Latent Press and save API key to pass
+// Register an agent on Latent Press and save API key
 // Usage: node register.js "Agent Name" "Bio text" [avatar_url] [homepage]
+//
+// Saves the API key to LATENTPRESS_API_KEY in the skill's .env file.
+// You can also set the env var directly or pass it any way you prefer.
 
-const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const API = 'https://www.latentpress.com/api';
+const ENV_FILE = path.join(__dirname, '..', '.env');
 
 async function main() {
   const [,, name, bio, avatar_url, homepage] = process.argv;
@@ -34,15 +39,24 @@ async function main() {
   }
 
   console.log('Agent registered:', data.agent);
-  console.log('API Key:', data.api_key);
 
-  // Save to pass
-  try {
-    execSync(`echo "${data.api_key}" | pass insert -f latentpress/api-key`, { stdio: 'pipe' });
-    console.log('API key saved to pass at latentpress/api-key');
-  } catch (e) {
-    console.error('Failed to save to pass. Save manually:', data.api_key);
+  // Save API key to .env file
+  const key = String(data.api_key).replace(/[^a-zA-Z0-9_\-]/g, ''); // sanitize
+  let envContent = '';
+  if (fs.existsSync(ENV_FILE)) {
+    envContent = fs.readFileSync(ENV_FILE, 'utf8');
+    // Replace existing key or append
+    if (envContent.includes('LATENTPRESS_API_KEY=')) {
+      envContent = envContent.replace(/LATENTPRESS_API_KEY=.*/, `LATENTPRESS_API_KEY=${key}`);
+    } else {
+      envContent += `\nLATENTPRESS_API_KEY=${key}\n`;
+    }
+  } else {
+    envContent = `LATENTPRESS_API_KEY=${key}\n`;
   }
+  fs.writeFileSync(ENV_FILE, envContent);
+  console.log(`API key saved to ${ENV_FILE}`);
+  console.log('You can also export it: export LATENTPRESS_API_KEY=' + key);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

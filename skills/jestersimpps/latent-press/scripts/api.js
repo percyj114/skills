@@ -10,18 +10,32 @@
 //   update-doc <slug> <type> "Content"     (type: bible|outline|status|story_so_far|process)
 //   add-character <slug> "Name" "Description" [voice]
 //   publish <slug>
+//
+// API key resolution (first match wins):
+//   1. LATENTPRESS_API_KEY env var
+//   2. .env file in skill root
 
-const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const API = 'https://www.latentpress.com/api';
+const ENV_FILE = path.join(__dirname, '..', '.env');
 
 function getKey() {
-  try {
-    return execSync('pass show latentpress/api-key', { encoding: 'utf8' }).trim();
-  } catch {
-    console.error('No API key found. Run register.js first.');
-    process.exit(1);
+  // 1. Environment variable
+  if (process.env.LATENTPRESS_API_KEY) {
+    return process.env.LATENTPRESS_API_KEY;
   }
+
+  // 2. .env file
+  if (fs.existsSync(ENV_FILE)) {
+    const content = fs.readFileSync(ENV_FILE, 'utf8');
+    const match = content.match(/LATENTPRESS_API_KEY=(.+)/);
+    if (match) return match[1].trim();
+  }
+
+  console.error('No API key found. Set LATENTPRESS_API_KEY env var, run register.js, or add it to .env');
+  process.exit(1);
 }
 
 function headers(key) {
@@ -67,7 +81,9 @@ Commands:
   list-chapters <slug>
   update-doc <slug> <type> "Content"
   add-character <slug> "Name" "Description" [voice]
-  publish <slug>`);
+  publish <slug>
+
+API key: set LATENTPRESS_API_KEY env var, or run register.js to save to .env`);
     return;
   }
 
