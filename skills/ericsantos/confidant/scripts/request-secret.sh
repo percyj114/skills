@@ -13,18 +13,30 @@
 #   --save <path>       Auto-save to explicit path
 #   --env <varname>     Also set env var (requires --service or --save)
 #   --port <number>     Server port (default: 3000)
-#   --timeout <secs>    Max wait for server/tunnel startup (default: 15)
+#   --timeout <secs>    Max wait for server/tunnel startup (default: 30)
 #   --tunnel            Start a localtunnel if no tunnel is detected (for remote users)
 #   --json              Output JSON instead of human-readable text
 
 set -euo pipefail
 
-# Smart CLI resolution: global binary > npx fallback
+# Emit an error message respecting --json mode
+emit_error() {
+  local msg="$1" code="${2:-UNKNOWN}" hint="${3:-}"
+  if $JSON_OUTPUT; then
+    jq -n --arg m "$msg" --arg c "$code" --arg h "$hint" \
+      '{"error":$m, "code":$c, "hint":(if $h == "" then null else $h end)}' >&2
+  else
+    echo "Error: $msg" >&2
+    [[ -n "$hint" ]] && echo "  $hint" >&2
+  fi
+}
+
+# Smart CLI resolution: global binary > npx fallback (auto-accept install)
 confidant_cmd() {
   if command -v confidant &>/dev/null; then
     confidant "$@"
   else
-    npx @aiconnect/confidant "$@"
+    npx --yes @aiconnect/confidant "$@"
   fi
 }
 
@@ -33,7 +45,7 @@ SERVICE=""
 SAVE_PATH=""
 ENV_VAR=""
 PORT="${CONFIDANT_PORT:-3000}"
-TIMEOUT=15
+TIMEOUT=30
 JSON_OUTPUT=false
 START_TUNNEL=false
 
@@ -53,25 +65,22 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$LABEL" ]]; then
-  if $JSON_OUTPUT; then
-    echo '{"error":"--label is required","code":"MISSING_LABEL","hint":"Usage: request-secret.sh --label \"API Key\" [--service name] [--save path]"}' >&2
-  else
-    echo "Error: --label is required" >&2
-    echo "Usage: $0 --label \"API Key\" [--service name] [--save path] [--env VAR] [--tunnel]" >&2
-  fi
+  emit_error "--label is required" "MISSING_LABEL" \
+    "Usage: request-secret.sh --label \"API Key\" [--service name] [--save path]"
   exit 1
 fi
 
 # --- Dependency check ---
 
+if ! command -v curl &>/dev/null; then
+  emit_error "curl is required but not installed" "MISSING_DEPENDENCY" \
+    "Ubuntu/Debian: apt-get install -y curl | macOS: brew install curl"
+  exit 2
+fi
+
 if ! command -v jq &>/dev/null; then
-  if $JSON_OUTPUT; then
-    echo '{"error":"jq is required but not installed","code":"MISSING_DEPENDENCY","hint":"Ubuntu/Debian: apt-get install -y jq | macOS: brew install jq"}' >&2
-  else
-    echo "Error: jq is required but not installed." >&2
-    echo "  Ubuntu/Debian: apt-get install -y jq" >&2
-    echo "  macOS: brew install jq" >&2
-  fi
+  emit_error "jq is required but not installed" "MISSING_DEPENDENCY" \
+    "Ubuntu/Debian: apt-get install -y jq | macOS: brew install jq"
   exit 2
 fi
 
@@ -79,6 +88,9 @@ fi
 
 SERVER_PID=""
 LT_PID=""
+SERVER_LOG="/tmp/confidant-server-${PORT}.log"
+STARTED_SERVER=false
+
 cleanup() {
   [[ -n "${LT_PID:-}" ]] && kill "$LT_PID" 2>/dev/null || true
   [[ "$STARTED_SERVER" == true && -n "${SERVER_PID:-}" ]] && kill "$SERVER_PID" 2>/dev/null || true
@@ -91,63 +103,59 @@ server_running() {
   curl -sf "http://localhost:${PORT}/health" > /dev/null 2>&1
 }
 
-STARTED_SERVER=false
-
 if server_running; then
   : # Server already running
 else
-  confidant_cmd serve --port "$PORT" > /dev/null 2>&1 &
+  # Start server — log output to a temp file so we can diagnose failures
+  confidant_cmd serve --port "$PORT" > "$SERVER_LOG" 2>&1 &
   SERVER_PID=$!
   STARTED_SERVER=true
 
   elapsed=0
   while ! server_running; do
+    # Check if server process died
+    if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+      server_err=$(tail -5 "$SERVER_LOG" 2>/dev/null | tr '\n' ' ' || echo "unknown error")
+      emit_error "Server process died during startup" "SERVER_CRASH" "$server_err"
+      exit 3
+    fi
     sleep 1
     elapsed=$((elapsed + 1))
     if [[ $elapsed -ge $TIMEOUT ]]; then
-      if $JSON_OUTPUT; then
-        echo "{\"error\":\"Server failed to start within ${TIMEOUT}s\",\"code\":\"SERVER_TIMEOUT\",\"hint\":\"Try increasing --timeout or check if port ${PORT} is in use\"}" >&2
-      else
-        echo "Error: Server failed to start within ${TIMEOUT}s" >&2
-      fi
+      server_err=$(tail -5 "$SERVER_LOG" 2>/dev/null | tr '\n' ' ' || echo "check port ${PORT}")
+      emit_error "Server failed to start within ${TIMEOUT}s" "SERVER_TIMEOUT" \
+        "Try increasing --timeout or check if port ${PORT} is in use. Last log: ${server_err}"
       exit 3
     fi
   done
 fi
 
-# --- Step 2: Create the request ---
+# --- Step 2: Create the request via API (curl) ---
+# Using the REST API directly avoids the CLI `request` command which enters
+# an infinite polling loop and would hang the $() capture forever.
 
-REQUEST_ARGS=(--label "$LABEL" --json --quiet)
+REQUEST_BODY=$(jq -n --arg lbl "$LABEL" '{"expiresIn": 86400, "label": $lbl}')
 
-if [[ -n "$SERVICE" ]]; then
-  REQUEST_ARGS+=(--service "$SERVICE")
-fi
+REQUEST_OUTPUT=$(curl -sf -X POST "http://localhost:${PORT}/requests" \
+  -H "Content-Type: application/json" \
+  -d "$REQUEST_BODY" 2>&1) || {
+  emit_error "Failed to create request via API" "REQUEST_FAILED" \
+    "Server may not be ready. curl output: ${REQUEST_OUTPUT:-empty}"
+  exit 4
+}
 
-if [[ -n "$SAVE_PATH" ]]; then
-  REQUEST_ARGS+=(--save "$SAVE_PATH")
-fi
-
-if [[ -n "$ENV_VAR" ]]; then
-  REQUEST_ARGS+=(--env "$ENV_VAR")
-fi
-
-REQUEST_OUTPUT=$(confidant_cmd request "${REQUEST_ARGS[@]}" 2>/dev/null)
-
-LOCAL_URL=$(echo "$REQUEST_OUTPUT" | jq -r '.url // .formUrl // empty' 2>/dev/null || echo "")
+LOCAL_URL=$(echo "$REQUEST_OUTPUT" | jq -r '.url // empty' 2>/dev/null || echo "")
 REQUEST_ID=$(echo "$REQUEST_OUTPUT" | jq -r '.id // empty' 2>/dev/null || echo "")
 REQUEST_HASH=$(echo "$REQUEST_OUTPUT" | jq -r '.hash // empty' 2>/dev/null || echo "")
 
+# Fallback: build URL from hash if .url was not returned
 if [[ -z "$LOCAL_URL" && -n "$REQUEST_HASH" ]]; then
   LOCAL_URL="http://localhost:${PORT}/requests/${REQUEST_HASH}"
 fi
 
 if [[ -z "$LOCAL_URL" ]]; then
-  if $JSON_OUTPUT; then
-    echo "{\"error\":\"Failed to create request\",\"code\":\"REQUEST_FAILED\",\"hint\":\"$(echo "$REQUEST_OUTPUT" | tr '\n' ' ')\"}" >&2
-  else
-    echo "Error: Failed to create request. CLI output:" >&2
-    echo "$REQUEST_OUTPUT" >&2
-  fi
+  emit_error "Failed to create request — no URL in API response" "REQUEST_FAILED" \
+    "API response: $(echo "$REQUEST_OUTPUT" | tr '\n' ' ')"
   exit 4
 fi
 
@@ -197,7 +205,7 @@ elif $START_TUNNEL; then
   if command -v lt &>/dev/null; then
     lt --port "$PORT" > "$LT_LOG" 2>&1 &
   else
-    npx localtunnel --port "$PORT" > "$LT_LOG" 2>&1 &
+    npx --yes localtunnel --port "$PORT" > "$LT_LOG" 2>&1 &
   fi
   LT_PID=$!
   STARTED_TUNNEL=true
@@ -275,3 +283,27 @@ else
   echo ""
   echo "Share the URL above with the user. Secret expires after submission or 24h."
 fi
+
+# --- Step 5: Delegate polling + save to the CLI ---
+# The Confidant CLI already handles polling, saving to disk, env vars, and cleanup.
+# No need to reimplement that logic in bash.
+
+POLL_ARGS=(--poll "$REQUEST_ID" --api-url "http://localhost:${PORT}")
+
+if [[ -n "$SERVICE" ]]; then
+  POLL_ARGS+=(--service "$SERVICE")
+fi
+
+if [[ -n "$SAVE_PATH" ]]; then
+  POLL_ARGS+=(--save "$SAVE_PATH")
+fi
+
+if [[ -n "$ENV_VAR" ]]; then
+  POLL_ARGS+=(--env "$ENV_VAR")
+fi
+
+$JSON_OUTPUT && POLL_ARGS+=(--json)
+
+# confidant request --poll <id> will block until secret is submitted,
+# then save to ~/.config/<service>/api_key and exit.
+confidant_cmd request "${POLL_ARGS[@]}"

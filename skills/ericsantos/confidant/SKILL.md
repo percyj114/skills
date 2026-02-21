@@ -1,6 +1,18 @@
 ---
 name: confidant
 description: Secure secret handoff and credential setup wizard for AI agents. Use when you need sensitive information from the user (API keys, passwords, tokens) or need to save credentials to config files. Never ask for secrets via chat — use Confidant instead.
+homepage: https://github.com/aiconnect-cloud/confidant
+user-invocable: true
+disable-model-invocation: false
+metadata:
+  {
+    'openclaw':
+      {
+        'emoji': '🔐',
+        'requires': { 'bins': ['curl', 'jq', 'npm'] },
+        'files': ['scripts/*']
+      }
+  }
 ---
 
 # Confidant
@@ -33,6 +45,7 @@ bash {skill}/scripts/setup.sh
 ```
 
 > **`{skill}`** is the absolute path to the directory containing this `SKILL.md` file. Agents can resolve it at runtime:
+>
 > ```bash
 > SKILL_DIR=$(find "$HOME" -name "SKILL.md" -path "*/confidant/skill*" -exec dirname {} \; 2>/dev/null | head -1)
 > # Then use: bash "$SKILL_DIR/scripts/setup.sh"
@@ -47,10 +60,13 @@ bash {skill}/scripts/request-secret.sh --label "OpenAI API Key" --service openai
 ```
 
 The script handles everything:
+
 - ✅ Starts server if not running (or reuses existing one)
 - ✅ Creates a secure request with web form
 - ✅ Detects existing tunnels (ngrok or localtunnel)
-- ✅ Returns the URL to share
+- ✅ Returns the URL to share with the user
+- ✅ Polls until the secret is submitted
+- ✅ Saves to `~/.config/openai/api_key` (chmod 600) and exits
 
 **If the user is remote** (not on the same network), add `--tunnel`:
 
@@ -61,6 +77,7 @@ bash {skill}/scripts/request-secret.sh --label "OpenAI API Key" --service openai
 This starts a [localtunnel](https://theboroer.github.io/localtunnel-www/) automatically (no account needed) and returns a public URL.
 
 **Output example:**
+
 ```
 🔐 Secure link created!
 
@@ -71,11 +88,13 @@ Save to: ~/.config/openai/api_key
 Share the URL above with the user. Secret expires after submission or 24h.
 ```
 
-Share the URL → user opens it → submits the secret → done.
+Share the URL → user opens it → submits the secret → script saves to disk → done.
+
+**Without `--service` or `--save`**, the script still polls and prints the secret to stdout (useful for piping or manual inspection).
 
 ## Scripts
 
-### `request-secret.sh` — Create a secure request (recommended)
+### `request-secret.sh` — Request, receive, and save a secret (recommended)
 
 ```bash
 # Save to ~/.config/<service>/api_key (convention)
@@ -97,16 +116,16 @@ bash {skill}/scripts/request-secret.sh --label "Key" --service myapp --tunnel
 bash {skill}/scripts/request-secret.sh --label "Key" --service myapp --json
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--label <text>` | Description shown on the web form **(required)** |
-| `--service <name>` | Auto-save to `~/.config/<name>/api_key` |
-| `--save <path>` | Auto-save to explicit file path |
-| `--env <varname>` | Set env var (requires `--service` or `--save`) |
-| `--tunnel` | Start localtunnel if no tunnel detected (for remote users) |
-| `--port <number>` | Server port (default: 3000) |
-| `--timeout <secs>` | Max wait for startup (default: 15) |
-| `--json` | Output JSON instead of human-readable text |
+| Flag               | Description                                                |
+| ------------------ | ---------------------------------------------------------- |
+| `--label <text>`   | Description shown on the web form **(required)**           |
+| `--service <name>` | Auto-save to `~/.config/<name>/api_key`                    |
+| `--save <path>`    | Auto-save to explicit file path                            |
+| `--env <varname>`  | Set env var (requires `--service` or `--save`)             |
+| `--tunnel`         | Start localtunnel if no tunnel detected (for remote users) |
+| `--port <number>`  | Server port (default: 3000)                                |
+| `--timeout <secs>` | Max wait for startup (default: 30)                         |
+| `--json`           | Output JSON instead of human-readable text                 |
 
 ### `check-server.sh` — Server diagnostics (no side effects)
 
@@ -117,6 +136,32 @@ bash {skill}/scripts/check-server.sh --json
 
 Reports server status, port, PID, and tunnel state (ngrok or localtunnel).
 
+## ⏱ Long-Running Process — Use tmux
+
+The `request-secret.sh` script **blocks until the secret is submitted** (it polls continuously). Most agent runtimes (including OpenClaw's `exec` tool) impose execution timeouts that will **kill the process before the user has time to submit**.
+
+**Always run Confidant inside a tmux session:**
+
+```bash
+# 1. Start server in tmux
+tmux new-session -d -s confidant
+tmux send-keys -t confidant "confidant serve --port 3000" Enter
+
+# 2. Create request in a second tmux window
+tmux new-window -t confidant -n request
+tmux send-keys -t confidant:request "confidant request --label 'API Key' --service openai" Enter
+
+# 3. Share the URL with the user (read from tmux output)
+tmux capture-pane -p -t confidant:request -S -30
+
+# 4. After user submits, check the result
+tmux capture-pane -p -t confidant:request -S -10
+```
+
+> **Why not `exec`?** Agent runtimes typically kill processes after 30-60s. Since the script waits for human input (which can take minutes), it gets SIGKILL before completion. tmux keeps the process alive independently.
+
+If your agent platform supports long-running background processes without timeouts, `exec` with `request-secret.sh` works fine. But when in doubt, **use tmux**.
+
 ## Rules for Agents
 
 1. **NEVER ask users to paste secrets in chat** — always use this skill
@@ -125,7 +170,7 @@ Reports server status, port, PID, and tunnel state (ngrok or localtunnel).
 4. **NEVER kill an existing server** to start a new one
 5. **NEVER try to expose the port directly** (public IP, firewall rules, etc.) — use `--tunnel` instead
 6. **ALWAYS share the URL with the user in chat** — this is the entire point of the tool
-7. **ALWAYS wait for the user to submit** — do not poll, do not retry, do not try to retrieve the secret yourself
+7. **ALWAYS wait for the script to finish** — it polls automatically and saves/outputs the secret; do not try to retrieve it yourself
 8. Use `--tunnel` when the user is remote (not on the same machine/network)
 9. Prefer `--service` for API keys — cleanest convention
 10. After receiving: confirm success, use the secret silently
@@ -134,18 +179,19 @@ Reports server status, port, PID, and tunnel state (ngrok or localtunnel).
 
 Agents can branch on exit codes for programmatic error handling:
 
-| Code | Constant | Meaning |
-|------|----------|---------|
-| `0` | — | Success — URL created and output |
-| `1` | `MISSING_LABEL` | `--label` flag not provided |
-| `2` | `MISSING_DEPENDENCY` | `jq`, `npm`, or `confidant` not installed |
-| `3` | `SERVER_TIMEOUT` | Server failed to start within `--timeout` seconds |
-| `4` | `REQUEST_FAILED` | CLI returned empty URL — request not created |
-| `5` | `TUNNEL_FAILED` | `--tunnel` requested but localtunnel URL not captured |
+| Code | Constant                          | Meaning                                                        |
+| ---- | --------------------------------- | -------------------------------------------------------------- |
+| `0`  | —                                 | Success — secret received (saved to disk or printed to stdout) |
+| `1`  | `MISSING_LABEL`                   | `--label` flag not provided                                    |
+| `2`  | `MISSING_DEPENDENCY`              | `curl`, `jq`, `npm`, or `confidant` not installed              |
+| `3`  | `SERVER_TIMEOUT` / `SERVER_CRASH` | Server failed to start or died during startup                  |
+| `4`  | `REQUEST_FAILED`                  | API returned empty URL — request not created                   |
+| `≠0` | (from CLI)                        | `confidant request --poll` failed (expired, not found, etc.)   |
 
 With `--json`, all errors include a `"code"` field for programmatic branching:
+
 ```json
-{"error": "...", "code": "MISSING_DEPENDENCY", "hint": "..."}
+{ "error": "...", "code": "MISSING_DEPENDENCY", "hint": "..." }
 ```
 
 ## Example Agent Conversation
@@ -168,17 +214,19 @@ Agent: ✅ Received and saved to ~/.config/openai/api_key. You're all set!
 ## How It Works
 
 1. Script starts a Confidant server (or reuses existing one on port 3000)
-2. Creates a request with a unique ID and secure web form
+2. Creates a request via the API with a unique ID and secure web form
 3. Optionally starts a localtunnel for public access (or detects existing ngrok/localtunnel)
-4. User opens the URL in their browser and submits the secret
-5. Secret is received, optionally saved to disk (`chmod 600`), then destroyed on server
+4. Prints the URL — agent shares it with the user in chat
+5. Delegates polling to `confidant request --poll` which blocks until the secret is submitted
+6. With `--service` or `--save`: secret is saved to disk (`chmod 600`), then destroyed on server
+7. Without `--service`/`--save`: secret is printed to stdout, then destroyed on server
 
 ## Tunnel Options
 
-| Provider | Account needed | How |
-|----------|---------------|-----|
-| **localtunnel** (default) | No | `--tunnel` flag or `npx localtunnel --port 3000` |
-| **ngrok** | Yes (free tier) | Auto-detected if running on same port |
+| Provider                  | Account needed  | How                                              |
+| ------------------------- | --------------- | ------------------------------------------------ |
+| **localtunnel** (default) | No              | `--tunnel` flag or `npx localtunnel --port 3000` |
+| **ngrok**                 | Yes (free tier) | Auto-detected if running on same port            |
 
 The script auto-detects both. If neither is running and `--tunnel` is passed, it starts localtunnel.
 
