@@ -1,5 +1,5 @@
-name: safe-rebalancer
+name: 31third-safe-rebalancer
 scope: 31third
-version: 0.1.0-alpha.0
-entrypoint: scripts/trade.js
+version: 0.1.2
+entrypoint: dist/index.js
 runtime: node

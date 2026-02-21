@@ -1,25 +1,28 @@
 {
   "name": "@31third/safe-rebalancer",
-  "version": "0.1.0-alpha.0",
-  "description": "OpenClaw skill for executing trades via 31Third infrastructure with policy engine protection.",
-  "main": "scripts/trade.js",
-  "type": "commonjs",
-  "dependencies": {
-    "@31third/sdk": "0.1.0-alpha.4",
-    "ethers": "6.10.0"
-  },
-  "optionalDependencies": {
-    "puppeteer": "24.37.2"
-  },
+  "version": "0.1.2",
+  "description": "OpenClaw skill for policy-aware Safe portfolio rebalancing via 31Third ExecutorModule.",
+  "type": "module",
+  "main": "dist/index.js",
   "scripts": {
     "install:deps": "npm install",
-    "test": "node --test",
-    "lint": "node --check scripts/*.js tests/*.js",
-    "format": "npm run format:check",
-    "format:check": "node ./scripts/format-check.js",
-    "build": "node ./scripts/build.js",
-    "publish:clawhub": "clawhub publish . --slug 31third-safe-rebalancer --name \"31Third Safe Rebalancer\" --version $(node -p \"require('./package.json').version\") --tags latest,alpha --changelog \"${CHANGELOG:?Set CHANGELOG}\""
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "format": "echo 'No formatter configured'",
+    "test": "vitest run",
+    "cli": "npm run build --silent && node dist/scripts/cli.js",
+    "smoke": "npm run build --silent && node dist/scripts/smoke.js",
+    "clawhub:install": "npm i -g clawhub",
+    "clawhub:login": "npx clawhub login",
+    "clawhub:publish": "npx clawhub publish ./ --slug 31third-safe-rebalancer --name \"31Third Safe Rebalancer\" --version 0.1.2 --tags latest"
   },
-  "author": "31Third",
+  "dependencies": {
+    "@31third/sdk": "0.1.3",
+    "viem": "^2.21.57"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  },
   "license": "MIT"
 }
