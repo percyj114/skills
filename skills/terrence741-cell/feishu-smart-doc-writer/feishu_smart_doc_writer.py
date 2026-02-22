@@ -2,13 +2,21 @@
 """
 Feishu Smart Doc Writer - 改进版
 使用 OpenClaw 官方工具调用方式
+自动分块写入 + 自动转移所有权 + 自动更新索引
 """
 
 import re
 import time
+import json
 import asyncio
 from typing import List, Optional
 from dataclasses import dataclass
+
+# 导入索引管理器
+try:
+    from .index_manager import IndexManager, add_doc_to_index
+except ImportError:
+    from index_manager import IndexManager, add_doc_to_index
 
 @dataclass
 class ChunkConfig:
@@ -310,17 +318,43 @@ class FeishuDocWriter:
         doc_token = self._extract_token_from_url(doc_url)
         
         try:
-            # 使用 OpenClaw 工具调用转移所有权
-            await self.ctx.invoke_tool("feishu_doc.transfer_owner", {
-                "doc_token": doc_token,
-                "member_type": "openid",
-                "member_id": owner_openid
+            # 使用直接 API 调用转移所有权
+            # 1. 先获取 tenant_access_token
+            token_result = await self.ctx.invoke_tool("exec", {
+                "command": "curl -s -X POST 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal' \
+  -H 'Content-Type: application/json' \
+  -d '{\"app_id\": \"cli_a90cb8b1d0f89cb1\", \"app_secret\": \"U2Mlhpds9hbUgZEVkGFhIfYS1vplru5b\"}'"
             })
             
-            if self.config.show_progress:
-                print(f"✅ 文档所有权已转移给 {owner_openid}")
+            import json
+            import re
+            token_data = json.loads(token_result)
+            tenant_token = token_data.get("tenant_access_token")
             
-            return True
+            if not tenant_token:
+                raise Exception("无法获取 tenant_access_token")
+            
+            # 2. 调用转移所有权 API
+            transfer_cmd = f"""curl -s -X POST "https://open.feishu.cn/open-apis/drive/v1/permissions/{doc_token}/members/transfer_owner?type=docx" \
+  -H "Authorization: Bearer {tenant_token}" \
+  -H "Content-Type: application/json" \
+  -d '{{"member_type": "openid", "member_id": "{owner_openid}"}}'"""
+            
+            transfer_result = await self.ctx.invoke_tool("exec", {
+                "command": transfer_cmd
+            })
+            
+            result_data = json.loads(transfer_result)
+            
+            if result_data.get("code") == 0:
+                if self.config.show_progress:
+                    print(f"✅ 文档所有权已转移给 {owner_openid}")
+                return True
+            else:
+                error_msg = result_data.get("msg", "未知错误")
+                if self.config.show_progress:
+                    print(f"⚠️ 所有权转移失败: {error_msg}")
+                return False
             
         except Exception as e:
             if self.config.show_progress:
@@ -337,7 +371,7 @@ class FeishuDocWriter:
         owner_openid: str = None
     ) -> dict:
         """
-        创建文档并写入内容，完成后自动转移所有权
+        创建文档并写入内容，完成后自动转移所有权并更新本地索引
         
         Args:
             title: 文档标题
@@ -350,7 +384,8 @@ class FeishuDocWriter:
                 "doc_url": "...",
                 "doc_token": "...",
                 "chunks_count": N,
-                "owner_transferred": True/False
+                "owner_transferred": True/False,
+                "index_updated": True/False
             }
         """
         # 1. 创建并写入文档
@@ -367,12 +402,66 @@ class FeishuDocWriter:
         if owner_openid:
             owner_transferred = await self.transfer_ownership(doc_url, owner_openid)
         
+        # 5. 【关键】自动更新本地索引
+        index_updated = False
+        try:
+            # 生成摘要（取前100字）
+            summary = content[:100].replace('\n', ' ') + "..." if len(content) > 100 else content
+            
+            # 自动分类标签
+            tags = self._auto_classify_content(content, title)
+            
+            # 更新索引
+            index_updated = add_doc_to_index(
+                name=title,
+                url=doc_url,
+                token=doc_token,
+                summary=summary,
+                tags=tags,
+                owner=owner_openid or ""
+            )
+            
+            if self.config.show_progress and index_updated:
+                print(f"✅ 文档索引已更新")
+            elif self.config.show_progress:
+                print(f"⚠️ 文档索引更新失败（不影响文档创建）")
+                
+        except Exception as e:
+            if self.config.show_progress:
+                print(f"⚠️ 索引更新失败: {e}（不影响文档创建）")
+        
         return {
             "doc_url": doc_url,
             "doc_token": doc_token,
             "chunks_count": len(chunks),
-            "owner_transferred": owner_transferred
+            "owner_transferred": owner_transferred,
+            "index_updated": index_updated
         }
+    
+    def _auto_classify_content(self, content: str, title: str) -> List[str]:
+        """根据内容自动分类"""
+        tags = []
+        text = (title + " " + content).lower()
+        
+        # 关键词映射到标签
+        if any(k in text for k in ["ai", "人工智能", "模型", "gpt", "llm"]):
+            tags.append("AI技术")
+        if any(k in text for k in ["openclaw", "skill", "agent"]):
+            tags.append("OpenClaw")
+        if any(k in text for k in ["飞书", "文档", "feishu", "docx"]):
+            tags.append("飞书文档")
+        if any(k in text for k in ["电商", "tiktok", "alibaba", "玩具"]):
+            tags.append("电商")
+        if any(k in text for k in ["garmin", "strava", "骑行", "健康", "运动"]):
+            tags.append("健康运动")
+        if any(k in text for k in ["对话", "归档", "聊天记录"]):
+            tags.append("每日归档")
+        
+        # 如果没有匹配到特定标签，添加通用标签
+        if not tags:
+            tags.append("其他")
+        
+        return tags
 
 
 # 同步包装函数（方便非异步环境使用）

@@ -360,14 +360,127 @@ async def get_config_status(ctx, args: dict) -> dict:
         }
 
 
+async def search_docs(ctx, args: dict) -> dict:
+    """
+    搜索本地索引中的文档
+    
+    Args:
+        ctx: OpenClaw 上下文
+        args: 包含 keyword, search_in(可选)
+    
+    Returns:
+        {"results": [...], "count": N, "message": "..."}
+    """
+    keyword = args.get("keyword", "").strip()
+    search_in = args.get("search_in", ["name", "summary", "tags"])
+    
+    if not keyword:
+        return {
+            "results": [],
+            "count": 0,
+            "message": "❌ 请提供搜索关键词"
+        }
+    
+    try:
+        from .index_manager import IndexManager
+        
+        manager = IndexManager()
+        results = manager.search_docs(keyword, search_in)
+        
+        # 格式化结果
+        formatted_results = []
+        for doc in results:
+            formatted_results.append({
+                "name": doc.get("name", ""),
+                "type": doc.get("type", ""),
+                "link": doc.get("link", ""),
+                "summary": doc.get("summary", ""),
+                "status": doc.get("status", ""),
+                "tags": doc.get("tags", ""),
+                "updated": doc.get("updated", "")
+            })
+        
+        return {
+            "results": formatted_results,
+            "count": len(formatted_results),
+            "message": f"✅ 找到 {len(formatted_results)} 个结果" if formatted_results else f"⚠️ 未找到包含 '{keyword}' 的文档"
+        }
+        
+    except Exception as e:
+        return {
+            "results": [],
+            "count": 0,
+            "message": f"❌ 搜索失败: {e}"
+        }
+
+
+async def list_docs(ctx, args: dict) -> dict:
+    """
+    列出所有文档（支持筛选）
+    
+    Args:
+        ctx: OpenClaw 上下文
+        args: 包含 tag(可选), status(可选), limit(可选)
+    
+    Returns:
+        {"results": [...], "count": N, "message": "..."}
+    """
+    tag = args.get("tag")
+    status = args.get("status")
+    limit = args.get("limit", 50)
+    
+    try:
+        from .index_manager import IndexManager
+        
+        manager = IndexManager()
+        results = manager.list_docs(tag=tag, status=status, limit=limit)
+        
+        # 格式化结果
+        formatted_results = []
+        for doc in results:
+            formatted_results.append({
+                "name": doc.get("name", ""),
+                "type": doc.get("type", ""),
+                "link": doc.get("link", ""),
+                "summary": doc.get("summary", ""),
+                "status": doc.get("status", ""),
+                "tags": doc.get("tags", ""),
+                "updated": doc.get("updated", "")
+            })
+        
+        # 构建消息
+        filter_desc = []
+        if tag:
+            filter_desc.append(f"标签 '{tag}'")
+        if status:
+            filter_desc.append(f"状态 '{status}'")
+        
+        filter_text = "，".join(filter_desc) if filter_desc else "全部"
+        
+        return {
+            "results": formatted_results,
+            "count": len(formatted_results),
+            "message": f"✅ {filter_text}文档共 {len(formatted_results)} 个"
+        }
+        
+    except Exception as e:
+        return {
+            "results": [],
+            "count": 0,
+            "message": f"❌ 列出文档失败: {e}"
+        }
+
+
 # 版本信息
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __all__ = [
     "write_smart",
     "append_smart",
     "transfer_ownership",
     "configure",
     "get_config_status",
+    "search_docs",
+    "list_docs",
     "UserConfig",
     "FIRST_TIME_GUIDE"
 ]

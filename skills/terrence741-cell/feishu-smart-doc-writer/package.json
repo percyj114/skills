@@ -1,6 +1,6 @@
 {
   "name": "feishu-smart-doc-writer",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Feishu/Lark Smart Document Writer - 飞书智能文档写入器. Auto-chunk writing to avoid blank docs, auto ownership transfer. Config OpenID on first use.",
   "author": "OpenClaw User",
   "license": "MIT",
