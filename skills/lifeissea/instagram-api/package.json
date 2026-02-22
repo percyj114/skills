@@ -1,7 +1,0 @@
-{
-  "name": "instagram-api",
-  "version": "1.0.5",
-  "description": "Post to Instagram (Feed, Story, Reels, Carousel) and Threads via Meta Graph API",
-  "keywords": ["instagram", "threads", "meta", "social-media", "openclaw"],
-  "files": ["SKILL.md", "scripts/post-feed.sh", "scripts/post-story.sh", "scripts/post-reels.sh", "scripts/post-carousel.sh", "scripts/post-threads.sh"]
-}

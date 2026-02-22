@@ -17,6 +17,8 @@ LOG_FILE="$LOG_DIR/threads-post.log"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 err() { log "❌ ERROR: $*"; exit 1; }
+if [ -f ~/.openclaw/.env ]; then source ~/.openclaw/.env; fi
+
 
 # ── 인자 확인 ──────────────────────────────────────────────
 CAPTION_FILE="${1:?사용법: $0 <캡션파일> [이미지URL]}"
@@ -33,7 +35,7 @@ TOKEN="${THREADS_ACCESS_TOKEN:-${INSTAGRAM_ACCESS_TOKEN:-}}"
 USER_ID="${THREADS_USER_ID:?THREADS_USER_ID 환경변수 필요}"
 API_BASE="https://graph.threads.net/v1.0"
 
-CAPTION=$(cat "$CAPTION_FILE")
+CAPTION=$(python3 /Users/tomas/.openclaw/workspace/scripts/utils/clean_md.py --threads < "$CAPTION_FILE")
 log "🧵 Threads 포스팅 시작 (캡션 ${#CAPTION}자)"
 
 # ── Step 1: 컨테이너 생성 ─────────────────────────────────
