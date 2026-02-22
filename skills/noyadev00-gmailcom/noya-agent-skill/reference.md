@@ -342,6 +342,126 @@ Clear all message history for a session.
 
 ---
 
+## GET /api/user/summary
+
+Returns a comprehensive, agent-ready snapshot of everything relevant to the authenticated user. All data sources are fetched concurrently; if any single source fails its section will contain an `{ "error": "..." }` object rather than blocking the entire response.
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "generatedAt": "2026-02-21T10:00:00.000Z",
+    "user": {
+      "id": "did:privy:...",
+      "walletAddress": "0xabc..."
+    },
+    "holdings": {
+      "totalTokensValueUSD": 4200.50,
+      "totalAppsValueUSD": 800.00,
+      "totalNetWorthUSD": 5000.50,
+      "tokens": [
+        {
+          "token": {
+            "symbol": "ETH",
+            "balance": "1.25",
+            "balanceUSD": 3500.00
+          }
+        }
+      ],
+      "apps": [
+        {
+          "name": "Aave",
+          "balanceUSD": 800.00
+        }
+      ]
+    },
+    "dcaStrategies": {
+      "total": 3,
+      "active": 2,
+      "inactive": 0,
+      "errored": 0,
+      "completed": 1,
+      "strategies": [
+        {
+          "id": "uuid",
+          "status": "active",
+          "chainId": 1,
+          "sourceToken": "0xUSDC...",
+          "sourceTokenSymbol": "USDC",
+          "targetToken": "0xWETH...",
+          "targetTokenSymbol": "WETH",
+          "amountPerPeriod": "50",
+          "frequency": "weekly",
+          "nextExecutionDate": "2026-02-28T00:00:00.000Z",
+          "endDate": null,
+          "durationType": "until_depletion",
+          "fixedOrdersCount": null,
+          "totalExecutions": 4,
+          "successfulExecutions": 4,
+          "totalSpent": "200",
+          "totalReceived": "0.057",
+          "averagePrice": "3508.77",
+          "averagePriceUSD": "3508.77",
+          "slippageTolerance": "0.5",
+          "createdAt": "2026-01-01T00:00:00.000Z"
+        }
+      ]
+    },
+    "polymarket": {
+      "openPositions": {
+        "total": 2,
+        "totalCurrentValueUSD": 150.00,
+        "totalUnrealizedPnlUSD": 25.50,
+        "positions": [
+          {
+            "title": "Will ETH exceed $5000 by March 2026?",
+            "outcome": "Yes",
+            "marketSlug": "eth-5000-march-2026",
+            "eventSlug": "eth-price-march-2026",
+            "size": "200",
+            "avgPrice": "0.60",
+            "currentPrice": "0.75",
+            "currentValue": "150.00",
+            "initialValue": "120.00",
+            "unrealizedPnl": "30.00",
+            "realizedPnl": "0",
+            "pnl": "30.00"
+          }
+        ]
+      },
+      "closedPositions": {
+        "total": 5,
+        "positions": [
+          {
+            "title": "Will BTC reach $100k in 2025?",
+            "outcome": "Yes",
+            "marketSlug": "btc-100k-2025",
+            "eventSlug": "btc-price-2025",
+            "size": "100",
+            "avgPrice": "0.80",
+            "settledPrice": "1.00",
+            "pnl": "20.00",
+            "closedAt": "2026-01-15T00:00:00.000Z"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+### Error Responses
+
+| Status | Condition                              |
+| ------ | -------------------------------------- |
+| 400    | No embedded Ethereum wallet found      |
+| 401    | Unauthorized                           |
+| 500    | Server error                           |
+
+---
+
 ## GET /api/agents/summarize
 
 Returns all available agent types, their specialties, and the tools they have access to.

@@ -174,6 +174,21 @@ curl -s -H "x-api-key: $NOYA_API_KEY" \
   "https://safenet.one/api/agents/summarize" | jq '.data'
 ```
 
+### Get User Summary (all holdings, DCA strategies, Polymarket positions)
+
+Returns a single structured snapshot of everything relevant to the authenticated user — ideal for feeding as context to another agent.
+
+```bash
+curl -s -H "x-api-key: $NOYA_API_KEY" \
+  "https://safenet.one/api/user/summary" | jq '.data'
+```
+
+Response includes:
+- `holdings` — all wallet tokens and DeFi app positions with USD values
+- `dcaStrategies` — all DCA strategies (active, inactive, errored, completed)
+- `polymarket.openPositions` — current open prediction market positions with PnL
+- `polymarket.closedPositions` — 20 most recently closed positions
+
 ### Chat Completion (OpenAI-compatible, no agent tools)
 
 ```bash
@@ -244,6 +259,20 @@ User: "What are the top Polymarket events?"
 1. Generate a thread ID
 2. bash {baseDir}/noya-message.sh "Show me the top trending Polymarket events" "$THREAD_ID"
 → Returns current events, markets, and trading options
+```
+
+### Full User Context for Another Agent
+```
+Use case: You need to brief another AI agent on everything about the user
+before delegating a task to it.
+
+1. curl -s -H "x-api-key: $NOYA_API_KEY" \
+     "https://safenet.one/api/user/summary" | jq '.data' > user_context.json
+2. Pass user_context.json as the system/user context to the downstream agent.
+→ Returns wallet holdings, all DCA strategies, open and closed Polymarket
+  positions in a single JSON object. Partial failures are isolated — the
+  response always returns whatever data is available, with an error field
+  for any source that failed.
 ```
 
 ### Voice Chat
