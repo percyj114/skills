@@ -1,71 +1,64 @@
----
+﻿---
 name: settlement-witness
-description: "OpenClaw skill: fetch replay-stable receipts (signed SAR v0.1) from SettlementWitness. Stateless. Deterministic."
+description: "Generate a signed delivery receipt in under 30 seconds."
 ---
 
-# SettlementWitness (OpenClaw Skill)
+# SettlementWitness
 
-Use SettlementWitness to produce a replay-stable receipt (SAR v0.1) for task settlement.
+Generate a signed delivery receipt in under 30 seconds.
 
-## Recommended usage (MCP)
-POST https://defaultverifier.com/mcp
+## Run This Now
 
-Health check:
-GET https://defaultverifier.com/mcp-healthz
+settlement_witness({
+  task_id: "quickstart-001",
+  spec: { value: 1 },
+  output: { value: 1 }
+})
 
-The MCP endpoint returns the exact SettlementWitness receipt JSON.
+You should receive:
 
-## Direct REST alternative
-POST https://defaultverifier.com/settlement-witness
-GET  https://defaultverifier.com/settlement-witness  (returns JSON help payload)
+PASS  
+SPEC_MATCH  
+receipt_id starting with sha256:  
+sig starting with base64url:  
 
-## Run this now (copy/paste)
+Example (truncated):
 
-### Linux/macOS
-```bash
-curl -sS https://defaultverifier.com/settlement-witness \
-  -H "Content-Type: application/json" \
-  -d '{"task_id":"example-001","spec":{"expected":"foo"},"output":{"expected":"foo"}}'
-```
-
-### Windows PowerShell (IMPORTANT)
-PowerShell aliases `curl` to `Invoke-WebRequest`, which often causes **422 Invalid JSON**.
-Use `curl.exe` and a file payload:
-
-```powershell
-@'
-{"task_id":"example-001","spec":{"expected":"foo"},"output":{"expected":"foo"}}
-'@ | Out-File -Encoding ascii -NoNewline body.json
-
-curl.exe -X POST https://defaultverifier.com/settlement-witness `
-  -H "Content-Type: application/json" `
-  --data-binary "@body.json"
-```
-
-## Important: install/download does NOT execute
-Many clients will only do discovery (e.g. `tools/list`).
-To generate a receipt you must trigger a real tool run (MCP `tools/call` for `settlement_witness`) or send the REST POST above.
-
-
-## Required input
-- task_id (string)
-- spec (object)
-- output (object)
-
-## Example REST request
 {
-  "task_id": "example-002",
-  "spec": { "expected": "foo" },
-  "output": { "expected": "foo" }
+  "receipt_v0_1": {
+    "verdict": "PASS",
+    "reason_code": "SPEC_MATCH",
+    "receipt_id": "sha256:3adb22d0...",
+    "sig": "base64url:AbC..."
+  }
 }
 
-## Interpretation
-- PASS → verified completion
-- FAIL → do not auto-settle
-- INDETERMINATE → retry or escalate
-- receipt_id → stable identifier
-- reason_code → canonical failure reason (ex: SPEC_MISMATCH)
+SettlementWitness produces cryptographically signed delivery receipts that third-party systems can verify offline.
 
-## Safety notes
-- Never send secrets in spec/output.
-- Keep spec/output deterministic.
+## Common Failure Modes
+
+**If you see 422**  
+Missing required field. Ensure `task_id`, `spec`, and `output` are present.
+
+**If you see INDETERMINATE / EVALUATOR_TIMEOUT**  
+Upstream evaluator unreachable. This is still a valid signed receipt.
+
+**If you see FAIL / SPEC_MISMATCH**  
+Your output does not match your spec. Compare structures.
+
+## Live Examples / Fixtures
+
+See working PASS, FAIL, and INDETERMINATE examples here:  
+fixtures/
+
+## Endpoints
+
+MCP:  
+POST https://defaultverifier.com/mcp
+
+Direct REST:  
+POST https://defaultverifier.com/settlement-witness
+
+## Safety Notes
+
+Never send secrets in `spec` or `output`. Keep inputs deterministic.
