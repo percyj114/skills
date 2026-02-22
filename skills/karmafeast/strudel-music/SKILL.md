@@ -1,6 +1,7 @@
 ---
 name: strudel-music
 description: "Compose, play, and render music using Strudel live-coding patterns. Use when composing music programmatically, generating audio from pattern code, creating mood-based compositions, rendering patterns to WAV/Opus, or streaming music to Discord voice channels. Supports interactive browser playback (strudel.cc), headless rendering, and mood-parameterized generation from structured inputs. NOT for: playing pre-recorded audio files, music theory questions without composition, or non-Strudel audio tools."
+metadata: { "openclaw": { "emoji": "🎵", "requires": { "bins": ["node", "npx"], "optionalBins": ["ffmpeg", "ffplay"], "description": "Headless rendering requires Node.js and Puppeteer (downloads Chromium). ffmpeg needed for audio format conversion." }, "install": [{ "id": "puppeteer", "kind": "npm", "package": "puppeteer", "global": true, "bins": ["npx"], "label": "Install Puppeteer (headless Chromium for rendering)" }, { "id": "ffmpeg", "kind": "apt", "package": "ffmpeg", "bins": ["ffmpeg", "ffplay"], "label": "Install ffmpeg (audio conversion, optional)" }], "securityNotes": "Headless rendering navigates to https://strudel.cc and evaluates pattern code in the remote page's JS context. Only pass pattern code you trust. For sensitive inputs, use STRUDEL_URL=http://localhost:3000 for local rendering. The render script uses --no-sandbox for container/WSL compatibility." } }
 ---
 
 # Strudel Music
@@ -111,6 +112,13 @@ stack(
 
 ## Audio Rendering
 
+### Prerequisites
+
+Headless rendering requires:
+- **Node.js** (v18+) and **npx**
+- **Puppeteer** (`npm install -g puppeteer`) — downloads a Chromium binary (~300MB)
+- **ffmpeg** (optional) — for WAV→Opus/MP3 conversion
+
 ### Browser export (interactive)
 In strudel.cc, click the download icon to render current pattern to WAV.
 
@@ -120,6 +128,24 @@ Use `scripts/render-pattern.sh` for unattended rendering:
 ./scripts/render-pattern.sh input.js output.wav 8 120
 # Args: <pattern.js> <output.wav> <cycles> <bpm>
 ```
+
+> **Security note:** The render script launches headless Chromium, navigates to
+> `https://strudel.cc`, and evaluates your pattern code inside the remote page's
+> JS context. Only pass pattern code you trust. The remote page controls the
+> execution environment during rendering. See "Local Rendering" below to avoid
+> the remote dependency.
+
+### Local rendering (offline, recommended for sensitive inputs)
+
+To avoid the remote strudel.cc dependency, clone the Strudel repo locally:
+```bash
+git clone https://github.com/tidalcycles/strudel.git
+cd strudel && pnpm install && pnpm dev
+# Then point render-pattern.sh at localhost:
+STRUDEL_URL=http://localhost:3000 ./scripts/render-pattern.sh input.js output.wav 8 120
+```
+
+This keeps all execution local — no network dependency, no remote code execution.
 
 ### Format conversion
 ```bash
@@ -135,6 +161,10 @@ ffmpeg -i output.wav -c:a libmp3lame -q:a 2 output.mp3
 Pattern code → Headless browser + Strudel REPL → renderPatternAudio()
 → WAV buffer → ffmpeg → Opus → Discord VC bridge
 ```
+
+The Discord streaming pipeline renders patterns to Opus and feeds them to a VC
+bridge (e.g., `openclaw-discord-vc-bootstrap`). The skill does not manage Discord
+bot tokens or bridge credentials — those are configured separately in the bridge.
 
 See `references/integration-pipeline.md` for the full architecture.
 

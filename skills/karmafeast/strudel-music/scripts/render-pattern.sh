@@ -3,17 +3,27 @@
 #
 # Usage: ./render-pattern.sh <input.js> [output.wav] [cycles] [bpm]
 #
-# Requires: node, npx, puppeteer (npm install -g puppeteer)
+# Requires: node (v18+), puppeteer (npm install -g puppeteer)
 # Optional: ffmpeg (for format conversion)
+#
+# Environment variables:
+#   STRUDEL_URL  — Override the Strudel REPL URL (default: https://strudel.cc)
+#                  Set to http://localhost:3000 for local rendering (recommended
+#                  for sensitive inputs — avoids remote code execution surface).
+#
+# Security notes:
+#   - This script launches headless Chromium and evaluates pattern code inside
+#     the target page's JS context. Only pass pattern code you trust.
+#   - --no-sandbox is used for container/WSL compatibility. When running on a
+#     full desktop, remove --no-sandbox from the Puppeteer args below.
+#   - For maximum isolation, run in a container or dedicated VM.
 #
 # This script:
 # 1. Starts a headless Chromium via Puppeteer
-# 2. Loads strudel.cc
+# 2. Loads the Strudel REPL (strudel.cc or local)
 # 3. Injects the pattern code
 # 4. Triggers renderPatternAudio() for offline WAV export
 # 5. Captures the downloaded WAV file
-#
-# For batch rendering, see: render-all.sh
 
 set -euo pipefail
 
@@ -21,6 +31,7 @@ INPUT="${1:?Usage: render-pattern.sh <input.js> [output.wav] [cycles] [bpm]}"
 OUTPUT="${2:-$(basename "$INPUT" .js).wav}"
 CYCLES="${3:-8}"
 BPM="${4:-120}"
+STRUDEL_URL="${STRUDEL_URL:-https://strudel.cc}"
 
 if [[ ! -f "$INPUT" ]]; then
   echo "Error: input file not found: $INPUT" >&2
@@ -63,9 +74,10 @@ async function render() {
     downloadPath: downloadDir
   });
 
-  // Navigate to strudel.cc
-  console.log('Loading strudel.cc...');
-  await page.goto('https://strudel.cc', { waitUntil: 'networkidle2', timeout: 60000 });
+  // Navigate to Strudel REPL (remote or local)
+  const strudelUrl = process.env.STRUDEL_URL;
+  console.log(`Loading ${strudelUrl}...`);
+  await page.goto(strudelUrl, { waitUntil: 'networkidle2', timeout: 60000 });
 
   // Wait for Strudel to initialize
   await page.waitForFunction(() => typeof globalThis.evaluate === 'function', { timeout: 30000 });
@@ -124,6 +136,7 @@ PATTERN_CODE="$PATTERN_CODE" \
   CPS="$CPS" \
   SAMPLE_RATE="$SAMPLE_RATE" \
   DOWNLOAD_DIR="$DOWNLOAD_DIR" \
+  STRUDEL_URL="$STRUDEL_URL" \
   node "$RENDER_SCRIPT"
 
 # Find and move the output WAV
