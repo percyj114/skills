@@ -1,13 +1,18 @@
 {
   "owner": "globalcaos",
   "slug": "chatgpt-exporter-ultimate",
-  "displayName": "Chatgpt Exporter Ultimate",
+  "displayName": "ChatGPT Exporter Ultimate",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1771172818869,
-    "commit": "https://github.com/openclaw/skills/commit/d4923ea022d1c3ac6ae1f2413cfbb19e548c98c6"
+    "version": "1.3.1",
+    "publishedAt": 1771659264512,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1771172818869,
+      "commit": "https://github.com/openclaw/skills/commit/d4923ea022d1c3ac6ae1f2413cfbb19e548c98c6"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1771020761071,
