@@ -56,7 +56,7 @@ hs_store({ slug: "use-clerk", title: "Use Clerk for auth",
 | Branch diff | `hs_diff` | What changed in this branch vs parent? |
 | Trust | `hs_profile` | How trustworthy is this agent? |
 
-## Git-Style Memory Branching (NEW in v1.1.0)
+## Git-Style Memory Branching (NEW in v1.0.23)
 
 ```
 hs_fork({ branchName: "experiment-v2" })      # Fork — parent untouched
@@ -66,7 +66,7 @@ hs_merge({ branchWorkspaceId: "clx...", strategy: "ours" })  # Merge if it worke
 hs_discard({ branchWorkspaceId: "clx..." })    # Or discard if it didn't
 ```
 
-## Agent Identity + Trust (NEW in v1.1.0)
+## Agent Identity + Trust (NEW in v1.0.23)
 
 ```
 hs_identify({ agentSlug: "research-agent" })   # Register with SHA256 fingerprint

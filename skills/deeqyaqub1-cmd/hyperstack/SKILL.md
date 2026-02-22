@@ -1,6 +1,6 @@
 ---
-name: HyperStack — Typed Graph Memory for AI Agents
-description: "Persistent typed knowledge graph memory for AI agents. Ask 'what blocks deploy?' → exact typed answer, not fuzzy similarity. Git-style memory branching: fork, experiment, diff, merge or discard. Agent identity + trust scoring. Time-travel to any past graph state. Provenance on every card: confidence, truthStratum, verifiedBy. Works in Cursor, Claude Desktop, LangGraph, any MCP client. Self-hostable. $0 per operation."
+name: HyperStack — Memory Hub for AI Agents
+description: "The Memory Hub for AI agents — deterministic, typed, temporal graph memory with trust propagation, safety constraints, and decision replay. Ask 'what blocks deploy?' → exact typed answer. Git-style branching. Episodic/semantic/working memory APIs. Decision replay with hindsight bias detection. Utility-weighted edges that self-improve from agent feedback. Agent identity + trust scoring. Time-travel to any past graph state. Works in Cursor, Claude Desktop, LangGraph, any MCP client. Self-hostable. $0 per operation at any scale."
 user-invocable: true
 homepage: https://cascadeai.dev/hyperstack
 metadata:
@@ -13,11 +13,11 @@ metadata:
     primaryEnv: HYPERSTACK_API_KEY
 ---
 
-# HyperStack — Typed Graph Memory for AI Agents
+# HyperStack — Memory Hub for AI Agents
 
 ## What this does
 
-Gives AI agents persistent memory as a typed knowledge graph. Store knowledge as cards with explicit typed relations. Query with exact answers — not fuzzy similarity. Branch memory like Git. Track provenance on every card. Identify agents with trust scores.
+HyperStack is the Memory Hub for AI agents. Typed graph memory with three distinct memory surfaces, decision replay, utility-weighted edges that self-improve from feedback, and full provenance on every card. The only memory layer where agents can verify what they know, trace why they know it, and coordinate without an LLM in the loop.
 
 **The problem it solves:**
 ```
@@ -29,20 +29,23 @@ Gives AI agents persistent memory as a typed knowledge graph. Store knowledge as
 
 **What you get instead:**
 ```
-"What breaks if auth changes?"  → hs_impact use-clerk        → [auth-api, deploy-prod, billing-v2]
-"What blocks deploy?"           → hs_blockers deploy-prod     → [migration-23]
-"What's related to stripe?"     → hs_recommend use-stripe     → scored list
-"Anything about auth?"          → hs_smart_search             → auto-routed
-"Fork memory for experiment"    → hs_fork                     → branch workspace
-"What changed in the branch?"   → hs_diff                     → added/changed/deleted
-"Trust this agent?"             → hs_profile                  → trustScore: 0.84
+"What breaks if auth changes?"  → hs_impact use-clerk         → [auth-api, deploy-prod, billing-v2]
+"What blocks deploy?"           → hs_blockers deploy-prod      → [migration-23]
+"What's related to stripe?"     → hs_recommend use-stripe      → scored list
+"Anything about auth?"          → hs_smart_search              → auto-routed
+"Fork memory for experiment"    → hs_fork                      → branch workspace
+"What changed in the branch?"   → hs_diff                      → added/changed/deleted
+"Trust this agent?"             → hs_profile                   → trustScore: 0.84
+"Why did we make this call?"    → mode=replay                  → decision timeline + hindsight flags
+"Show episodic memory"          → memoryType=episodic          → decay-scored event traces
+"Did this card help agents?"    → hs_feedback outcome=success  → utility score updated
 ```
 
 Typed relations. Exact answers. Zero LLM cost. Works across Cursor, Claude Desktop, LangGraph, any MCP client simultaneously.
 
 ---
 
-## Tools (14 total)
+## Tools (15 total)
 
 ### hs_smart_search ✨ Recommended starting point
 Agentic RAG — automatically routes to the best retrieval mode. Use this when unsure which tool to call.
@@ -142,6 +145,32 @@ hs_commit({
 
 ---
 
+### hs_feedback ✨ NEW in v1.0.23
+Report whether a set of cards helped an agent succeed or fail. Promotes winners, decays losers. Makes the graph self-improving over time.
+```
+# Cards that were in context when the task succeeded
+hs_feedback({
+  cardSlugs: ["use-clerk", "auth-api", "migration-23"],
+  outcome: "success",
+  taskId: "task-auth-refactor"
+})
+→ { feedback: true, outcome: "success", cardsAffected: 3, edgesUpdated: 5 }
+
+# Cards that were in context when the task failed
+hs_feedback({
+  cardSlugs: ["wrong-approach"],
+  outcome: "failure",
+  taskId: "task-auth-refactor"
+})
+→ { feedback: true, outcome: "failure", cardsAffected: 1, edgesUpdated: 2 }
+```
+
+**How it works:** Each card's edges carry a `utilityScore`. On success, scores increase. On failure, scores decrease. Over time, cards that consistently help agents rank higher in `?sortBy=utility` queries. The graph learns what's actually useful.
+
+**When to call it:** At the end of every agent task — win or lose. Even a few signals per day significantly improve retrieval quality.
+
+---
+
 ### hs_prune
 Remove stale cards not updated in N days that aren't referenced by other cards. Always dry-run first.
 ```
@@ -168,13 +197,19 @@ hs_blockers({ slug: "deploy-prod" })
 ---
 
 ### hs_graph
-Forward graph traversal. Supports time-travel.
+Forward graph traversal. Supports time-travel and utility-weighted sorting.
 ```
 hs_graph({ from: "auth-api", depth: 2 })
 → nodes: [auth-api, use-clerk, migration-23, alice]
 
 # Time-travel — graph at any past moment
 hs_graph({ from: "auth-api", depth: 2, at: "2026-02-15T03:00:00Z" })
+
+# Utility-weighted — highest-value edges first
+hs_graph({ from: "auth-api", depth: 2, weightBy: "utility" })
+
+# Decision replay — what did agent know when this card was created?
+hs_graph({ from: "use-clerk", mode: "replay" })
 ```
 
 ---
@@ -203,7 +238,7 @@ hs_recommend({ slug: "use-stripe" })
 
 ---
 
-### hs_fork ✨ NEW in v1.1.0
+### hs_fork
 Fork a workspace into a branch for safe experimentation. All cards copied. Parent untouched.
 ```
 hs_fork({ branchName: "experiment-v2" })
@@ -211,7 +246,7 @@ hs_fork({ branchName: "experiment-v2" })
     branchWorkspaceId: "clx...",
     branchName: "experiment-v2",
     cardsCopied: 24,
-    forkedAt: "2026-02-20T..."
+    forkedAt: "2026-02-21T..."
   }
 ```
 
@@ -219,50 +254,51 @@ When to use: before risky changes, experiments, or testing new agent reasoning s
 
 ---
 
-### hs_diff ✨ NEW in v1.1.0
+### hs_diff
 See exactly what changed between a branch and its parent. SQL-driven — deterministic, not fuzzy.
 ```
 hs_diff({ branchWorkspaceId: "clx..." })
 → {
-    added:   [{ slug: "new-approach", title: "..." }],
-    changed: [{ slug: "use-clerk", title: "..." }],
-    deleted: []
+    added:    [{ slug: "new-approach", title: "..." }],
+    modified: [{ slug: "use-clerk", title: "..." }],
+    removed:  []
   }
 ```
 
 ---
 
-### hs_merge ✨ NEW in v1.1.0
-Merge branch changes back to parent. Two strategies: `ours` (branch wins) or `theirs` (parent wins).
+### hs_merge
+Merge branch changes back to parent. Two strategies: `branch-wins` or `parent-wins`.
 ```
 # Branch wins — apply all branch changes to parent
-hs_merge({ branchWorkspaceId: "clx...", strategy: "ours" })
-→ { merged: 24, skipped: 0, strategy: "ours" }
+hs_merge({ branchWorkspaceId: "clx...", strategy: "branch-wins" })
+→ { merged: 24, conflicts: 0, strategy: "branch-wins" }
 
 # Parent wins — only copy cards that don't exist in parent
-hs_merge({ branchWorkspaceId: "clx...", strategy: "theirs" })
-→ { merged: 3, skipped: 21, strategy: "theirs" }
+hs_merge({ branchWorkspaceId: "clx...", strategy: "parent-wins" })
+→ { merged: 3, conflicts: 21, strategy: "parent-wins" }
 ```
 
 ---
 
-### hs_discard ✨ NEW in v1.1.0
+### hs_discard
 Discard a branch entirely. Deletes all branch cards and workspace. Parent untouched.
 ```
 hs_discard({ branchWorkspaceId: "clx..." })
-→ { deleted: true, branchWorkspaceId: "clx..." }
+→ { discarded: true, branchWorkspaceId: "clx...", parentSlug: "default" }
 ```
 
 ---
 
-### hs_identify ✨ NEW in v1.1.0
+### hs_identify
 Register this agent with a SHA256 fingerprint. Idempotent — safe to call every session.
 ```
 hs_identify({ agentSlug: "research-agent", displayName: "Research Agent" })
 → {
+    registered: true,
     agentSlug: "research-agent",
     fingerprint: "sha256:a3f...",
-    isNew: true
+    trustScore: 0.5
   }
 ```
 
@@ -270,15 +306,15 @@ When to use: at the start of every agent session for full provenance tracking.
 
 ---
 
-### hs_profile ✨ NEW in v1.1.0
+### hs_profile
 Get an agent's trust score. Computed from verified card ratio + activity.
 ```
 hs_profile({ agentSlug: "research-agent" })
 → {
     agentSlug: "research-agent",
+    displayName: "Research Agent",
     trustScore: 0.84,
-    verifiedCards: 42,
-    cardCount: 50,
+    fingerprint: "sha256:a3f...",
     registeredAt: "...",
     lastActiveAt: "..."
   }
@@ -324,6 +360,111 @@ hs_stats()
 
 ---
 
+## The Memory Hub — Three Memory Surfaces
+
+HyperStack exposes three distinct memory APIs backed by the same typed graph. Each has different retention behaviour and decay rules.
+
+### Episodic Memory — what happened and when
+```
+GET /api/cards?workspace=X&memoryType=episodic
+```
+- **Cards:** stack=general OR cardType=event — event traces, agent actions
+- **Sort:** createdAt DESC (most recent first)
+- **Retention:** 30-day soft decay
+  - 0–7 days → decayScore: 1.0 (fresh)
+  - 8–30 days → linear decay to 0.2
+  - >30 days → decayScore: 0.1 (stale, not deleted)
+- **Agent bonus:** if sourceAgent is set, decay is halved — useful memories survive longer
+- **Extra fields per card:** `decayScore`, `daysSinceCreated`, `isStale`
+- **Metadata:** `segment: "episodic"`, `retentionPolicy: "30-day-decay"`, `staleCount`
+
+### Semantic Memory — facts and knowledge that never age
+```
+GET /api/cards?workspace=X&memoryType=semantic
+```
+- **Cards:** cardType IN (decision, person, project, workflow, preference, account)
+- **Sort:** updatedAt DESC
+- **Retention:** permanent — no decay, no expiry
+- **Extra fields per card:** `confidence`, `truth_stratum`, `verified_by`, `verified_at`, `isVerified`
+- **Metadata:** `segment: "semantic"`, `retentionPolicy: "permanent"`
+
+### Working Memory — active scratchpad, TTL-based
+```
+GET /api/cards?workspace=X&memoryType=working
+GET /api/cards?workspace=X&memoryType=working&includeExpired=true
+```
+- **Cards:** ttl IS NOT NULL
+- **Sort:** updatedAt DESC
+- **Retention:** TTL-based auto-expiry. Default hides expired cards.
+- **Agent bonus:** if sourceAgent is set, effective TTL extended 1.5x. Signalled as `ttlExtended: true`.
+- **Extra fields per card:** `ttl`, `expiresAt`, `isExpired`, `ttlExtended`
+- **Metadata:** `segment: "working"`, `retentionPolicy: "ttl-based"`, `expiredCount`
+- TTL formats: `"30m"` · `"24h"` · `"7d"` · `"2w"` · raw milliseconds
+
+---
+
+## Decision Replay
+
+Reconstruct exactly what the agent knew when a decision was made. Flags cards that didn't exist at decision time — potential hindsight bias in retrospective analysis.
+
+```
+hs_graph({ from: "use-clerk", mode: "replay" })
+```
+
+Response shape:
+```json
+{
+  "mode": "replay",
+  "root": "use-clerk",
+  "anchorTime": "2026-02-19T20:59:00Z",
+  "knownAtDecision": 1,
+  "unknownAtDecision": 1,
+  "timeline": [
+    {
+      "slug": "use-clerk",
+      "timing": "decision",
+      "modifiedAfterDecision": false
+    },
+    {
+      "slug": "blocker-clerk-migration",
+      "timing": "after_decision",
+      "modifiedAfterDecision": true
+    }
+  ],
+  "narrative": [
+    "Decision: [Use Clerk for Auth] made at 2026-02-19T20:59:00Z",
+    "Agent knew 1 of 2 connected cards at decision time.",
+    "1 card(s) did not exist when this decision was made: [blocker-clerk-migration]",
+    "⚠️ 1 card(s) were modified after the decision (potential hindsight): [blocker-clerk-migration]"
+  ]
+}
+```
+
+**Timing values:** `decision` · `prior_knowledge` · `same_day` · `just_before` · `after_decision`
+
+**Use cases:** Compliance audits · agent debugging · post-mortems · "what did the agent actually know when it made this call?"
+
+---
+
+## Utility-Weighted Edges
+
+Every edge carries a `utilityScore` that updates from agent feedback. Cards that consistently help agents succeed rank higher. Cards that appear in failed tasks decay.
+
+```
+# Retrieve most useful cards first
+GET /api/cards?workspace=X&sortBy=utility
+
+# Only high-utility cards
+GET /api/cards?workspace=X&minUtility=0.7
+
+# Graph traversal weighted by utility
+GET /api/graph?from=auth-api&weightBy=utility
+```
+
+Feed the loop with `hs_feedback` at the end of every task. The graph gets smarter with every session.
+
+---
+
 ## Git-Style Memory Branching
 
 Branch your memory workspace like a Git repo. Experiment safely without corrupting live memory.
@@ -332,14 +473,14 @@ Branch your memory workspace like a Git repo. Experiment safely without corrupti
 # 1. Fork before an experiment
 hs_fork({ branchName: "try-new-routing" })
 
-# 2. Make changes in the branch (all hs_store calls go to branch)
+# 2. Make changes in the branch
 hs_store({ slug: "new-approach", title: "...", ... })
 
 # 3. See what changed
 hs_diff({ branchWorkspaceId: "clx..." })
 
 # 4a. Merge if it worked
-hs_merge({ branchWorkspaceId: "clx...", strategy: "ours" })
+hs_merge({ branchWorkspaceId: "clx...", strategy: "branch-wins" })
 
 # 4b. Or discard if it didn't
 hs_discard({ branchWorkspaceId: "clx..." })
@@ -354,10 +495,10 @@ hs_discard({ branchWorkspaceId: "clx..." })
 Register agents for full provenance tracking and trust scoring.
 
 ```
-# Register at session start
+# Register at session start (idempotent)
 hs_identify({ agentSlug: "research-agent" })
 
-# All subsequent hs_store calls auto-stamp agentIdentityId
+# All subsequent hs_store calls auto-stamp sourceAgent
 hs_store({ slug: "finding-001", ... })  # → auto-linked to research-agent
 
 # Check trust score
@@ -369,15 +510,17 @@ hs_profile({ agentSlug: "research-agent" })
 
 ---
 
-## The Eight Graph Modes
+## The Ten Graph Modes
 
-| Mode | Tool | Question answered |
-|------|------|-------------------|
+| Mode | How to use | Question answered |
+|------|------------|-------------------|
 | Smart | `hs_smart_search` | Ask anything — auto-routes |
 | Forward | `hs_graph` | What does this card connect to? |
 | Impact | `hs_impact` | What depends on this? What breaks? |
 | Recommend | `hs_recommend` | What's topically related? |
 | Time-travel | `hs_graph` with `at=` | What did the graph look like then? |
+| Replay | `hs_graph` with `mode=replay` | What did the agent know at decision time? |
+| Utility | `?sortBy=utility` or `?weightBy=utility` | Which cards/edges are most useful? |
 | Prune | `hs_prune` | What stale memory is safe to remove? |
 | Branch diff | `hs_diff` | What changed in this branch? |
 | Trust | `hs_profile` | How trustworthy is this agent? |
@@ -389,7 +532,7 @@ hs_profile({ agentSlug: "research-agent" })
 Every card carries epistemic metadata.
 
 ```
-# Researcher stores a finding with low confidence
+# Store a finding with low confidence
 hs_store({ slug: "finding-latency", body: "p99 latency ~200ms under load",
   confidence: 0.6, truthStratum: "hypothesis" })
 
@@ -412,11 +555,15 @@ hs_store({ slug: "finding-latency", confidence: 0.95,
 | Memory type | Tool | Behaviour |
 |-------------|------|-----------|
 | Long-term facts | `hs_store` | Permanent, searchable, graph-linked |
-| Working memory | `hs_store` with `ttl=` + `type=scratchpad` | Auto-deletes after TTL |
-| Outcomes / learning | `hs_commit` | Commits what worked as decided card |
+| Working memory | `hs_store` with `ttl=` | Auto-expires after TTL |
+| Outcomes / learning | `hs_commit` | Commits result as decided card |
+| Utility feedback | `hs_feedback` | Promotes useful cards, decays useless ones |
 | Stale cleanup | `hs_prune` | Removes unused cards, preserves graph integrity |
 | Protected facts | `hs_store` with `pinned=true` | Never pruned |
 | Branch experiment | `hs_fork` → `hs_diff` → `hs_merge` / `hs_discard` | Safe experimentation |
+| Episodic view | `memoryType=episodic` | Time-decayed event traces |
+| Semantic view | `memoryType=semantic` | Permanent facts + provenance |
+| Working view | `memoryType=working` | TTL-based scratchpad surface |
 
 ---
 
@@ -427,8 +574,8 @@ Each agent gets its own ID. Cards auto-tagged for full traceability.
 Recommended roles:
 - **coordinator** — `hs_blockers`, `hs_impact`, `hs_graph`, `hs_decide`, `hs_fork`, `hs_merge`
 - **researcher** — `hs_search`, `hs_recommend`, `hs_store`, `hs_ingest`, `hs_identify`
-- **builder** — `hs_store`, `hs_decide`, `hs_commit`, `hs_blockers`, `hs_fork`
-- **memory-agent** — `hs_prune`, `hs_stats`, `hs_smart_search`, `hs_diff`, `hs_discard`
+- **builder** — `hs_store`, `hs_decide`, `hs_commit`, `hs_blockers`, `hs_fork`, `hs_feedback`
+- **memory-agent** — `hs_prune`, `hs_stats`, `hs_smart_search`, `hs_diff`, `hs_discard`, `hs_feedback`
 
 ---
 
@@ -436,22 +583,24 @@ Recommended roles:
 
 | Moment | Tool |
 |--------|------|
-| Start of session | `hs_identify` → `hs_search` + `hs_recommend` |
+| Start of session | `hs_identify` → `hs_smart_search` |
 | Not sure which mode | `hs_smart_search` — auto-routes |
 | New project / onboarding | `hs_ingest` to auto-populate |
 | Decision made | `hs_decide` with rationale and links |
-| Task completed | `hs_commit` — commit outcome |
+| Task completed | `hs_commit` + `hs_feedback outcome=success` |
+| Task failed | `hs_feedback outcome=failure` |
 | Task blocked | `hs_store` with `blocks` relation |
 | Before starting work | `hs_blockers` to check dependencies |
 | Before changing a card | `hs_impact` to check blast radius |
 | Before risky experiment | `hs_fork` → work in branch → `hs_merge` or `hs_discard` |
 | Discovery | `hs_recommend` — find related context |
-| Working memory | `hs_store` with `ttl=` + `type=scratchpad` |
+| Working memory | `hs_store` with `ttl=` |
 | Periodic cleanup | `hs_prune dry=true` → inspect → execute |
-| Debug a bad decision | `hs_graph` with `at` timestamp |
+| Debug a bad decision | `hs_graph` with `at=` timestamp |
+| Audit a decision | `hs_graph` with `mode=replay` |
 | Cross-agent signal | `hs_store` with `targetAgent` → `hs_inbox` |
-| Check efficiency | `hs_stats` |
 | Check agent trust | `hs_profile` |
+| Check efficiency | `hs_stats` |
 
 ---
 
@@ -484,7 +633,7 @@ hs = HyperStack(api_key="hs_...", workspace="my-project")
 hs.identify(agent_slug="my-agent")
 branch = hs.fork(branch_name="experiment")
 hs.diff(branch_workspace_id=branch["branchWorkspaceId"])
-hs.merge(branch_workspace_id=branch["branchWorkspaceId"], strategy="ours")
+hs.merge(branch_workspace_id=branch["branchWorkspaceId"], strategy="branch-wins")
 ```
 
 ### LangGraph
@@ -498,14 +647,14 @@ memory = HyperStackMemory(api_key="hs_...", workspace="my-project")
 
 ### Self-Hosted
 ```bash
-# With OpenAI embeddings (semantic search)
+# With OpenAI embeddings
 docker run -d -p 3000:3000 \
   -e DATABASE_URL=postgresql://... \
   -e JWT_SECRET=your-secret \
   -e OPENAI_API_KEY=sk-... \
   ghcr.io/deeqyaqub1-cmd/hyperstack:latest
 
-# Fully local — Ollama embeddings (no OpenAI needed)
+# Fully local — Ollama embeddings
 docker run -d -p 3000:3000 \
   -e DATABASE_URL=postgresql://... \
   -e JWT_SECRET=your-secret \
@@ -513,21 +662,13 @@ docker run -d -p 3000:3000 \
   -e EMBEDDING_MODEL=nomic-embed-text \
   ghcr.io/deeqyaqub1-cmd/hyperstack:latest
 
-# Keyword search only (no embeddings)
+# Keyword only — no embeddings needed
 docker run -d -p 3000:3000 \
   -e DATABASE_URL=postgresql://... \
   -e JWT_SECRET=your-secret \
   ghcr.io/deeqyaqub1-cmd/hyperstack:latest
 ```
-Then set `HYPERSTACK_BASE_URL=http://localhost:3000` in your SDK config.
-
-**Embedding env vars (all optional):**
-| Variable | Default | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | — | Enables OpenAI embeddings |
-| `EMBEDDING_BASE_URL` | `https://api.openai.com` | Custom endpoint (e.g. Ollama) |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | Model name |
-| `EMBEDDING_API_KEY` | falls back to `OPENAI_API_KEY` | Key for custom endpoint |
+Set `HYPERSTACK_BASE_URL=http://localhost:3000` in your SDK config.
 
 Full guide: https://github.com/deeqyaqub1-cmd/hyperstack-core/blob/main/SELF_HOSTING.md
 
@@ -544,7 +685,7 @@ NEVER store passwords, API keys, tokens, PII, or credentials in cards. Cards sho
 | Plan | Price | Cards | Features |
 |------|-------|-------|---------|
 | Free | $0 | 10 | Search only |
-| Pro | $29/mo | 100 | All 8 modes + branching + agent identity |
+| Pro | $29/mo | 100 | All modes + branching + identity + Memory Hub |
 | Team | $59/mo | 500 | All modes + webhooks + agent tokens |
 | Business | $149/mo | 2,000 | All modes + SSO + 20 members |
 | Self-hosted | $0 | Unlimited | Full feature parity |
@@ -555,51 +696,62 @@ Get your free API key: https://cascadeai.dev/hyperstack
 
 ## Changelog
 
+### v1.0.23 (Feb 21, 2026)
+
+#### ✨ Memory Hub Segmentation — 3 new memory surfaces
+- `?memoryType=episodic` — event traces with 30-day soft decay. Agent-used cards decay at half rate.
+- `?memoryType=semantic` — permanent facts/entities. No decay. Returns confidence + provenance fields.
+- `?memoryType=working` — TTL-based scratchpad. Expired cards hidden by default. Agent-used cards get 1.5x TTL extension.
+- All three surfaces backed by same Card table — zero schema changes, zero storage cost
+
+#### ✨ Decision Replay — audit what agents knew at decision time
+- `mode=replay` on graph endpoint — reconstructs graph state at decision timestamp
+- `modifiedAfterDecision` flag — detects cards created AFTER decision (potential hindsight bias)
+- Plain English `narrative` array — audit-ready output for compliance
+
+#### ✨ Utility-Weighted Edges — self-improving graph
+- `hs_feedback` — report success/failure after every agent task
+- `?sortBy=utility` — retrieve most useful cards first
+- `?minUtility=0.7` — filter to high-utility cards
+- `?weightBy=utility` — graph traversal prioritises highest-value edges
+
+#### 🐛 Routing fixes
+- Fork, diff, merge, discard — routing was broken in production, now fully fixed and tested
+- Agent identity register/profile — plan gate was blocking PRO users, now fixed
+- V2 Agent/AgentACL snake_case fields corrected throughout
+
+#### 📦 SDK
+- `hyperstack-mcp` → v1.9.2 (15 tools, was 14)
+- Docker image rebuilt: `ghcr.io/deeqyaqub1-cmd/hyperstack:latest` (Phase 3+4 now included)
+
 ### v1.1.0 (Feb 20, 2026)
 
 #### ✨ Git-Style Memory Branching — 4 new tools
-- `hs_fork` — fork a workspace into a branch, all cards copied, parent untouched
-- `hs_diff` — SQL-driven diff between branch and parent (added/changed/deleted)
-- `hs_merge` — merge branch back to parent (`ours` or `theirs` strategy)
-- `hs_discard` — delete branch entirely, parent untouched
-- Branching requires Pro plan or above
-- Fork batches in groups of 25 to stay under serverless limits
-- Diff uses SQL EXCEPT queries — deterministic, pushed to Postgres not JS
+- `hs_fork`, `hs_diff`, `hs_merge`, `hs_discard`
 
 #### ✨ Agent Identity + Trust Scoring — 2 new tools
-- `hs_identify` — register agent with SHA256 fingerprint (idempotent)
-- `hs_profile` — compute trustScore on read: `(verifiedCards/total)×0.7 + min(cardCount/100,1.0)×0.3`
-- `HYPERSTACK_AGENT_SLUG` env var for zero-config auto-identification
-- All `hs_store` calls after `hs_identify` auto-stamp `agentIdentityId`
+- `hs_identify`, `hs_profile`
+- Trust formula: `(verifiedCards/total)×0.7 + min(cardCount/100,1.0)×0.3`
 
 #### ✨ Self-Hosting via Docker
-- Docker image: `ghcr.io/deeqyaqub1-cmd/hyperstack:latest`
-- `HYPERSTACK_BASE_URL` env var in all SDKs — point at own Postgres
-- Full self-hosting guide: https://github.com/deeqyaqub1-cmd/hyperstack-core/blob/main/SELF_HOSTING.md
+- `ghcr.io/deeqyaqub1-cmd/hyperstack:latest`
 
-#### 📦 SDK Updates
-- `hyperstack-mcp` → v1.9.0 (14 tools, was 9)
-- `hyperstack-py` → v1.4.0 (fork/diff/merge/discard/identify/profile)
-- `hyperstack-langgraph` → v1.4.0 (same methods as hyperstack-py)
+#### 📦 SDK
+- `hyperstack-mcp` → v1.9.0 (14 tools)
+- `hyperstack-py` → v1.4.0
+- `hyperstack-langgraph` → v1.4.0
 
 ### v1.0.20 (Feb 20, 2026)
 - Trust/Provenance fields on every card: `confidence`, `truthStratum`, `verifiedBy`, `verifiedAt`, `sourceAgent`
-- Security: `hs_webhook` and `hs_agent_tokens` removed from skill scope (admin-only)
-- Backend reliability fixes: prune CTE rewrite, Zod validation, UsageLog lazy purge
-- Skill renamed to "HyperStack — Typed Graph Memory for AI Agents"
 
 ### v1.0.19 (Feb 20, 2026)
-- `hs_prune` — memory pruning with dry-run safety
-- `hs_commit` — feedback-driven memory, agent learning
-- `pinned` field — protect cards from pruning permanently
-- `scratchpad` cardType + TTL lazy expiry
+- `hs_prune`, `hs_commit`, `pinned` field, `scratchpad` cardType + TTL
 
 ### v1.0.18 (Feb 20, 2026)
 - `hs_smart_search` — agentic RAG routing
 
 ### v1.0.16 (Feb 19, 2026)
-- `hs_impact` — reverse graph traversal
-- `hs_recommend` — co-citation scoring
+- `hs_impact`, `hs_recommend`
 
 ### v1.0.13–v1.0.15
-- Core foundation: `hs_search`, `hs_store`, `hs_decide`, `hs_blockers`, `hs_graph`, `hs_my_cards`, `hs_ingest`, `hs_inbox`, `hs_stats`
+- Core: `hs_search`, `hs_store`, `hs_decide`, `hs_blockers`, `hs_graph`, `hs_my_cards`, `hs_ingest`, `hs_inbox`, `hs_stats`

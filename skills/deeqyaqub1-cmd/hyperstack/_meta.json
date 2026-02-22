@@ -3,11 +3,16 @@
   "slug": "hyperstack",
   "displayName": "Agent Memory Graph — Typed Knowledge Graph for AI Agents",
   "latest": {
-    "version": "1.0.22",
-    "publishedAt": 1771632509520,
-    "commit": "https://github.com/openclaw/skills/commit/aac00a5ec2765de26a92b3e1b6dffa49e26880be"
+    "version": "1.0.23",
+    "publishedAt": 1771688119073,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.22",
+      "publishedAt": 1771632509520,
+      "commit": "https://github.com/openclaw/skills/commit/aac00a5ec2765de26a92b3e1b6dffa49e26880be"
+    },
     {
       "version": "1.0.19",
       "publishedAt": 1771556284859,
