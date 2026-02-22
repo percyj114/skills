@@ -1,0 +1,11 @@
+{
+  "owner": "sheetaa",
+  "slug": "delete-agent-with-telegram-group",
+  "displayName": "Delete Agent With Telegram Group",
+  "latest": {
+    "version": "0.1.2",
+    "publishedAt": 1771689482951,
+    "commit": null
+  },
+  "history": []
+}
