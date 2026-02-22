@@ -1,7 +1,7 @@
 ---
 name: WIP.release
-version: 1.2.3
-description: Local release tool. Bumps version, updates changelog + SKILL.md, publishes to npm + GitHub.
+version: 1.2.4
+description: One-command release pipeline. Bumps version, updates changelog + SKILL.md, publishes to npm + GitHub.
 homepage: https://github.com/wipcomputer/wip-release
 metadata:
   category: dev-tools

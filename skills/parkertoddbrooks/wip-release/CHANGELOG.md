@@ -5,6 +5,11 @@
 
 
 
+
+## 1.2.4 (2026-02-21)
+
+Align description across all sources
+
 ## 1.2.3 (2026-02-21)
 
 Fix npm bin entry: remove ./ prefix so npx wip-release works globally
