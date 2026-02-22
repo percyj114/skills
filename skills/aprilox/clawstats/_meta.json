@@ -1,0 +1,11 @@
+{
+  "owner": "aprilox",
+  "slug": "clawstats",
+  "displayName": "System Monitor OpenClaw",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1771728645798,
+    "commit": null
+  },
+  "history": []
+}
