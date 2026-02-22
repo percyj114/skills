@@ -1,0 +1,11 @@
+{
+  "owner": "romain-grosos",
+  "slug": "ghost-admin",
+  "displayName": "Ghost Admin",
+  "latest": {
+    "version": "1.0.5",
+    "publishedAt": 1771801843601,
+    "commit": null
+  },
+  "history": []
+}
