@@ -3,11 +3,16 @@
   "slug": "notion-agent-memory",
   "displayName": "Notion Agent Memory",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1771337044988,
-    "commit": "https://github.com/openclaw/skills/commit/5ff6a2446f6967b8ed62f64aa606d1a1dcbc737c"
+    "version": "1.2.0",
+    "publishedAt": 1771682301487,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1771337044988,
+      "commit": "https://github.com/openclaw/skills/commit/5ff6a2446f6967b8ed62f64aa606d1a1dcbc737c"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1771322736398,

@@ -79,8 +79,17 @@ For agents: This means the next session has full context.
 
 *Wisdom earned. Don't repeat mistakes.*
 
-- [Lesson 1]
-- [Lesson 2]
+### Dated Lessons (Add as You Learn)
+
+**2026-02-21: [Lesson Topic]**
+What happened: [Brief description]
+Why it matters: [Key insight]
+How it changes behavior: [What you'll do differently]
+
+**2026-02-17: Be proactive, not reactive**
+What happened: I kept asking Vlad questions instead of just doing
+Why it matters: The whole point of memory is I maintain it without being asked
+How it changes behavior: If Vlad would need to ask, I should have already done it
 
 ---
 
@@ -92,6 +101,23 @@ Update this file whenever:
 - Someone says "remember this"
 - You learn something from a mistake
 - A pattern becomes clear
+
+---
+
+## Session Resume Block
+
+*For interrupted work. Use this at the end of daily logs when stopping mid-task.*
+
+```markdown
+## RESUME: [Task Name]
+
+**What I was doing:** [Brief description]
+**Where I stopped:** [Last thing done]
+**Next step:** [What comes next]
+**Estimated time:** [How long until done]
+```
+
+This helps the next session pick up exactly where you left off.
 
 ---
 

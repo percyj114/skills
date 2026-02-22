@@ -20,7 +20,50 @@ Two templates that create continuity:
 
 Delivered via Notion — duplicate to your workspace and start using immediately. Works for humans tracking growth OR agents maintaining memory.
 
-## Quick Start
+## Quick Start (Files-Only Version)
+
+This skill works WITHOUT Notion. Just use the files:
+
+### Step 1: Create Your Core Files
+
+Create these in your workspace root:
+
+```
+/workspace/
+├── MEMORY.md      # From assets/MEMORY-TEMPLATE-v2.md
+├── IDENTITY.md    # From assets/IDENTITY-TEMPLATE.md
+├── SOUL.md        # From assets/SOUL-TEMPLATE.md
+├── USER.md        # From assets/USER-TEMPLATE.md
+├── HEARTBEAT.md   # From assets/HEARTBEAT-TEMPLATE.md
+└── memory/
+    └── YYYY-MM-DD.md  # Daily logs
+```
+
+### Step 2: Session Start Ritual
+
+At the start of EVERY session:
+
+1. Read `MEMORY.md` (long-term context)
+2. Read `IDENTITY.md` (who you are)
+3. Read today's and yesterday's daily logs
+4. Check `HEARTBEAT.md` for scheduled tasks
+
+### Step 3: Session End Ritual
+
+Before stopping:
+
+1. Update today's daily log with what you did
+2. If something significant changed → update MEMORY.md
+3. Add a RESUME block if work was interrupted
+4. Check `HEARTBEAT.md` for any scheduled follow-ups
+
+### Step 4: Optional Notion Integration
+
+Want structured databases? See `references/notion-integration.md` for API setup.
+
+---
+
+## Quick Start (Notion Version)
 
 1. **Get the templates** at [shop.vlad.chat](https://shop.vlad.chat)
 2. **Duplicate** the Notion template to your workspace
@@ -91,10 +134,19 @@ See `references/notion-integration.md` for full API patterns.
 
 ## Files
 
-- `assets/MEMORY-TEMPLATE-v2.md` — Drop-in MEMORY.md template
-- `assets/AGENTS-TEMPLATE.md` — Drop-in AGENTS.md template
+### Core Templates
+- `assets/MEMORY-TEMPLATE-v2.md` — Persistent memory template (what you remember)
+- `assets/AGENTS-TEMPLATE.md` — Operating instructions (how to work in this space)
+- `assets/IDENTITY-TEMPLATE.md` — Self-definition (who you are)
+- `assets/SOUL-TEMPLATE.md` — Persona file (how you present yourself)
+- `assets/USER-TEMPLATE.md` — Context about the human you work with
+- `assets/HEARTBEAT-TEMPLATE.md` — Automated check-in schedule
+- `assets/heartbeat-state.json` — Track when checks happen
+
+### References
 - `references/continuity-cycle.md` — Full pattern documentation
-- `references/notion-integration.md` — Optional Notion API setup
+- `references/notion-integration.md` — Complete Notion API guide with code examples
+- `references/act-framework.md` — ACT Scrolls methodology
 
 ---
 
