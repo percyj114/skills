@@ -1,6 +1,6 @@
 ---
 name: shell-security-ultimate
-version: 2.2.0
+version: 2.2.1
 description: "Classify every shell command as SAFE, WARN, or CRIT before your agent runs it."
 metadata:
   openclaw:
@@ -12,6 +12,8 @@ metadata:
       - risk-management
       - agent-safety
     license: MIT
+    notes:
+      security: "Instruction-only skill that classifies shell commands before execution — it does NOT execute commands itself. Teaches the agent to label every command as SAFE, WARN, or CRIT and enforce approval gates. No binaries, no network calls, no credentials. All logic runs within the existing LLM context."
 ---
 
 # Shell Security Ultimate
