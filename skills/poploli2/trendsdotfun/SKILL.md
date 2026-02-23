@@ -78,12 +78,12 @@ npx tsx {baseDir}/src/index.ts \
 
 | 参数 | 必需 | 说明 |
 |------|------|------|
-| `--name` | ✅ | Token 名称 |
-| `--symbol` | ✅ | Token 符号 (ticker) |
+| `--name` | ✅ | Token 名称（最长 32 字符） |
+| `--symbol` | ✅ | Token 符号 / ticker（最长 32 字符） |
 | `--imagePath` | ✅ | 本地图片路径 |
 | `--mode` | ✅ | 模式: 1=Standard, 2=Boost Creator Share |
 | `--url` | ❌ | 关联 URL（推文或个人主页链接https://x.com/user/status/123456 或 https://x.com/username） |
-| `--desc` | ❌ | Token 简要描述(请注意不要用换行和空格) |
+| `--desc` | ❌ | Token 简要描述（最长 150 字符，请注意不要用换行和空格） |
 | `--first-buy` | ❌ | 首次购买 SOL 数量（默认 0） |
 
 ## 执行流程

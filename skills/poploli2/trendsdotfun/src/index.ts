@@ -14,6 +14,11 @@ const DEFAULT_RPC_ENDPOINT = "https://api.mainnet-beta.solana.com";
 const DEFAULT_POOL_CONFIG = "7UQpAg2GfvwnBhuNAF5g9ujjDmkq7rPnF7Xogs4xE9AA";
 const MIN_SOL_BALANCE = 0.02;
 
+// 参数长度限制
+const MAX_NAME_LENGTH = 32;
+const MAX_SYMBOL_LENGTH = 32;
+const MAX_DESC_LENGTH = 150;
+
 /**
  * 从 ~/.config/solana/id.json 加载 Solana keypair
  */
@@ -48,6 +53,20 @@ program
     .option("--first-buy <sol>", "首次购买 SOL 数量", parseFloat, 0)
     .action(async (opts) => {
         try {
+            // 参数长度校验（与前端一致）
+            if (opts.name.length > MAX_NAME_LENGTH) {
+                console.error(`❌ Token 名称过长: ${opts.name.length} 字符, 最大 ${MAX_NAME_LENGTH} 字符`);
+                process.exit(1);
+            }
+            if (opts.symbol.length > MAX_SYMBOL_LENGTH) {
+                console.error(`❌ Token 符号过长: ${opts.symbol.length} 字符, 最大 ${MAX_SYMBOL_LENGTH} 字符`);
+                process.exit(1);
+            }
+            if (opts.desc && opts.desc.length > MAX_DESC_LENGTH) {
+                console.error(`❌ Token 描述过长: ${opts.desc.length} 字符, 最大 ${MAX_DESC_LENGTH} 字符`);
+                process.exit(1);
+            }
+
             // 从环境变量读取可选配置
             const rpcUrl = process.env.SOLANA_RPC_URL || DEFAULT_RPC_ENDPOINT;
             const poolConfig = process.env.TRENDS_POOL_CONFIG || DEFAULT_POOL_CONFIG;
