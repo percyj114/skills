@@ -1,0 +1,63 @@
+{
+  "continue": {
+    "keywords": ["继续", "接着", "刚才", "下一步", "然后呢"],
+    "pool": null,
+    "action": "延续"
+  },
+  "new_session": {
+    "keywords": ["hi", "在吗", "hello", "新话题", "新任务"],
+    "pool": "Highspeed",
+    "action": "开启新会话",
+    "standalone": true
+  },
+  "development": {
+    "keywords": ["开发", "写代码", "编程", "写程序", "coding", "code", "写个", "写一段", "帮我写", "写函数", "调试", "修复"],
+    "pool": "Intelligence",
+    "action": "执行开发任务"
+  },
+  "automation": {
+    "keywords": ["自动化", "工作流", "workflow", "automate"],
+    "pool": "Intelligence",
+    "action": "执行自动化任务"
+  },
+  "system_ops": {
+    "keywords": ["系统运维", "部署", "服务器", "docker", "重启"],
+    "pool": "Intelligence",
+    "action": "执行系统运维"
+  },
+  "web_search": {
+    "keywords": ["搜索", "搜索一下", "搜", "search"],
+    "pool": "Highspeed",
+    "action": "执行网页搜索"
+  },
+  "coordination": {
+    "keywords": ["协调", "沟通", "通知", "提醒", "日程"],
+    "pool": "Highspeed",
+    "action": "执行协调沟通"
+  },
+  "info_retrieval": {
+    "keywords": ["查一下", "找", "多少钱", "怎么", "如何", "?"],
+    "pool": "Highspeed",
+    "action": "执行信息检索"
+  },
+  "content_generation": {
+    "keywords": ["写文章", "写一篇", "创作", "写作", "写小说"],
+    "pool": "Humanities",
+    "action": "执行内容生成"
+  },
+  "q_and_a": {
+    "keywords": ["问答", "解释", "回答", "解答", "什么是"],
+    "pool": "Humanities",
+    "action": "执行问答"
+  },
+  "training": {
+    "keywords": ["培训", "教学", "讲解", "教程", "教我"],
+    "pool": "Humanities",
+    "action": "执行培训教学"
+  },
+  "multimodal": {
+    "keywords": ["图片", "截图", "照片", "识别", "分析", "这张"],
+    "pool": "Humanities",
+    "action": "执行多模态识别"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "Intelligence": {
+    "name": "智能池",
+    "description": "开发、自动化、系统运维",
+    "primary": "openai-codex/gpt-5.3-codex",
+    "fallback_1": "kimi-k2.5",
+    "fallback_2": "minimax-cn/MiniMax-M2.5"
+  },
+  "Highspeed": {
+    "name": "高速池",
+    "description": "信息检索、网页搜索、协调沟通",
+    "primary": "openai/gpt-4o-mini",
+    "fallback_1": "glm-4.7-flashx",
+    "fallback_2": "minimax-cn/MiniMax-M2.5"
+  },
+  "Humanities": {
+    "name": "人文池",
+    "description": "内容生成、问答、培训、多模态识别",
+    "primary": "openai/gpt-4o",
+    "fallback_1": "kimi-k2.5",
+    "fallback_2": "minimax-cn/MiniMax-M2.5"
+  }
+}
