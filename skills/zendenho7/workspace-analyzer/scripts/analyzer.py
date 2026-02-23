@@ -27,9 +27,16 @@ PATTERNS = {
         "location": "root",
         "files": ["SOUL.md", "OPERATING.md", "AGENTS.md", "HEARTBEAT.md", 
                   "CORE_PRINCIPLES.md", "USER.md", "LEARNINGS.md", 
-                  "WORKING_MEMORY.md", "IDENTITY.md", "TOOLS.md", "KNOWLEDGE_GRAPH.md"],
+                  "WORKING_MEMORY.md", "IDENTITY.md", "TOOLS.md", "KNOWLEDGE_GRAPH.md",
+                  "SUB_CONSCIOUS.md"],
         "patterns": ["*.md"],  # All .md in root
         "exclude": ["projects/", "node_modules/"]
+    },
+    "sub_conscious": {
+        "location": "root",
+        "files": ["SUB_CONSCIOUS.md"],
+        "patterns": ["SUB_CONSCIOUS.md"],
+        "exclude": []
     },
     "mission_control": {
         "location": "mission_control/",
@@ -55,6 +62,10 @@ THRESHOLDS = {
     "kai_core": {
         "bloat_warning": 400,
         "bloat_critical": 600
+    },
+    "sub_conscious": {
+        "bloat_warning": 100,
+        "bloat_critical": 200
     },
     "mission_control": {
         "bloat_warning": 500,
@@ -333,6 +344,126 @@ def detect_broken_links(all_analysis: Dict) -> List[Dict]:
     return broken_links
 
 
+# Topics that should have single source of truth
+SINGLE_SOURCE_TOPICS = {
+    "skill_graph": {
+        "keywords": ["skill graph", "skill_graph", "skill-graph"],
+        "expected_file": "SUB_CONSCIOUS.md",
+        "description": "Skill graph navigation and traversal"
+    },
+    "memory_architecture": {
+        "keywords": ["memory architecture", "tiered retrieval", "memory decay", "conflict resolution"],
+        "expected_file": "OPERATING.md",
+        "description": "Memory management and retrieval"
+    },
+    "message_reactions": {
+        "keywords": ["message reaction", "react to", "telegram emoji"],
+        "expected_file": "SUB_CONSCIOUS.md",
+        "description": "Message reaction behaviors"
+    },
+    "image_handling": {
+        "keywords": ["image handling", "understand_image", "analyze image"],
+        "expected_file": "OPERATING.md",
+        "description": "Image analysis procedures"
+    },
+    "session_bootstrap": {
+        "keywords": ["session bootstrap", "session start", "every session"],
+        "expected_file": "AGENTS.md",
+        "description": "Session initialization"
+    },
+    "self_improving": {
+        "keywords": ["self improving", "correction", "pattern detection"],
+        "expected_file": "self-improving/memory.md",
+        "description": "Behavioral learning and corrections"
+    }
+}
+
+
+def validate_single_source(all_analysis: Dict) -> Dict[str, Dict]:
+    """Validate that each topic exists in only one place.
+    
+    Only checks core KAI files (kai_core, sub_conscious), not skills or memory.
+    Skills are expected to reference these topics.
+    """
+    topic_locations = {}
+    
+    # Only check core files (not skills, memory, docs)
+    CORE_FILE_PREFIXES = ["SOUL.md", "OPERATING.md", "AGENTS.md", "HEARTBEAT.md", 
+                          "CORE_PRINCIPLES.md", "USER.md", "LEARNINGS.md",
+                          "WORKING_MEMORY.md", "IDENTITY.md", "TOOLS.md", 
+                          "KNOWLEDGE_GRAPH.md", "SUB_CONSCIOUS.md"]
+    
+    # Scan each file for topic keywords
+    for file_path, analysis in all_analysis.items():
+        # Skip non-core files (skills, memory, docs)
+        basename = os.path.basename(file_path)
+        is_core = basename in CORE_FILE_PREFIXES
+        is_root = "/" not in file_path or file_path.startswith("SUB_CONSCIOUS") or file_path.startswith("self-improving/")
+        
+        # Only validate core files
+        if not (is_core or is_root):
+            continue
+            
+        content = analysis.get("content", "").lower()
+        sections = analysis.get("sections", [])
+        
+        # Check content and sections for each topic
+        for topic, config in SINGLE_SOURCE_TOPICS.items():
+            found = False
+            
+            # Check keywords in content (only if substantial)
+            content_length = len(content.split())
+            if content_length > 50:  # Skip very short files
+                for keyword in config["keywords"]:
+                    if keyword.lower() in content:
+                        found = True
+                        break
+            
+            # Check if topic appears in sections
+            for section in sections:
+                section_lower = section.lower()
+                for keyword in config["keywords"]:
+                    if keyword.lower() in section_lower:
+                        found = True
+                        break
+                if found:
+                    break
+            
+            if found:
+                if topic not in topic_locations:
+                    topic_locations[topic] = {
+                        "status": "PASS" if len(topic_locations.get(topic, {}).get("files", [])) == 0 else "FAIL",
+                        "files": [],
+                        "expected_file": config["expected_file"],
+                        "description": config["description"],
+                        "severity": "CRITICAL"
+                    }
+                topic_locations[topic]["files"].append(file_path)
+                topic_locations[topic]["status"] = "FAIL"
+    
+    # Build recommendations from validation
+    recommendations = []
+    for topic, data in topic_locations.items():
+        if data["status"] == "FAIL" and len(data["files"]) > 1:
+            # Filter to only core files that shouldn't have duplicates
+            problem_files = [f for f in data["files"] if f.startswith("SUB_CONSCIOUS") or 
+                           f in ["SOUL.md", "OPERATING.md", "AGENTS.md", "HEARTBEAT.md"]]
+            if len(problem_files) > 1:
+                recommendations.append({
+                    "action": "FIX_DUPLICATE_CONTENT",
+                    "topic": topic,
+                    "files": problem_files,
+                    "severity": "CRITICAL",
+                    "description": f"'{topic}' found in {len(problem_files)} core files",
+                    "recommendation": f"Consolidate to {data['expected_file']}, reference from others"
+                })
+    
+    return {
+        "validation": topic_locations,
+        "recommendations": recommendations
+    }
+
+
 def generate_recommendations(core_files: Dict, all_analysis: Dict) -> List[Dict]:
     """Generate recommendations based on analysis."""
     recommendations = []
@@ -377,6 +508,11 @@ def generate_recommendations(core_files: Dict, all_analysis: Dict) -> List[Dict]
             "reason": bl["msg"],
             "severity": "INFO"
         })
+    
+    # Validate single source of truth
+    single_source = validate_single_source(all_analysis)
+    for rec in single_source.get("recommendations", []):
+        recommendations.append(rec)
     
     # Check core files health
     for category, data in core_files.items():
@@ -423,6 +559,9 @@ def analyze_workspace(root: str, quick: bool = False) -> Dict[str, Any]:
     # Generate recommendations
     recommendations = generate_recommendations(core_files, all_analysis)
     
+    # Validate single source of truth
+    single_source_result = validate_single_source(all_analysis)
+    
     # Build output
     output = {
         "scan_info": {
@@ -433,6 +572,7 @@ def analyze_workspace(root: str, quick: bool = False) -> Dict[str, Any]:
         },
         "core_files_detected": core_files,
         "analysis": all_analysis,
+        "single_source_validation": single_source_result.get("validation", {}),
         "recommendations": recommendations,
         "summary": {
             "total_files": len(md_files),
