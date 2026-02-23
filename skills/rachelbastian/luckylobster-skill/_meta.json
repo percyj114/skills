@@ -1,13 +1,18 @@
 {
   "owner": "rachelbastian",
   "slug": "luckylobster-skill",
-  "displayName": "Luckylobster",
+  "displayName": "LuckyLobster",
   "latest": {
-    "version": "0.9.1",
-    "publishedAt": 1771379643288,
-    "commit": "https://github.com/openclaw/skills/commit/c444917d659d06a7da86741f9723b8a7af8665f3"
+    "version": "0.10.0",
+    "publishedAt": 1771652046174,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.9.1",
+      "publishedAt": 1771379643288,
+      "commit": "https://github.com/openclaw/skills/commit/c444917d659d06a7da86741f9723b8a7af8665f3"
+    },
     {
       "version": "0.1.1",
       "publishedAt": 1771097424686,

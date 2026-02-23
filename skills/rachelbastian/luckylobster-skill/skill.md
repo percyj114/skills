@@ -3,7 +3,7 @@ name: luckylobster
 description: Trade prediction markets on Polymarket. Search markets, place orders, and manage positions.
 homepage: https://luckylobster.io
 user-invocable: true
-metadata: {"openclaw":{"version":9,"primaryEnv":"LUCKYLOBSTER_API_KEY","emoji":"🦞","homepage":"https://luckylobster.io","requires":{"env":["LUCKYLOBSTER_API_KEY"]}}}
+metadata: {"openclaw":{"version":10,"primaryEnv":"LUCKYLOBSTER_API_KEY","emoji":"🦞","homepage":"https://luckylobster.io","requires":{"env":["LUCKYLOBSTER_API_KEY"]}}}
 ---
 
 # LuckyLobster - Polymarket Trading API
@@ -506,7 +506,20 @@ Content-Type: application/json
 - `size`: Number of shares
 - `type`: `LIMIT`, `MARKET`, `FOK`, or `FAK`
 
-**Real-time Status:** The response includes the order's current status from Polymarket. FOK and MARKET orders return faster (~500ms) since they execute immediately. LIMIT orders are checked after ~1 second.
+**Constraints:**
+- Minimum order amount: `price * size` must be >= $1.00 USDC
+- Minimum order size: 5 shares
+- Price must be a multiple of 0.01 (tick size)
+
+**Order Type Behavior:**
+- `MARKET`: Fills as much as available at your price or better, kills the rest (recommended for most trades)
+- `LIMIT`: Rests on the order book until filled or cancelled
+- `FOK`: Fill-or-Kill — must fill 100% or the entire order is rejected. Use only when you need guaranteed full fills. High failure rate on thin markets.
+- `FAK`: Fill-and-Kill — same as MARKET
+
+**Tip:** For short-timeframe markets (5m, 15m) where order books can be thin, prefer `MARKET` or `LIMIT` over `FOK`. MARKET orders will fill whatever is available. LIMIT orders rest on the book and can fill as liquidity arrives.
+
+**Real-time Status:** The response includes the order's current status from Polymarket. MARKET and FAK orders return faster (~500ms) since they execute immediately. LIMIT orders are checked after ~1 second.
 
 **Example:**
 ```bash
@@ -1115,7 +1128,7 @@ The heartbeat endpoint provides a single-call summary of your portfolio, pending
 ### Check Heartbeat
 
 ```http
-GET /heartbeat?skill_version=9
+GET /heartbeat?skill_version=10
 ```
 
 Include `skill_version` so the server can indicate if a newer version is available.
@@ -1165,7 +1178,7 @@ Returns aggregated data: open positions, redeemable positions, filled orders sin
       "interval_ms": 1800000,
       "active_hours": { "start": "09:00", "end": "22:00", "timezone": "America/New_York" },
       "heartbeat_count": 42,
-      "latest_skill_version": 9
+      "latest_skill_version": 10
     },
     "realtime": {
       "subscribedMarkets": 3,
