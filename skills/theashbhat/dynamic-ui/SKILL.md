@@ -6,11 +6,20 @@ metadata:
     requires:
       bins: ["wkhtmltoimage", "jq"]
     install:
-      - id: apt
+      - id: apt-wkhtmltopdf
         kind: apt
-        packages: ["wkhtmltopdf"]
-        bins: ["wkhtmltoimage"]
-        label: "Install wkhtmltoimage (apt)"
+        packages: ["wkhtmltopdf", "jq", "fonts-noto-color-emoji"]
+        bins: ["wkhtmltoimage", "jq"]
+        label: "Install wkhtmltoimage + jq (apt)"
+      - id: brew-wkhtmltopdf
+        kind: brew
+        packages: ["wkhtmltopdf", "jq"]
+        bins: ["wkhtmltoimage", "jq"]
+        label: "Install wkhtmltoimage + jq (brew)"
+    installHint: |
+      This skill requires wkhtmltoimage and jq. Install with:
+      Ubuntu/Debian: sudo apt-get install -y wkhtmltopdf jq fonts-noto-color-emoji
+      macOS: brew install wkhtmltopdf jq
 ---
 
 # Dynamic UI Skill
@@ -71,31 +80,34 @@ echo '{"labels":["Q1","Q2"],"values":[100,200]}' | ./scripts/render.sh chart-bar
 ./scripts/render.sh stats --data '{"stats":[{"label":"Users","value":"12.5K","change":"+12%"},{"label":"Revenue","value":"$45K","change":"+8%"}]}' -o stats.png
 ```
 
-## Sharing Images Inline (Telegram/Messaging)
+## 💡 Sending Images to Users
 
-After rendering, send the image to users via the message tool.
+After rendering an image, you'll typically want to send it to the user. Here's the recommended workflow:
 
-**Important:** Images must be in `~/.openclaw/media/` to be sent via messaging.
-
+### Recommended Workflow:
 ```bash
-# 1. Render to the media directory
-./scripts/render.sh table --data '{"columns":["A","B"],"rows":[["1","2"]]}' -o ~/.openclaw/media/my-table.png
+# 1. Render to ~/.openclaw/media/ (recommended path)
+./scripts/render.sh table --data '...' -o ~/.openclaw/media/my-table.png
 
-# 2. Send via message tool (in OpenClaw)
-message(action=send, filePath=/home/ubuntu/.openclaw/media/my-table.png, caption="Here's the data", channel=telegram, to=<user_id>)
+# 2. Send inline via message tool
+message(action=send, filePath=/home/ubuntu/.openclaw/media/my-table.png, caption="Caption", channel=telegram, to=<user_id>)
 ```
 
-**Quick pattern for agents:**
-```python
-# Render → Send workflow
-1. Generate image to ~/.openclaw/media/<name>.png
-2. Use message tool with filePath to send inline
-3. Image appears directly in chat
-```
+### Tips:
+- **Save to `~/.openclaw/media/`** — this path works reliably for inline sending
+- **Use descriptive captions** — helps users understand the visual
+- **Consider the context** — sometimes saving to disk is fine if the user requested it
 
-**Note:** Paths outside `~/.openclaw/media/` will be rejected by the message tool for security.
+### Example (complete flow):
+```bash
+# Render
+echo '{"title":"My Data","columns":["A","B"],"rows":[["1","2"]]}' | \
+  ./scripts/render.sh table -o ~/.openclaw/media/data.png
+
+# Send
+message(action=send, filePath=/home/ubuntu/.openclaw/media/data.png, caption="Here's your data", channel=telegram, to=USER_ID)
+```
 
 ## Dependencies
 - `/usr/bin/wkhtmltoimage` — HTML to image conversion
 - `jq` — JSON parsing
-- Chart.js (CDN) — For chart rendering

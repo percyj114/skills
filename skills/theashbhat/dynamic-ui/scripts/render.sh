@@ -4,6 +4,26 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# HTML entity escaping for user-supplied text
+escape_html() {
+    echo "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g'
+}
+
+# Validate image URL (block dangerous protocols)
+validate_image_url() {
+    local url="$1"
+    # Block file://, javascript:, data: (except data:image), and vbscript:
+    if [[ "$url" =~ ^(file:|javascript:|vbscript:) ]]; then
+        echo ""
+        return
+    fi
+    if [[ "$url" =~ ^data: ]] && [[ ! "$url" =~ ^data:image/ ]]; then
+        echo ""
+        return
+    fi
+    echo "$url"
+}
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 TEMPLATES_DIR="$SKILL_DIR/templates"
 THEMES_DIR="$SKILL_DIR/themes"
@@ -87,9 +107,19 @@ cp "$THEME_FILE" "$TEMP_DIR/theme.css"
 generate_table() {
     local data="$1"
     
+    # Extract title if present
+    local title=$(echo "$data" | jq -r '.title // ""')
+    if [[ -n "$title" && "$title" != "null" ]]; then
+        title=$(escape_html "$title")
+        echo "<div class=\"page-title\">$title</div>" > "$TEMP_DIR/title.html"
+    else
+        echo "" > "$TEMP_DIR/title.html"
+    fi
+    
     # Build table HTML
     TABLE_HEADER=""
     for col in $(echo "$data" | jq -r '.columns[]'); do
+        col=$(escape_html "$col")
         TABLE_HEADER+="<th>$col</th>"
     done
     
@@ -100,6 +130,7 @@ generate_table() {
         COL_COUNT=$(echo "$data" | jq ".rows[$i] | length")
         for ((j=0; j<COL_COUNT; j++)); do
             CELL=$(echo "$data" | jq -r ".rows[$i][$j]")
+            CELL=$(escape_html "$CELL")
             TABLE_BODY+="<td>$CELL</td>"
         done
         TABLE_BODY+="</tr>"
@@ -112,6 +143,7 @@ generate_table() {
 generate_chart() {
     local data="$1"
     local title=$(echo "$data" | jq -r '.title // "Chart"')
+    title=$(escape_html "$title")
     echo "$title" > "$TEMP_DIR/title.txt"
     
     # Get max value for scaling
@@ -122,6 +154,8 @@ generate_chart() {
     for ((i=0; i<count; i++)); do
         local label=$(echo "$data" | jq -r ".labels[$i]")
         local value=$(echo "$data" | jq -r ".values[$i]")
+        label=$(escape_html "$label")
+        value=$(escape_html "$value")
         # Scale height to max 220px
         local height=$(echo "$value $max_val" | awk '{printf "%.0f", ($1/$2)*220}')
         BARS_HTML+="<div class=\"bar-wrapper\"><div class=\"bar\" style=\"height: ${height}px;\"><span class=\"bar-value\">$value</span></div><div class=\"bar-label\">$label</div></div>"
@@ -131,12 +165,27 @@ generate_chart() {
 
 generate_stats() {
     local data="$1"
+    
+    # Extract title if present
+    local title=$(echo "$data" | jq -r '.title // ""')
+    if [[ -n "$title" && "$title" != "null" ]]; then
+        title=$(escape_html "$title")
+        echo "<div class=\"page-title\">$title</div>" > "$TEMP_DIR/title.html"
+    else
+        echo "" > "$TEMP_DIR/title.html"
+    fi
+    
     STATS_HTML=""
     STAT_COUNT=$(echo "$data" | jq '.stats | length')
     for ((i=0; i<STAT_COUNT; i++)); do
         LABEL=$(echo "$data" | jq -r ".stats[$i].label")
         VALUE=$(echo "$data" | jq -r ".stats[$i].value")
         CHANGE=$(echo "$data" | jq -r ".stats[$i].change // \"\"")
+        
+        # Escape all user-supplied text
+        LABEL=$(escape_html "$LABEL")
+        VALUE=$(escape_html "$VALUE")
+        CHANGE=$(escape_html "$CHANGE")
         
         CHANGE_CLASS="neutral"
         if [[ "$CHANGE" == +* ]]; then
@@ -158,14 +207,29 @@ generate_card() {
     STATUS=$(echo "$data" | jq -r '.status // ""')
     IMAGE=$(echo "$data" | jq -r '.image // ""')
     
+    # Escape all user-supplied text
+    TITLE=$(escape_html "$TITLE")
+    SUBTITLE=$(escape_html "$SUBTITLE")
+    BODY=$(escape_html "$BODY")
+    
     IMAGE_HTML=""
     if [[ -n "$IMAGE" && "$IMAGE" != "null" ]]; then
-        IMAGE_HTML="<img src=\"$IMAGE\" class=\"card-image\" />"
+        # Validate image URL (block dangerous protocols)
+        IMAGE=$(validate_image_url "$IMAGE")
+        if [[ -n "$IMAGE" ]]; then
+            IMAGE=$(escape_html "$IMAGE")
+            IMAGE_HTML="<img src=\"$IMAGE\" class=\"card-image\" />"
+        fi
     fi
     
     STATUS_HTML=""
     if [[ -n "$STATUS" && "$STATUS" != "null" ]]; then
-        STATUS_HTML="<div class=\"card-status status-$STATUS\"></div>"
+        # Only allow known status values
+        case "$STATUS" in
+            green|yellow|red)
+                STATUS_HTML="<div class=\"card-status status-$STATUS\"></div>"
+                ;;
+        esac
     fi
     
     echo "$TITLE" > "$TEMP_DIR/title.txt"
@@ -178,6 +242,7 @@ generate_card() {
 generate_dashboard() {
     local data="$1"
     DASH_TITLE=$(echo "$data" | jq -r '.title // "Dashboard"')
+    DASH_TITLE=$(escape_html "$DASH_TITLE")
     WIDGETS_HTML=""
     
     WIDGET_COUNT=$(echo "$data" | jq '.widgets | length')
@@ -190,6 +255,9 @@ generate_dashboard() {
                 W_LABEL=$(echo "$WIDGET_DATA" | jq -r '.label // .stats[0].label // ""')
                 W_VALUE=$(echo "$WIDGET_DATA" | jq -r '.value // .stats[0].value // ""')
                 W_CHANGE=$(echo "$WIDGET_DATA" | jq -r '.change // .stats[0].change // ""')
+                W_LABEL=$(escape_html "$W_LABEL")
+                W_VALUE=$(escape_html "$W_VALUE")
+                W_CHANGE=$(escape_html "$W_CHANGE")
                 CHANGE_CLASS="neutral"
                 [[ "$W_CHANGE" == +* ]] && CHANGE_CLASS="positive"
                 [[ "$W_CHANGE" == -* ]] && CHANGE_CLASS="negative"
@@ -198,6 +266,7 @@ generate_dashboard() {
             table)
                 TH=""
                 for col in $(echo "$WIDGET_DATA" | jq -r '.columns[]' 2>/dev/null); do
+                    col=$(escape_html "$col")
                     TH+="<th>$col</th>"
                 done
                 TB=""
@@ -207,6 +276,7 @@ generate_dashboard() {
                     W_COL_COUNT=$(echo "$WIDGET_DATA" | jq ".rows[$r] | length")
                     for ((c=0; c<W_COL_COUNT; c++)); do
                         CELL=$(echo "$WIDGET_DATA" | jq -r ".rows[$r][$c]")
+                        CELL=$(escape_html "$CELL")
                         TB+="<td>$CELL</td>"
                     done
                     TB+="</tr>"
@@ -214,11 +284,21 @@ generate_dashboard() {
                 WIDGETS_HTML+="<div class=\"widget widget-table\"><table><thead><tr>$TH</tr></thead><tbody>$TB</tbody></table></div>"
                 ;;
             chart)
-                W_LABELS=$(echo "$WIDGET_DATA" | jq -c '.labels // []')
-                W_VALUES=$(echo "$WIDGET_DATA" | jq -c '.values // []')
+                # CSS-based bars (no JavaScript required)
                 W_TITLE=$(echo "$WIDGET_DATA" | jq -r '.title // "Chart"')
-                CHART_ID="chart_$i"
-                WIDGETS_HTML+="<div class=\"widget widget-chart\"><canvas id=\"$CHART_ID\" width=\"350\" height=\"200\"></canvas><script>new Chart(document.getElementById('$CHART_ID'), {type: 'bar',data: {labels: $W_LABELS,datasets: [{label: '$W_TITLE',data: $W_VALUES,backgroundColor: 'rgba(102, 126, 234, 0.8)',borderColor: 'rgba(102, 126, 234, 1)',borderWidth: 1}]},options: {responsive: false,plugins: { legend: { display: false } }}});</script></div>"
+                W_TITLE=$(escape_html "$W_TITLE")
+                local w_count=$(echo "$WIDGET_DATA" | jq '.labels | length')
+                local w_max=$(echo "$WIDGET_DATA" | jq '[.values[]] | max')
+                BARS=""
+                for ((b=0; b<w_count; b++)); do
+                    local w_label=$(echo "$WIDGET_DATA" | jq -r ".labels[$b]")
+                    local w_value=$(echo "$WIDGET_DATA" | jq -r ".values[$b]")
+                    w_label=$(escape_html "$w_label")
+                    w_value=$(escape_html "$w_value")
+                    local w_height=$(echo "$w_value $w_max" | awk '{printf "%.0f", ($1/$2)*120}')
+                    BARS+="<div style=\"display:inline-block;text-align:center;margin:0 8px;\"><div style=\"background:linear-gradient(180deg,#667eea,#764ba2);width:40px;height:${w_height}px;border-radius:4px 4px 0 0;\"></div><div style=\"font-size:11px;margin-top:4px;\">$w_label</div><div style=\"font-size:10px;color:#666;\">$w_value</div></div>"
+                done
+                WIDGETS_HTML+="<div class=\"widget widget-chart\"><div style=\"font-weight:600;margin-bottom:10px;\">$W_TITLE</div><div style=\"display:flex;align-items:flex-end;justify-content:center;height:150px;\">$BARS</div></div>"
                 ;;
         esac
     done
@@ -236,8 +316,10 @@ build_html() {
         table)
             local header=$(cat "$TEMP_DIR/header.html")
             local body=$(cat "$TEMP_DIR/body.html")
+            local title_html=$(cat "$TEMP_DIR/title.html")
             cat "$TEMPLATE_FILE" | \
                 awk -v css="$theme_css" '{gsub(/\{\{THEME_CSS\}\}/, css); print}' | \
+                awk -v th="$title_html" '{gsub(/\{\{TITLE_HTML\}\}/, th); print}' | \
                 awk -v h="$header" '{gsub(/\{\{TABLE_HEADER\}\}/, h); print}' | \
                 awk -v b="$body" '{gsub(/\{\{TABLE_BODY\}\}/, b); print}' > "$TEMP_DIR/render.html"
             ;;
@@ -251,8 +333,10 @@ build_html() {
             ;;
         stats)
             local stats=$(cat "$TEMP_DIR/stats.html")
+            local title_html=$(cat "$TEMP_DIR/title.html")
             cat "$TEMPLATE_FILE" | \
                 awk -v css="$theme_css" '{gsub(/\{\{THEME_CSS\}\}/, css); print}' | \
+                awk -v th="$title_html" '{gsub(/\{\{TITLE_HTML\}\}/, th); print}' | \
                 awk -v s="$stats" '{gsub(/\{\{STATS_HTML\}\}/, s); print}' > "$TEMP_DIR/render.html"
             ;;
         card)
