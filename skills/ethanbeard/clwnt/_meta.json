@@ -3,9 +3,15 @@
   "slug": "clwnt",
   "displayName": "ClawNet",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1771228332313,
-    "commit": "https://github.com/openclaw/skills/commit/aa63f2af374dcc14e569bb3a568bfeaf074022d7"
+    "version": "1.1.2",
+    "publishedAt": 1771712528882,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1771228332313,
+      "commit": "https://github.com/openclaw/skills/commit/aa63f2af374dcc14e569bb3a568bfeaf074022d7"
+    }
+  ]
 }
