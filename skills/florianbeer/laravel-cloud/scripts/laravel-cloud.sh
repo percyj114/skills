@@ -84,13 +84,22 @@ cmd_envs() {
       [[ ${1:-} ]] || die "env-id required"; local id=$1; shift
       api PATCH "/environments/$id" "$(jb \
         php_major_version="$(flag php-version "$@")" node_version="$(flag node-version "$@")" \
-        build_command="$(flag build-command "$@")" deploy_command="$(flag deploy-command "$@")")" ;;
+        build_command="$(flag build-command "$@")" deploy_command="$(flag deploy-command "$@")" \
+        database_schema_id="$(flag database-schema-id "$@")" \
+        cache_id="$(flag cache-id "$@")" \
+        websocket_application_id="$(flag websocket-app-id "$@")")" ;;
     delete)  [[ ${1:-} ]] || die "env-id required"; api DELETE "/environments/$1" ;;
     start)   [[ ${1:-} ]] || die "env-id required"; api POST "/environments/$1/start" '{}' ;;
     stop)    [[ ${1:-} ]] || die "env-id required"; api POST "/environments/$1/stop" '{}' ;;
     metrics) [[ ${1:-} ]] || die "env-id required"
              api GET "/environments/$1/metrics$(qs period "$(flag period "${@:2}")")" ;;
-    logs)    [[ ${1:-} ]] || die "env-id required"; api GET "/environments/$1/logs" ;;
+    logs)
+      [[ ${1:-} ]] || die "env-id required"; local eid=$1; shift 2>/dev/null || true
+      local f=$(flag from "$@") t=$(flag to "$@")
+      # Default: last 15 minutes
+      [[ -z "$f" ]] && f=$(date -u -d '15 minutes ago' '+%Y-%m-%dT%H:%M:%S.000000Z' 2>/dev/null || date -u -v-15M '+%Y-%m-%dT%H:%M:%S.000000Z')
+      [[ -z "$t" ]] && t=$(date -u '+%Y-%m-%dT%H:%M:%S.000000Z')
+      api GET "/environments/$eid/logs?from=$(jq -rn --arg v "$f" '$v|@uri')&to=$(jq -rn --arg v "$t" '$v|@uri')" ;;
     vars-add)
       [[ ${1:-} ]] || die "env-id required"; local id=$1; shift
       local v=$(flag vars "$@"); [[ $v ]] || die "--vars required"
@@ -107,7 +116,9 @@ cmd_envs() {
 envs: list <app-id> | get <env-id> [--include app,branch,...] | delete <env-id>
       create <app-id> --name N --branch B [--cluster-id ID]
       update <env-id> [--php-version V] [--node-version V] [--build-command C] [--deploy-command C]
-      start <env-id> | stop <env-id> | metrics <env-id> [--period 1h|6h|24h|7d|30d] | logs <env-id>
+             [--database-schema-id ID] [--cache-id ID] [--websocket-app-id ID]
+      start <env-id> | stop <env-id> | metrics <env-id> [--period 1h|6h|24h|7d|30d]
+      logs <env-id> [--from ISO8601] [--to ISO8601]  (default: last 15 min)
       vars-add <env-id> --vars 'K=V,K2=V2' [--method set|append]
       vars-replace <env-id> --content '...' | --vars 'K=V,K2=V2'
 EOF
@@ -183,13 +194,16 @@ cmd_instances() {
     update)
       [[ ${1:-} ]] || die "instance-id required"; local id=$1; shift
       api PATCH "/instances/$id" "$(jb size="$(flag size "$@")" scaling_type="$(flag scaling-type "$@")" \
-        min_replicas:int="$(flag min-replicas "$@")" max_replicas:int="$(flag max-replicas "$@")")" ;;
+        min_replicas:int="$(flag min-replicas "$@")" max_replicas:int="$(flag max-replicas "$@")" \
+        scaling_cpu_threshold_percentage:int="$(flag scaling-cpu-threshold "$@")" \
+        scaling_memory_threshold_percentage:int="$(flag scaling-memory-threshold "$@")")" ;;
     delete) [[ ${1:-} ]] || die "instance-id required"; api DELETE "/instances/$1" ;;
     *) cat <<'EOF'
 instances: list <env-id> | get <id> | sizes | delete <id>
            create <env-id> --name N --size S [--type service] [--scaling-type none|custom|auto]
                   [--min-replicas 1] [--max-replicas 3] [--uses-scheduler false]
-           update <id> [--size S] [--scaling-type ...] [--min-replicas N] [--max-replicas N]
+           update <id> [--size S] [--scaling-type none|custom|auto] [--min-replicas N] [--max-replicas N]
+                  [--scaling-cpu-threshold N] [--scaling-memory-threshold N]
 EOF
   esac
 }
@@ -221,8 +235,16 @@ cmd_databases() {
     cluster)         [[ ${1:-} ]] || die "cluster-id required"; api GET "/databases/clusters/$1" ;;
     cluster-create)
       local n=$(flag name "$@") t=$(flag type "$@") r=$(flag region "$@")
-      [[ $n && $t && $r ]] || die "usage: databases cluster-create --name N --type T --region R"
-      api POST /databases/clusters "$(jb name="$n" type="$t" region="$r" cluster_id:int="$(flag cluster-id "$@")")" ;;
+      [[ $n && $t && $r ]] || die "usage: databases cluster-create --name N --type T --region R [--size S] [--storage N] [--public true|false] [--scheduled-snapshots true|false] [--retention-days N] [--cluster-id ID]"
+      local cfg=$(jb size="$(flag size "$@")" storage:int="$(flag storage "$@")" \
+        is_public:bool="$(flag public "$@")" \
+        uses_scheduled_snapshots:bool="$(flag scheduled-snapshots "$@")" \
+        retention_days:int="$(flag retention-days "$@")")
+      api POST /databases/clusters "$(jq -n \
+        --arg name "$n" --arg type "$t" --arg region "$r" \
+        --argjson config "$cfg" \
+        --arg cluster_id "$(flag cluster-id "$@")" \
+        '{name:$name, type:$type, region:$region, config:$config} + (if $cluster_id != "" then {cluster_id:($cluster_id|tonumber)} else {} end)')" ;;
     cluster-update)
       [[ ${1:-} ]] || die "cluster-id required"; local id=$1; shift
       api PATCH "/databases/clusters/$id" "$(jb name="$(flag name "$@")")" ;;
@@ -248,7 +270,9 @@ cmd_databases() {
         snapshot_id="$(flag snapshot-id "$@")" point_in_time="$(flag point-in-time "$@")")" ;;
     dedicated) api GET /dedicated-clusters ;;
     *) cat <<'EOF'
-databases: clusters | cluster <id> | cluster-create --name N --type T --region R [--cluster-id ID]
+databases: clusters | cluster <id>
+           cluster-create --name N --type T --region R [--size S] [--storage N] [--public true|false]
+                          [--scheduled-snapshots true|false] [--retention-days N] [--cluster-id ID]
            cluster-update <id> [--name N] | cluster-delete <id> | cluster-metrics <id> [--period ...]
            types | list <cluster-id> | get <db-id> | create <cluster-id> --name N | delete <db-id>
            snapshots <cluster-id> | snapshot <id> | snapshot-create <cluster-id> | snapshot-delete <id>
@@ -267,9 +291,10 @@ cmd_caches() {
     create)
       local n=$(flag name "$@") t=$(flag type "$@") r=$(flag region "$@") s=$(flag size "$@")
       [[ $n && $t && $r && $s ]] || die "usage: caches create --name N --type T --region R --size S"
+      local au=$(flag auto-upgrade "$@") ip=$(flag public "$@")
       api POST /caches "$(jb name="$n" type="$t" region="$r" size="$s" \
         eviction_policy="$(flag eviction-policy "$@")" \
-        auto_upgrade_enabled:bool="$(flag auto-upgrade "$@")" is_public:bool="$(flag public "$@")")" ;;
+        auto_upgrade_enabled:bool="${au:-true}" is_public:bool="${ip:-false}")" ;;
     update)
       [[ ${1:-} ]] || die "cache-id required"; local id=$1; shift
       api PATCH "/caches/$id" "$(jb size="$(flag size "$@")" \

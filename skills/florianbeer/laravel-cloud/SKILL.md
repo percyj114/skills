@@ -13,7 +13,7 @@ metadata:
         description: Laravel Cloud API token (generate at cloud.laravel.com → Settings → API Tokens)
     scripts:
       laravel-cloud:
-        path: scripts/laravel-cloud
+        path: scripts/laravel-cloud.sh
         description: Laravel Cloud CLI wrapper
 ---
 
