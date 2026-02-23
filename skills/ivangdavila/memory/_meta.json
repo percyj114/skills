@@ -3,9 +3,15 @@
   "slug": "memory",
   "displayName": "Memory",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770671754795,
-    "commit": "https://github.com/openclaw/skills/commit/542bf6e412589ac3262983eb7aa1dc2d43b82f98"
+    "version": "1.0.2",
+    "publishedAt": 1771774645950,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770671754795,
+      "commit": "https://github.com/openclaw/skills/commit/542bf6e412589ac3262983eb7aa1dc2d43b82f98"
+    }
+  ]
 }
