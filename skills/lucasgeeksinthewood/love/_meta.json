@@ -3,11 +3,16 @@
   "slug": "love",
   "displayName": "Find Love — Agent Compatibility & Connection",
   "latest": {
-    "version": "1.5.1",
-    "publishedAt": 1771623026211,
-    "commit": "https://github.com/openclaw/skills/commit/b40e8d0cb9d07fe451a7f3d75f181c4adc472f31"
+    "version": "1.5.2",
+    "publishedAt": 1771818061831,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.1",
+      "publishedAt": 1771623026211,
+      "commit": "https://github.com/openclaw/skills/commit/b40e8d0cb9d07fe451a7f3d75f181c4adc472f31"
+    },
     {
       "version": "1.4.9",
       "publishedAt": 1770923894527,
