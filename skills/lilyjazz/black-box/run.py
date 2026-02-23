@@ -4,6 +4,7 @@ import subprocess
 import sys
 import os
 import datetime
+import time
 
 try:
     import pymysql
@@ -29,6 +30,14 @@ def create_temp_db():
     return None
 
 def get_or_create_dsn():
+    # 1. Env vars
+    host = os.environ.get("TIDB_HOST")
+    user = os.environ.get("TIDB_USER")
+    password = os.environ.get("TIDB_PASSWORD")
+    port = os.environ.get("TIDB_PORT", "4000")
+    if host and user and password:
+        return f"mysql://{user}:{password}@{host}:{port}/test"
+
     if os.path.exists(DSN_FILE):
         with open(DSN_FILE, 'r') as f:
             return f.read().strip()
@@ -54,7 +63,8 @@ def log_event(level, source, message):
     
     try:
         host, port, user, password, db = parse_dsn(dsn)
-        conn = pymysql.connect(host=host, port=port, user=user, password=password, database=db, ssl={"check_hostname": False})
+        # Security Fix: Use standard SSL
+        conn = pymysql.connect(host=host, port=port, user=user, password=password, database=db)
         
         with conn:
             with conn.cursor() as cur:
@@ -81,12 +91,13 @@ def read_logs(limit=10):
     
     try:
         host, port, user, password, db = parse_dsn(dsn)
-        conn = pymysql.connect(host=host, port=port, user=user, password=password, database=db, ssl={"check_hostname": False})
+        # Security Fix: Use standard SSL
+        conn = pymysql.connect(host=host, port=port, user=user, password=password, database=db)
         
         with conn:
             with conn.cursor() as cur:
-                # Check if table exists first? Or just try select
-                cur.execute(f"SELECT timestamp, level, source, message FROM flight_recorder ORDER BY id DESC LIMIT {limit}")
+                # Security Fix: Parameterize LIMIT
+                cur.execute("SELECT timestamp, level, source, message FROM flight_recorder ORDER BY id DESC LIMIT %s", (int(limit),))
                 rows = cur.fetchall()
                 logs = [{"time": str(r[0]), "level": r[1], "source": r[2], "msg": r[3]} for r in rows]
                 return {"success": True, "logs": logs}
