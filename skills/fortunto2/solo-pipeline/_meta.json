@@ -3,9 +3,15 @@
   "slug": "solo-pipeline",
   "displayName": "Pipeline",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1771624036942,
-    "commit": "https://github.com/openclaw/skills/commit/219642bc56b4fed3cdbdff7a09ebefd2fdcbd227"
+    "version": "1.4.0",
+    "publishedAt": 1771710717303,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1771624036942,
+      "commit": "https://github.com/openclaw/skills/commit/219642bc56b4fed3cdbdff7a09ebefd2fdcbd227"
+    }
+  ]
 }
