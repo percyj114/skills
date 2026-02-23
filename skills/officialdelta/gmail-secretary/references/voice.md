@@ -1,12 +1,12 @@
 # Alan voice reference (auto)
 
-Generated: 2026-02-20T10:55:29.647Z
+Generated: 2026-02-23T10:55:30.654Z
 Sample size (sent snippets): 50
 
 ## High-level style (heuristics)
 - Concise snippets (<=180 chars): 42%
-- Greeting present: 14%
-- Gratitude language: 26%
+- Greeting present: 12%
+- Gratitude language: 24%
 
 ## Drafting rules
 - Clear, direct, polite.
@@ -15,6 +15,9 @@ Sample size (sent snippets): 50
 - Avoid filler.
 
 ## Representative micro-snippets (snippets only)
+- “I wear an adult small. Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
+- “My fair director will be returning the trophy. Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
+- “Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link] ---------- Forwarded message ---------- From: Harvard College Griffin Financial Aid Office <[email]> Date: Feb 20, 2026 at 1:02 PM -05…”
 - “Email: [email] First Name: Alan Middle Name: Matthew Last Name: Alwakeel Phone Number: [phone] Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
 - “Mrs. Zeiner, I cannot do the 17th. The 19th would work best with me. Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
 - “Dear Mrs. Zeiner, I would like to attend the February 23rd meeting for states. Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
@@ -27,6 +30,3 @@ Sample size (sent snippets): 50
 - “Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link] ---------- Forwarded message ---------- From: Harvard College Admissions & Financial Aid <[email]> Date: Feb 9, 2026 at 11:19 AM -0500…”
 - “Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link] ---------- Forwarded message ---------- From: Cornell Financial Aid <[email]> Date: Feb 5, 2026 at 6:26 PM -0500 To: [email] Subject: …”
 - “Here is the first tax form for the crypto trading account. Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
-- “Hi Pam, This is so exciting, I can't wait! Where will the interview be held? Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
-- “The grid numbers are pixelated. Is this a limitation with the quality of the printer? Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
-- “https://drive.google.com/drive/folders/1rH6BT8_WUYY4FRRoAlPt3YHhwMeVbDGf?usp=sharing Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”

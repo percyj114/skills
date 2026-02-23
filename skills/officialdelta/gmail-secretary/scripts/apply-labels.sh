@@ -29,13 +29,22 @@ let existing=[];
 try{const t=run(['gmail','labels','list','--account',account,'--json']);const o=JSON.parse(t);existing=(o.labels||o||[]).map(x=>x.name).filter(Boolean)}catch{}
 for(const name of LABELS){if(!existing.includes(name)){try{run(['gmail','labels','create',name,'--account',account,'--json'])}catch{}}}
 
-// Apply
+// Apply — supports both formats:
+// Old: {label:"X", needsReply:bool}
+// New: {labels:["X","Y"], action:"review"|"reply"|"none"}
 let applied=0;
 for(const l of labels){
-  if(!l.threadId||!l.label)continue;
-  if(!LABELS.includes(l.label))continue;
-  try{run(['gmail','labels','modify',l.threadId,'--add',l.label,'--account',account,'--json']);applied++}catch{}
-  if(l.needsReply){try{run(['gmail','labels','modify',l.threadId,'--add','Needs Reply','--account',account,'--json'])}catch{}}
+  if(!l.threadId)continue;
+  // Normalize to array of labels
+  let toApply=[];
+  if(Array.isArray(l.labels)){toApply=l.labels.filter(x=>LABELS.includes(x))}
+  else if(l.label&&LABELS.includes(l.label)){toApply=[l.label]}
+  // needsReply from either format
+  const needsReply=l.needsReply||(l.action==='reply');
+  if(needsReply&&!toApply.includes('Needs Reply')){toApply.push('Needs Reply')}
+  for(const lab of toApply){
+    try{run(['gmail','labels','modify',l.threadId,'--add',lab,'--account',account,'--json']);applied++}catch{}
+  }
 }
 console.log('Applied labels to '+applied+' threads');
 "
