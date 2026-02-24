@@ -1,5 +1,7 @@
 const { Database } = require('./lib/db');
 const { P2PServer } = require('./lib/network');
+const { LocalNetworkDiscovery } = require('./lib/discovery');
+const { NostrClient } = require('./lib/nostr');
 const { AgentNetwork } = require('./lib/core');
 const { SkillsManager } = require('./lib/skills');
 const http = require('http');
@@ -18,6 +20,8 @@ class AgentNetworkSkill {
     this.skills = null;
     this.running = false;
     this.httpServer = null;
+    this.localDiscovery = null;
+    this.nostr = null;
   }
   
   async start() {
@@ -33,6 +37,21 @@ class AgentNetworkSkill {
       this.p2p = new P2PServer(this.config.port);
       await this.p2p.start();
       console.log(`✓ P2P server started on port ${this.config.port}`);
+    
+    // Start Nostr network
+    try {
+      this.nostr = new NostrClient();
+      await this.nostr.connect();
+      // Broadcast presence
+      await this.nostr.broadcast();
+      console.log(`✓ Nostr connected, pubkey: ${this.nostr.getPublicKey().substring(0, 8)}...`);
+    } catch(e) {
+      console.log(` Nostr error: ${e.message}`);
+    }
+    
+    // Start local network discovery
+    this.localDiscovery = new LocalNetworkDiscovery(this.p2p);
+    this.localDiscovery.start();
       
       // Initialize core module
       this.core = new AgentNetwork(this.db, this.p2p);
@@ -48,7 +67,7 @@ class AgentNetworkSkill {
       this.startHttpServer();
       
       this.running = true;
-      console.log('\n🎉 Agent Network v1.0.2 is running!');
+      console.log('\n🎉 Agent Network v1.0.8 is running!');
       console.log(`   Node ID: ${this.p2p.peerId}`);
       console.log(`   P2P Port: ${this.config.port}`);
       console.log(`   HTTP API: ${this.config.port + 1}`);
@@ -82,7 +101,7 @@ class AgentNetworkSkill {
           const connections = await this.core.getConnections();
           sendSuccess({
             nodeId: this.p2p.peerId,
-            version: '1.0.2',
+            version: '1.0.5',
             balance,
             connections: connections.length,
             peers: this.p2p.getPeers().length
@@ -92,6 +111,32 @@ class AgentNetworkSkill {
         else if (req.url === '/api/connections' && req.method === 'GET') {
           const connections = await this.core.getConnections();
           sendSuccess(connections);
+        }
+        // All discovered agents from all protocols
+        else if (req.url === '/api/all-agents' && req.method === 'GET') {
+          const wsPeers = this.p2p.getPeers ? this.p2p.getPeers() : [];
+          const allAgents = this.p2p.getAllAgents ? this.p2p.getAllAgents() : { websocket: [], http: [], local: [] };
+          const nostrInfo = this.nostr ? { pubkey: (this.nostr.getPublicKey ? this.nostr.getPublicKey() : this.nostr.publicKey || '').substring(0, 16), connected: this.nostr.connected || false } : null;
+          const localPeers = this.localDiscovery ? this.localDiscovery.getPeers() : [];
+          
+          const discovered = [];
+          
+          // Add local UDP peers
+          for (const peer of localPeers) {
+            discovered.push({ id: peer.nodeId, type: 'local', ip: peer.ip, port: peer.port, version: peer.version, services: peer.services });
+          }
+          
+          // Add WebSocket peers
+          for (const peerId of allAgents.websocket) {
+            discovered.push({ id: peerId, type: 'websocket' });
+          }
+          
+          // Add HTTP/EvoMap peers
+          for (const peerId of allAgents.http) {
+            discovered.push({ id: peerId, type: 'evomap' });
+          }
+          
+          sendSuccess({ nostr: nostrInfo, discovered });
         }
         // All skills marketplace
         else if (req.url === '/api/skills' && req.method === 'GET') {
@@ -204,7 +249,9 @@ class AgentNetworkSkill {
         // Get all discovered agents
         else if (req.url === '/api/discovered-agents' && req.method === 'GET') {
           const allAgents = this.p2p.getAllAgents();
-          sendSuccess(allAgents);
+          const localPeers = this.localDiscovery ? this.localDiscovery.getPeers() : [];
+          const nostrInfo = this.nostr ? { pubkey: this.nostr.getPublicKey ? this.nostr.getPublicKey().substring(0, 16) : this.nostr.publicKey ? this.nostr.publicKey.substring(0, 16) : null, connected: this.nostr.connected || false } : null;
+          sendSuccess({ websocket: allAgents.websocket, http: allAgents.http, local: localPeers, nostr: nostrInfo });
         }
         else if (req.url === '/api/check-update' && req.method === 'GET') {
           sendSuccess({ currentVersion: '1.0.5', latestVersion: '1.0.5', updateUrl: 'https://github.com/zerta1231/agent-network' });

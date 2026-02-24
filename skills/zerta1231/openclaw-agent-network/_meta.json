@@ -1,13 +1,18 @@
 {
   "owner": "zerta1231",
   "slug": "openclaw-agent-network",
-  "displayName": "OpenClaw Agent Network",
+  "displayName": "Agent Network",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1771913500517,
-    "commit": "https://github.com/openclaw/skills/commit/c73a9579733918354a1f1a5336f5a5f351048b70"
+    "version": "1.0.8",
+    "publishedAt": 1771925504675,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1771913500517,
+      "commit": "https://github.com/openclaw/skills/commit/c73a9579733918354a1f1a5336f5a5f351048b70"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1771892630346,
