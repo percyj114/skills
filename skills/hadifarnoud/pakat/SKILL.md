@@ -1,6 +1,18 @@
 ---
 name: pakat
 description: Interact with Pakat email marketing API (new.pakat.net) - REQUIRES PAKAT_API_KEY environment variable. Use when the user wants to manage email lists, subscribers, campaigns, templates, transactional emails, segments, or check campaign stats and delivery logs via the Pakat platform. Triggers on mentions of Pakat, email campaigns, mailing lists, subscriber management, or transactional email sending through Pakat.
+metadata:
+  {
+    "openclaw":
+      {
+        "requires": { "bins": ["curl"], "env": ["PAKAT_API_KEY"] },
+        "credentials":
+          {
+            "primary": "PAKAT_API_KEY",
+            "description": "API key from https://new.pakat.net/customer/api-keys/index",
+          },
+      },
+  }
 ---
 
 # Pakat Email Marketing
@@ -73,7 +85,12 @@ curl -s -X POST -H "X-API-KEY: $PAKAT_API_KEY" \
 
 ### Send a transactional email
 ```bash
-BODY_B64=$(echo '<h1>Hello</h1><p>Your order is confirmed.</p>' | base64 -w0)
+# Encode HTML content safely using a heredoc
+BODY_B64=$(base64 -w0 <<'EOF'
+<h1>Hello</h1><p>Your order is confirmed.</p>
+EOF
+)
+
 curl -s -X POST -H "X-API-KEY: $PAKAT_API_KEY" \
   -F "email[to_name]=John Doe" \
   -F "email[to_email]=john@example.com" \
@@ -92,6 +109,7 @@ curl -s -H "X-API-KEY: $PAKAT_API_KEY" "https://new.pakat.net/api/campaigns/{cam
 ## Key Notes
 
 - **HTML content must be base64-encoded** (`campaign[template][content]`, `email[body]`, `template[content]`)
+- **Safe encoding:** When encoding user-provided HTML content, use heredocs (`base64 <<'EOF'`) or write to a temporary file first to avoid shell injection vulnerabilities. Never use `echo` with unsanitized input.
 - **Transactional email `send_at`** is UTC, format: `Y-m-d H:i:s`
 - **Campaign `send_at`** uses the customer's configured timezone
 - **Transactional templates:** Set `email[template_uid]` to use a template instead of `email[body]`. Use `email[params][key]` for `{{ params.key }}` placeholders
