@@ -1,53 +1,32 @@
 ---
 name: xerolite
-description: "Integrate OpenClaw with Xerolite trading platform. Use when: querying Xerolite API, placing orders, searching contracts, or processing Xerolite webhooks."
+description: "Integrate OpenClaw with Xerolite - IBKR. Use when: querying Xerolite API, placing orders, searching contracts."
 metadata: {"openclaw":{"requires":{"bins":["node"]}}}
 ---
 
 # Xerolite
 
-Xerolite is a TradingView-to-broker (IB) trading platform.  
-This skill lets the agent place orders, search contracts, and receive Xerolite webhooks via OpenClaw.
+**Trading Bridge from TradingView to Interactive Brokers.**
 
-## Setup
+[Xerolite](https://www.xeroflex.com/xerolite/) automates execution of your trading ideas: it connects [TradingView](https://www.tradingview.com/) alerts to your [Interactive Brokers](https://www.interactivebrokers.com/) account so orders are sent in real time with no manual steps. You design the logic and alerts in TradingView; Xerolite handles the bridge to IB (TWS or IB Gateway) and execution.
 
-### Install
-
-Installs the transform module and configures webhook endpoint:
-
-```bash
-bash skills/xerolite/scripts/install.sh
-```
-
-### Uninstall
-
-Removes transform module and webhook configuration:
-
-```bash
-bash skills/xerolite/scripts/uninstall.sh
-```
+This skill lets your OpenClaw agent call the Xerolite REST API to **place orders** and **search contracts** — so you can trade or look up symbols from natural language or automation without leaving your workflow.
 
 ## Package Structure
 
 ```
 skills/xerolite/
 ├── SKILL.md              # This file
-├── transforms/
-│   └── xerolite.js       # Webhook payload transformer
 ├── scripts/
 │   ├── xerolite.mjs      # CLI (order place, contract search)
-│   ├── install.sh        # Setup script
-│   └── uninstall.sh      # Removal script
 └── references/
-    ├── API.md            # REST API guide
-    └── WEBHOOKS.md       # Webhook configuration
+    └── API.md            # REST API guide
 ```
 
 ## Capabilities
 
 - Place orders via Xerolite REST API.
 - Search contracts via Xerolite REST API.
-- Receive `/hooks/xerolite` webhooks and format them as readable notifications.
 
 ## Commands
 
@@ -114,87 +93,11 @@ JSON sent to `POST /api/internal/agent/contract/search`:
 }
 ```
 
-## Webhooks
-
-After install, OpenClaw listens at `/hooks/xerolite`.
-
-### How It Works
-
-```
-Xerolite Event
-     ↓
-POST /hooks/xerolite (with Bearer token)
-     ↓
-Transform module formats payload
-     ↓
-Agent receives formatted notification
-     ↓
-Delivers to active channel (Telegram, etc.)
-```
-
-The transform module (`xerolite.js`) formats incoming payloads into readable notifications with proper structure.
-
-### Xerolite Configuration
-
-Configure Xerolite to send webhooks:
-- **URL**: `https://your-openclaw-host:18789/hooks/xerolite`
-- **Method**: POST
-- **Header**: `Authorization: Bearer <your-hooks-token>`
-- **Content-Type**: `application/json`
-
-### Payload Format
-
-The transform handles various payload structures:
-
-```json
-{"event": "order.created", "data": {"id": "123", "total": 99.99}}
-```
-
-```json
-{"message": "Server restarted", "level": "info"}
-```
-
-Output example:
-```
-📥 **Xerolite Notification**
-
-**Event:** order.created
-**Data:**
-  • id: 123
-  • total: 99.99
-```
-
 ## REST API
 
 For the order and contract search endpoints used by this skill, see [references/API.md](references/API.md).
 
-## Transform Module
-
-The bundled transform (`transforms/xerolite.js`) handles:
-- Payload formatting with readable structure
-- Event/message/data field extraction
-- Automatic delivery to configured channel
-- No-rephrase instruction for clean forwarding
-
-To customize the transform, edit `transforms/xerolite.js` before running install.
-
 ## Requirements
 
 - Node.js 18+ (for built-in `fetch`)
-- OpenClaw hooks enabled (for webhook delivery)
 - **CLI only**: Optional `XEROLITE_API_URL` — base URL for Xerolite API. If not set, defaults to `http://localhost` (same machine or local network). No API key in this version; may be added in a future version.
-
-## Troubleshooting
-
-### Webhook not receiving
-- Verify `hooks.token` is set in openclaw config
-- Check Xerolite sends correct `Authorization: Bearer <token>` header
-- Confirm gateway was restarted after install
-
-### 401 Unauthorized
-- Token mismatch — check Xerolite uses same token as `hooks.token`
-
-### Transform not working
-- Check transform is at `~/.openclaw/hooks/transforms/xerolite.js`
-- Re-run `install.sh` to copy fresh transform
-- Check gateway logs for errors
