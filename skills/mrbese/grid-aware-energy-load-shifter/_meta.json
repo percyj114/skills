@@ -1,0 +1,11 @@
+{
+  "owner": "mrbese",
+  "slug": "grid-aware-energy-load-shifter",
+  "displayName": "Grid-Aware Energy Load Shifter",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1771813400387,
+    "commit": null
+  },
+  "history": []
+}
