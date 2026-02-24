@@ -4,8 +4,6 @@ description: One-time setup for ClawCoach AI health coaching. Configures your pr
 emoji: "\U0001F3AC"
 user-invocable: true
 homepage: https://github.com/clawcoach/clawcoach
-metadata:
-  openclaw: {"always": true}
 ---
 
 # ClawCoach Setup
