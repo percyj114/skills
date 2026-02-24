@@ -84,7 +84,7 @@ update_config = _update_config
 CONFIG_SCHEMA = {
     "market_filter": {"env": "SIMMER_MERT_FILTER", "default": "", "type": str},
     "max_bet_usd": {"env": "SIMMER_MERT_MAX_BET", "default": 10.00, "type": float},
-    "expiry_window_mins": {"env": "SIMMER_MERT_EXPIRY_MINS", "default": 2, "type": int},
+    "expiry_window_mins": {"env": "SIMMER_MERT_EXPIRY_MINS", "default": 8, "type": int},
     "min_split": {"env": "SIMMER_MERT_MIN_SPLIT", "default": 0.60, "type": float},
     "max_trades_per_run": {"env": "SIMMER_MERT_MAX_TRADES", "default": 5, "type": int},
     "sizing_pct": {"env": "SIMMER_MERT_SIZING_PCT", "default": 0.05, "type": float},
@@ -93,6 +93,7 @@ CONFIG_SCHEMA = {
 _config = load_config(CONFIG_SCHEMA, __file__)
 
 TRADE_SOURCE = "sdk:mertsniper"
+_automaton_reported = False
 
 # Polymarket constraints
 MIN_SHARES_PER_ORDER = 5.0
@@ -101,6 +102,10 @@ MIN_TICK_SIZE = 0.01
 # Strategy parameters
 MARKET_FILTER = _config["market_filter"]
 MAX_BET_USD = _config["max_bet_usd"]
+# Automaton budget isolation — cap max bet if managed
+_automaton_max = os.environ.get("AUTOMATON_MAX_BET")
+if _automaton_max:
+    MAX_BET_USD = min(MAX_BET_USD, float(_automaton_max))
 EXPIRY_WINDOW_MINS = _config["expiry_window_mins"]
 MIN_SPLIT = _config["min_split"]
 MAX_TRADES_PER_RUN = _config["max_trades_per_run"]
@@ -115,7 +120,7 @@ SLIPPAGE_MAX_PCT = 0.15
 
 _client = None
 
-def get_client():
+def get_client(live=True):
     """Lazy-init SimmerClient singleton."""
     global _client
     if _client is None:
@@ -129,7 +134,8 @@ def get_client():
             print("Error: SIMMER_API_KEY environment variable not set")
             print("Get your API key from: simmer.markets/dashboard -> SDK tab")
             sys.exit(1)
-        _client = SimmerClient(api_key=api_key, venue="polymarket")
+        venue = os.environ.get("TRADING_VENUE", "polymarket")
+        _client = SimmerClient(api_key=api_key, venue=venue, live=live)
     return _client
 
 
@@ -207,6 +213,7 @@ def execute_trade(market_id, side, amount, reasoning=""):
             "shares_bought": result.shares_bought,
             "shares": result.shares_bought,
             "error": result.error,
+            "simulated": result.simulated,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -303,8 +310,11 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
     market_filter = filter_override if filter_override is not None else MARKET_FILTER
     expiry_mins = expiry_override if expiry_override is not None else EXPIRY_WINDOW_MINS
 
+    # Initialize client early (paper mode when not live)
+    get_client(live=not dry_run)
+
     if dry_run:
-        print("\n  [DRY RUN] No trades will be executed. Use --live to enable trading.")
+        print("\n  [PAPER MODE] Trades will be simulated with real prices. Use --live for real trades.")
 
     print(f"\n  Configuration:")
     print(f"  Filter:        {market_filter or '(all markets)'}")
@@ -324,9 +334,6 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
         print("  2. Use --set: python mert_sniper.py --set max_bet_usd=5.00")
         print("  3. Set env vars: SIMMER_MERT_MAX_BET=5.00")
         return
-
-    # Initialize client early to validate API key
-    get_client()
 
     # Show portfolio if smart sizing
     if smart_sizing:
@@ -384,7 +391,7 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
         print(f"  Markets scanned: {len(markets)}")
         print(f"  Near expiry:     0")
         if dry_run:
-            print("\n  [DRY RUN MODE - no real trades executed]")
+            print("\n  [PAPER MODE - trades simulated with real prices]")
         return
 
     # Sort by soonest expiry
@@ -394,7 +401,10 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
     position_size = calculate_position_size(MAX_BET_USD, smart_sizing)
 
     trades_executed = 0
+    total_usd_spent = 0.0
     strong_split_count = 0
+    skip_reasons = []
+    execution_errors = []
 
     for market in expiring_markets:
         market_id = market.get("id")
@@ -426,6 +436,7 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
         # Price sanity check
         if side_price < MIN_TICK_SIZE or side_price > (1 - MIN_TICK_SIZE):
             print(f"     Skip: price at extreme (${side_price:.4f})")
+            skip_reasons.append("price at extreme")
             continue
 
         # Safeguards
@@ -434,6 +445,7 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
             should_trade, reasons = check_context_safeguards(context)
             if not should_trade:
                 print(f"     Safeguard blocked: {'; '.join(reasons)}")
+                skip_reasons.append(f"safeguard: {reasons[0]}")
                 continue
             if reasons:
                 print(f"     Warnings: {'; '.join(reasons)}")
@@ -441,30 +453,31 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
         # Rate limit
         if trades_executed >= MAX_TRADES_PER_RUN:
             print(f"     Max trades ({MAX_TRADES_PER_RUN}) reached - skipping")
+            skip_reasons.append("max trades reached")
             continue
 
         # Check minimum order size
         min_cost = MIN_SHARES_PER_ORDER * side_price
         if min_cost > position_size:
             print(f"     Skip: ${position_size:.2f} too small for {MIN_SHARES_PER_ORDER} shares at ${side_price:.2f}")
+            skip_reasons.append("position too small")
             continue
 
         reasoning = f"Near-expiry snipe: {side.upper()} at {side_price:.0%} with {format_duration(mins_left)} to resolution"
 
-        if dry_run:
-            est_shares = position_size / side_price
-            print(f"     [DRY RUN] Would buy ${position_size:.2f} on {side.upper()} (~{est_shares:.1f} shares)")
-        else:
-            print(f"     Executing trade...")
-            result = execute_trade(market_id, side, position_size, reasoning=reasoning)
+        tag = "SIMULATED" if dry_run else "LIVE"
+        print(f"     Executing trade ({tag})...")
+        result = execute_trade(market_id, side, position_size, reasoning=reasoning)
 
-            if result.get("success"):
-                trades_executed += 1
-                shares = result.get("shares_bought") or result.get("shares") or 0
-                print(f"     Bought {shares:.1f} {side.upper()} shares @ ${side_price:.2f}")
-            else:
-                error = result.get("error", "Unknown error")
-                print(f"     Trade failed: {error}")
+        if result.get("success"):
+            trades_executed += 1
+            total_usd_spent += position_size
+            shares = result.get("shares_bought") or result.get("shares") or 0
+            print(f"     {'[PAPER] ' if result.get('simulated') else ''}Bought {shares:.1f} {side.upper()} shares @ ${side_price:.2f}")
+        else:
+            error = result.get("error", "Unknown error")
+            print(f"     Trade failed: {error}")
+            execution_errors.append(error[:120])
 
     # Summary
     print("\n" + "=" * 50)
@@ -474,8 +487,19 @@ def run_mert_strategy(dry_run=True, positions_only=False, show_config=False,
     print(f"  Strong split:    {strong_split_count}")
     print(f"  Trades executed: {trades_executed}")
 
+    # Structured report for automaton
+    if os.environ.get("AUTOMATON_MANAGED"):
+        global _automaton_reported
+        report = {"signals": strong_split_count, "trades_attempted": strong_split_count, "trades_executed": trades_executed, "amount_usd": round(total_usd_spent, 2)}
+        if strong_split_count > 0 and trades_executed == 0 and skip_reasons:
+            report["skip_reason"] = ", ".join(dict.fromkeys(skip_reasons))
+        if execution_errors:
+            report["execution_errors"] = execution_errors
+        print(json.dumps({"automaton": report}))
+        _automaton_reported = True
+
     if dry_run:
-        print("\n  [DRY RUN MODE - no real trades executed]")
+        print("\n  [PAPER MODE - trades simulated with real prices]")
 
 
 # =============================================================================
@@ -494,6 +518,7 @@ if __name__ == "__main__":
                         help="Set config value (e.g., --set max_bet_usd=5.00)")
     parser.add_argument("--smart-sizing", action="store_true", help="Use portfolio-based position sizing")
     parser.add_argument("--no-safeguards", action="store_true", help="Disable context safeguards")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Only output on trades/errors")
     args = parser.parse_args()
 
     # Handle --set config updates
@@ -532,3 +557,7 @@ if __name__ == "__main__":
         filter_override=args.filter,
         expiry_override=args.expiry,
     )
+
+    # Fallback report for automaton if the strategy returned early (no signal)
+    if os.environ.get("AUTOMATON_MANAGED") and not _automaton_reported:
+        print(json.dumps({"automaton": {"signals": 0, "trades_attempted": 0, "trades_executed": 0, "skip_reason": "no_signal"}}))

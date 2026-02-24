@@ -1,13 +1,18 @@
 {
   "owner": "adlai88",
   "slug": "polymarket-mert-sniper",
-  "displayName": "Mert Sniper",
+  "displayName": "Polymarket Mert Sniper",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1771333366246,
-    "commit": "https://github.com/openclaw/skills/commit/08c473eca888a94861a33a8ba8838478f1104a4a"
+    "version": "1.0.8",
+    "publishedAt": 1771938924642,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1771333366246,
+      "commit": "https://github.com/openclaw/skills/commit/08c473eca888a94861a33a8ba8838478f1104a4a"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1771300886418,
