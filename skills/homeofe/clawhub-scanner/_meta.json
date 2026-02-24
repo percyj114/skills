@@ -1,0 +1,11 @@
+{
+  "owner": "homeofe",
+  "slug": "clawhub-scanner",
+  "displayName": "ClawHub Security Scanner",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771921800294,
+    "commit": null
+  },
+  "history": []
+}
