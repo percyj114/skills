@@ -1,13 +1,18 @@
 {
   "owner": "leegitw",
   "slug": "pbe-extractor",
-  "displayName": "Pbe Extractor",
+  "displayName": "PBE Extractor",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770708217057,
-    "commit": "https://github.com/openclaw/skills/commit/8a3b55f2082a7273f45920b8bf9099842624ab30"
+    "version": "1.0.2",
+    "publishedAt": 1771895583410,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770708217057,
+      "commit": "https://github.com/openclaw/skills/commit/8a3b55f2082a7273f45920b8bf9099842624ab30"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770278777287,
