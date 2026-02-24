@@ -309,7 +309,7 @@ async function cmdUpload(options) {
   const driveId = await getDriveId(client);
 
   const result = await client.api(`/drives/${driveId}/root:/${remotePath}:/content`)
-    .putStream(createReadStream(localPath));
+    .put(content);
 
   console.log(`✅ Uploaded: ${remotePath}`);
   console.log(`   Size: ${(content.length / 1024).toFixed(1)} KB`);
@@ -393,6 +393,128 @@ async function cmdDelete(options) {
   console.log(`✅ Deleted: ${path}`);
 }
 
+// ── Coauthoring helpers ─────────────────────────────────────────────────────
+
+async function resolveItemId(client, driveId, remotePath) {
+  const path = safePath(remotePath);
+  const meta = await client.api(`/drives/${driveId}/root:/${path}`)
+    .select('id,name')
+    .get();
+  return meta.id;
+}
+
+async function cmdCheckout(options) {
+  if (!options.path) {
+    console.error('ERROR: --path is required');
+    process.exit(1);
+  }
+
+  const client = createGraphClient();
+  const driveId = await getDriveId(client);
+  const itemId = await resolveItemId(client, driveId, options.path);
+
+  await client.api(`/drives/${driveId}/items/${itemId}/checkout`).post(null);
+
+  console.log(`🔒 Checked out: ${options.path}`);
+  console.log(`   Item ID: ${itemId}`);
+  console.log(`   The file is now locked for editing by this app.`);
+}
+
+async function cmdCheckin(options) {
+  if (!options.path) {
+    console.error('ERROR: --path is required');
+    process.exit(1);
+  }
+
+  const client = createGraphClient();
+  const driveId = await getDriveId(client);
+  const itemId = await resolveItemId(client, driveId, options.path);
+
+  const comment = options.comment || 'Updated via OpenClaw';
+  await client.api(`/drives/${driveId}/items/${itemId}/checkin`).post({ comment });
+
+  console.log(`🔓 Checked in: ${options.path}`);
+  console.log(`   Comment: ${comment}`);
+}
+
+async function cmdEditLink(options) {
+  if (!options.path) {
+    console.error('ERROR: --path is required');
+    process.exit(1);
+  }
+
+  const client = createGraphClient();
+  const driveId = await getDriveId(client);
+  const itemId = await resolveItemId(client, driveId, options.path);
+
+  const result = await client.api(`/drives/${driveId}/items/${itemId}/createLink`).post({
+    type: 'edit',
+    scope: 'organization',
+  });
+
+  console.log(`🔗 Edit link for: ${options.path}`);
+  console.log(`   URL: ${result.link.webUrl}`);
+  console.log(`   Scope: organization`);
+  console.log(`   Open this URL in a browser to edit in Office Online.`);
+}
+
+async function cmdEdit(options) {
+  if (!options.path || !options.local) {
+    console.error('ERROR: --path and --local are required');
+    process.exit(1);
+  }
+
+  const client = createGraphClient();
+  const driveId = await getDriveId(client);
+  const remotePath = safePath(options.path);
+  const localPath = resolve(options.local);
+  const comment = options.comment || 'Updated via OpenClaw';
+
+  // Step 1: Resolve item ID
+  const itemId = await resolveItemId(client, driveId, remotePath);
+  console.log(`📄 File: ${remotePath} (ID: ${itemId})`);
+
+  // Step 2: Checkout
+  console.log(`🔒 Checking out...`);
+  try {
+    await client.api(`/drives/${driveId}/items/${itemId}/checkout`).post(null);
+  } catch (err) {
+    if (err.statusCode === 423) {
+      console.error('ERROR: File is already checked out by another user.');
+      process.exit(1);
+    }
+    throw err;
+  }
+
+  // Step 3: Upload modified content
+  try {
+    checkFileSize(localPath);
+    console.log(`📤 Uploading modified file...`);
+    const content = readFileSync(localPath);
+    await client.api(`/drives/${driveId}/items/${itemId}/content`)
+      .put(content);
+    console.log(`✅ Content replaced.`);
+  } catch (err) {
+    // If upload fails, try to undo checkout
+    console.error(`ERROR during upload: ${err.message}`);
+    console.log(`🔓 Undoing checkout...`);
+    try {
+      await client.api(`/drives/${driveId}/items/${itemId}/checkin`).post({
+        comment: 'Reverted — upload failed',
+      });
+    } catch { /* best effort */ }
+    process.exit(1);
+  }
+
+  // Step 4: Checkin
+  console.log(`🔓 Checking in...`);
+  await client.api(`/drives/${driveId}/items/${itemId}/checkin`).post({ comment });
+
+  console.log(`\n✅ Edit complete: ${remotePath}`);
+  console.log(`   Comment: ${comment}`);
+  console.log(`   Users with the file open will see the updated version.`);
+}
+
 // ── CLI ─────────────────────────────────────────────────────────────────────
 
 const program = new Command();
@@ -444,6 +566,33 @@ program
   .requiredOption('-p, --path <file>', 'File path to delete')
   .option('--confirm', 'Confirm deletion (required)')
   .action(wrap(cmdDelete));
+
+program
+  .command('checkout')
+  .description('Check out a file (lock for editing)')
+  .requiredOption('-p, --path <file>', 'File path to check out')
+  .action(wrap(cmdCheckout));
+
+program
+  .command('checkin')
+  .description('Check in a previously checked-out file')
+  .requiredOption('-p, --path <file>', 'File path to check in')
+  .option('-c, --comment <text>', 'Check-in comment', 'Updated via OpenClaw')
+  .action(wrap(cmdCheckin));
+
+program
+  .command('edit-link')
+  .description('Get an edit link to open file in Office Online')
+  .requiredOption('-p, --path <file>', 'File path')
+  .action(wrap(cmdEditLink));
+
+program
+  .command('edit')
+  .description('Safe edit: checkout → upload modified file → checkin')
+  .requiredOption('-p, --path <file>', 'Remote file path in SharePoint')
+  .requiredOption('-l, --local <file>', 'Local modified file to upload')
+  .option('-c, --comment <text>', 'Check-in comment', 'Updated via OpenClaw')
+  .action(wrap(cmdEdit));
 
 function wrap(fn) {
   return async (...args) => {

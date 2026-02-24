@@ -28,6 +28,8 @@ SP_DRIVE_ID=optional-specific-drive-id
 
 ## Commands
 
+### File operations
+
 ```bash
 # Show site and drive info
 node {baseDir}/scripts/sharepoint.mjs info
@@ -52,6 +54,22 @@ node {baseDir}/scripts/sharepoint.mjs mkdir --path "Meeting Notes/2026"
 
 # Delete (requires --confirm flag)
 node {baseDir}/scripts/sharepoint.mjs delete --path "Drafts/old-file.txt" --confirm
+```
+
+### Coauthoring (checkout/checkin)
+
+```bash
+# Safe edit: checkout → upload modified file → checkin (recommended)
+node {baseDir}/scripts/sharepoint.mjs edit --path "Report.docx" --local ./modified.docx --comment "Updated summary"
+
+# Check out a file (lock for exclusive editing)
+node {baseDir}/scripts/sharepoint.mjs checkout --path "Report.docx"
+
+# Check in a file (unlock + publish)
+node {baseDir}/scripts/sharepoint.mjs checkin --path "Report.docx" --comment "Reviewed and approved"
+
+# Get an edit link to open in Office Online
+node {baseDir}/scripts/sharepoint.mjs edit-link --path "Report.docx"
 ```
 
 ## Supported Office formats

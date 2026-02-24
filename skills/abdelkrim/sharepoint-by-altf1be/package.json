@@ -1,6 +1,6 @@
 {
   "name": "openclaw-skill-sharepoint",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "OpenClaw skill for Microsoft SharePoint — secure file operations and Office document intelligence via Graph API with certificate auth",
   "type": "module",
   "bin": {
