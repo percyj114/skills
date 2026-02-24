@@ -12,7 +12,7 @@ from pathlib import Path
 
 def load_tweet(tweet_id):
     """Load a specific tweet."""
-    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets'
+    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets-lite'
     tweet_file = data_dir / 'index.json'
     
     if not tweet_file.exists():

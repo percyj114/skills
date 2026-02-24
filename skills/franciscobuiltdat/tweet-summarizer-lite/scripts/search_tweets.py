@@ -17,7 +17,7 @@ from datetime import datetime
 
 def load_tweets():
     """Load all stored tweets."""
-    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets'
+    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets-lite'
     tweet_file = data_dir / 'index.json'
     
     if not tweet_file.exists():
@@ -54,7 +54,7 @@ def list_sources():
 def get_stats():
     """Show storage statistics."""
     tweets = load_tweets()
-    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets'
+    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets-lite'
     
     return {
         'total_tweets': len(tweets),

@@ -72,7 +72,7 @@ def store_tweet(tweet_text, tweet_id):
     """
     Store tweet locally for search.
     """
-    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets'
+    data_dir = Path.home() / '.openclaw' / 'workspace' / 'data' / 'tweets-lite'
     data_dir.mkdir(parents=True, exist_ok=True)
     
     tweet_file = data_dir / 'index.json'
@@ -118,7 +118,7 @@ def main():
     
     # Store tweet
     store_tweet(tweet_text, tweet_id)
-    print(f"\n✅ Stored to ~/.openclaw/workspace/data/tweets/")
+    print(f"\n✅ Stored to ~/.openclaw/workspace/data/tweets-lite/")
     
     # Show summary if requested
     if show_summary:

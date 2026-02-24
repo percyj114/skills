@@ -13,131 +13,88 @@ permissions:
 
 # Tweet Summarizer Lite
 
-Fetch and summarize single tweets from Twitter/X. Lightweight version for quick lookups.
+Use this skill when the user asks to fetch, read, save, or summarize a single tweet from Twitter/X.
 
-## Features
+## When to Use
 
-- 🐦 **Single tweet fetching** - Fetch individual tweets by URL
-- 🔍 **Basic search** - Search for tweets by query
-- 📊 **Auto-summary** - Generate summaries after fetching
-- 📁 **Simple storage** - Organized file storage
+✅ **USE this skill when the user:**
 
-## Prerequisites
+- Pastes a Twitter/X URL and wants to read or save it
+- Asks to "fetch", "grab", "get", "read", or "summarize" a tweet
+- Wants to search their saved tweets by text, author, or date
+- Asks what they've saved so far
 
-Requires `bird` CLI with valid cookie auth. Set `AUTH_TOKEN` and `CT0` environment variables.
+❌ **DON'T use when:**
+- The user wants threads, user timelines, collections, or tags → use **tweet-summarizer-pro**
+- Posting or replying to tweets (this skill is read-only)
 
-## Quick Start
+## How to Use
 
-```bash
-# Fetch a single tweet
-python3 scripts/tweet.py https://x.com/user/status/123
+You run the scripts internally — the user never types `python3`. Respond naturally, then exec the appropriate script and present the output conversationally.
 
-# Search for tweets
-python3 scripts/search_tweets.py --text "AI agents"
+The skill root is at: `~/.openclaw/workspace/skills/tweet-summarizer-lite/`
+Run scripts with: `python3 <skill-root>/scripts/<script>.py <args>`
 
-# Skip summary
-python3 scripts/tweet.py https://x.com/user/status/123 -ns
-```
+---
 
-## Usage
+## Fetching a Tweet
 
-### Fetch Single Tweet
+**Triggers:** "fetch this tweet", "what does this say", "grab this", paste of x.com/*/status/* URL
 
 ```bash
-python3 scripts/tweet.py <URL>
+python3 scripts/tweet.py <url>
+# Skip summary: python3 scripts/tweet.py <url> -ns
 ```
 
-Options:
-- `-ns` or `--no-summary` - Skip auto-summary
+Auto-detects tweet URLs in the user's message. Shows the tweet text and a short summary.
 
-### Search Stored Tweets
+---
+
+## Searching Saved Tweets
+
+**Triggers:** "search my saved tweets for...", "find tweets about...", "do I have anything saved about..."
 
 ```bash
 # By text content
 python3 scripts/search_tweets.py --text "artificial intelligence"
 
-# By source
+# By author
 python3 scripts/search_tweets.py --source elonmusk
 
 # By date
 python3 scripts/search_tweets.py --since 2026-02-01
 
-# List all sources
+# List all saved authors
 python3 scripts/search_tweets.py --list-sources
 
 # Storage stats
 python3 scripts/search_tweets.py --stats
 ```
 
-### Generate Summary
+---
+
+## Summarizing a Saved Tweet
+
+**Triggers:** "summarize tweet [id]", "give me a summary of that"
 
 ```bash
-# From stored file
-python3 scripts/summarize.py <file_path>
-
-# From source
-python3 scripts/summarize.py elonmusk
+python3 scripts/summarize.py <tweet-id>
 ```
 
-## Storage Structure
+---
 
-```
-~/.openclaw/workspace/data/tweets/
-├── index.json           # Master search index
-└── single/
-    └── <tweet-id>/      # Individual tweets
-        └── single_*.json
-```
+## Troubleshooting
 
-## Configuration
-
-Edit `config.json`:
-
-```json
-{
-  "defaults": {
-    "show_summary": true,
-    "auto_detect_urls": true,
-    "default_mode": "single"
-  }
-}
-```
-
-## Direct Bird Commands
-
-For quick reads without storage:
-
+If bird CLI fails or credentials are missing:
 ```bash
-# Read tweet (plain text)
-bird read <url-or-id> --plain
-
-# Search
-bird search "query" -n 20 --plain
+python3 scripts/config.py --check-credentials
 ```
 
-## Upgrading to Pro
+Tell the user:
+> Set `AUTH_TOKEN` and `CT0` from your browser cookies (Twitter → DevTools → Application → Cookies). See `SECURITY.md` for details.
 
-Need more features? [tweet-summarizer-pro](https://github.com/openclaw/openclaw-tweet-summarizer-pro) includes:
+---
 
-- 🧵 **Thread fetching** - Fetch full conversation threads
-- 📂 **Collections** - Organize tweets into custom collections
-- 👤 **User timelines** - Fetch tweets from specific users
-- 🏠 **Home timeline** - Fetch your home/following timeline
-- 🏷️ **Tags** - Tag tweets for organization
-- 📦 **Archive** - Archive and restore collections
+## Upgrading
 
-## Scripts
-
-| Script | Description |
-|--------|-------------|
-| `tweet.py` | Fetch single tweet + summary |
-| `fetch_tweets.py` | Low-level fetch (single only) |
-| `search_tweets.py` | Search stored tweets |
-| `summarize.py` | Generate summaries |
-| `config.py` | Manage configuration |
-
-## Files
-
-- `config.json` - Default settings
-- `config.example.json` - Example configuration
-- `scripts/` - All scripts
+Need threads, collections, tags, or user timelines? This lite version only handles single tweets. Suggest **tweet-summarizer-pro** for those features.
