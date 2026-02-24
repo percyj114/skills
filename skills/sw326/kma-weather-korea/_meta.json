@@ -1,0 +1,11 @@
+{
+  "owner": "sw326",
+  "slug": "kma-weather-korea",
+  "displayName": "기상청 날씨 (KMA Weather Korea)",
+  "latest": {
+    "version": "2.2.0",
+    "publishedAt": 1771803774478,
+    "commit": null
+  },
+  "history": []
+}
