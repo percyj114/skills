@@ -5,7 +5,10 @@
   "author": "kenoodl",
   "license": "MIT",
   "permissions": ["network"],
-  "env": ["KENOODL_TOKEN"],
+  "requires": {
+    "env": ["KENOODL_TOKEN"]
+  },
+  "primaryEnv": "KENOODL_TOKEN",
   "entry": "instructions.md",
   "tags": ["synthesis", "reasoning", "creative", "problem-solving", "agent-tool", "external-api", "cross-domain", "breakthrough", "novel"],
   "models": ["claude-*", "gpt-*", "grok-*", "llama-*", "gemini-*"],
