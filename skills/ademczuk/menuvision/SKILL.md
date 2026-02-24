@@ -4,7 +4,7 @@ description: "Build beautiful HTML photo menus from restaurant URLs, PDFs, or ph
 version: 1.0.0
 emoji: "🍽️"
 user-invocable: true
-metadata: {"clawdbot": {"requires": {"env": ["GOOGLE_API_KEY"], "bins": ["python3"]}, "primaryEnv": "GOOGLE_API_KEY", "homepage": "https://github.com/ademczuk/MenuVision"}}
+metadata: {"openclaw": {"requires": {"env": ["GOOGLE_API_KEY"], "bins": ["python3"]}, "primaryEnv": "GOOGLE_API_KEY", "homepage": "https://github.com/ademczuk/MenuVision"}}
 ---
 
 # MenuVision - Restaurant Menu Builder
@@ -37,7 +37,7 @@ The AI agent creates these scripts:
 | `extract_menu.py` | Extract menu data from URL/PDF/photo → structured JSON |
 | `generate_images.py` | Generate food photos via Gemini Image |
 | `build_menu.py` | Build HTML menu from JSON + images (CSS/JS inline, images as relative paths) |
-| `publish.sh` | (Optional) Publish HTML to GitHub Pages — wrapper script, always use this |
+| `publish_menu.py` | (Optional) Publish HTML to GitHub Pages |
 
 ---
 
@@ -416,17 +416,34 @@ def make_placeholder_svg(code: str, name: str, secondary: str = "") -> str:
     return f"data:image/svg+xml;base64,{b64}"
 
 
-def image_tag(code: str, name: str, secondary: str, images_dir: Path) -> str:
-    """Return <img> tag — real image with lazy-load OR gradient SVG placeholder."""
+def image_tag(code: str, name: str, secondary: str, images_dir: Path, portable: bool = False) -> str:
+    """Return <img> tag — real image OR gradient SVG placeholder.
+    If portable=True, embed the real image as base64 data URI for single-file output."""
     real = find_image(code, images_dir)
     if real:
+        if portable:
+            img_path = images_dir.parent / real  # resolve relative path
+            with open(img_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            return f'<img src="data:image/jpeg;base64,{b64}" alt="{html_mod.escape(name)}">'
         return f'<img src="{html_mod.escape(real)}" alt="{html_mod.escape(name)}" loading="lazy">'
     else:
         src = make_placeholder_svg(code, name, secondary)
         return f'<img src="{src}" alt="{html_mod.escape(name)}">'
 ```
 
-**Note:** The HTML references images via relative paths (`./images/shoyu/M1.jpg`). The HTML file and `images/` directory must be deployed together. Only CSS, JS, and SVG placeholders are inline — real food photos are external files.
+### Output Modes
+
+The HTML builder supports two output modes controlled by a `--portable` flag:
+
+| Mode | Flag | Images | Output | Use Case |
+|------|------|--------|--------|----------|
+| **Portable** (default) | `--portable` or no `GITHUB_*` env vars | Base64 embedded in HTML | Single self-contained `.html` file | Open locally, email, drag-drop to any host |
+| **Deployable** | `--no-portable` or `GITHUB_*` env vars set | Relative paths (`./images/stem/code.jpg`) | HTML + `images/` directory | GitHub Pages, Netlify, any static host |
+
+**Portable mode** embeds all food images as base64 data URIs directly in the HTML. File sizes are larger (~4-6MB for an 80-item menu) but the output is a single file that works everywhere with zero hosting setup. This is the default when no `GITHUB_*` environment variables are set.
+
+**Deployable mode** uses relative image paths and requires the HTML file and `images/` directory to be hosted together. Use this when publishing to GitHub Pages or any static hosting service.
 
 ---
 
@@ -654,46 +671,58 @@ pip install playwright && playwright install chromium
 - `GITHUB_OWNER` — Your GitHub username (default: reads from git config)
 - `GITHUB_REPO` — Your GitHub Pages repo name (default: `menus`)
 
-## PUBLISHING TO GITHUB PAGES
+## PUBLISHING
 
-### Setup (one-time)
+### Default: Portable HTML (no setup)
+
+When no `GITHUB_*` environment variables are set, the pipeline generates a **self-contained HTML file** with base64-embedded images. Users can:
+- Open the file directly in any browser
+- Email it or share via any file-sharing service
+- Upload to any static host (Netlify Drop, Vercel, GitHub Pages, S3)
+
+No hosting setup, no API keys beyond `GOOGLE_API_KEY`, no git configuration needed.
+
+### Optional: GitHub Pages (requires setup)
+
+For users who want a persistent gallery with multiple menus:
+
 1. Create a GitHub repo for your menus (e.g. `your-username/menus`)
 2. Enable GitHub Pages on the `main` branch
 3. Set environment variables (must be accessible to the Python process):
 ```bash
 export GITHUB_PAT="your-personal-access-token"   # Required — used for git push auth
-export GITHUB_OWNER="your-username"
-export GITHUB_REPO="menus"
+export GITHUB_OWNER="your-username"               # Required — YOUR GitHub username
+export GITHUB_REPO="menus"                        # Optional — defaults to "menus"
+```
+
+**Important:** `publish_menu.py` MUST read `GITHUB_OWNER` and `GITHUB_REPO` from environment variables. Never hardcode a specific user's repo. The generated code should construct the repo URL dynamically:
+```python
+owner = os.environ["GITHUB_OWNER"]
+repo = os.environ.get("GITHUB_REPO", "menus")
+GITHUB_REPO = f"{owner}/{repo}"
+GITHUB_PAGES_BASE = f"https://{owner}.github.io/{repo}"
 ```
 
 ### Publish
-
-**IMPORTANT: Always use the `publish.sh` wrapper script. Do NOT generate your own git/publish logic.**
-
-The wrapper script handles all NTFS bind mount permission issues, git safe.directory, PAT auth, and gallery updates. Call it with one command:
-
 ```bash
-bash /mnt/host/projects/TanTan_Menu_Package/publish.sh "Restaurant_Menu.html" --name "Restaurant" --tagline "Cuisine · City" --cuisine Type
+python publish_menu.py Restaurant_Menu.html --name "Restaurant" --tagline "Cuisine · City" --cuisine Type
 ```
-
-The script:
-1. Copies HTML + images to the menus repo using `cp` (not `shutil.copy2` — avoids NTFS `chmod` EPERM)
-2. Writes `.meta_` JSON for the gallery
-3. Updates the gallery `index.html`
-4. Runs `git -c safe.directory=* -c core.fileMode=false -c gc.auto=0` for add/commit/push
-5. Authenticates push via `GITHUB_PAT` env var
-6. Prints the public URL on success
 
 Gallery: `https://<your-username>.github.io/<repo>/`
 
-### Why a wrapper (not generated code)
+### How publishing works
 
-Docker containers with NTFS bind-mounted repos hit three issues that make generated publish code fragile:
-- `/home/node` is read-only → `git config --global` fails silently
-- `shutil.copy2()` calls `os.chmod()` → EPERM on NTFS
-- Mixed UID ownership on `.git/objects` → git object creation fails
+`publish_menu.py` clones the menus repo to a **temp directory on native filesystem** (`git clone --depth=1`), copies files there, commits, and pushes. This avoids all NTFS bind mount permission issues that occur when operating directly on mounted volumes in Docker containers.
 
-The wrapper script avoids all three by using `cp`, inline git `-c` flags, and PAT-authenticated push.
+Key implementation details:
+1. `git clone --depth=1` to a `tempfile.mkdtemp()` directory (native FS, proper POSIX permissions)
+2. Copies HTML + images using `shutil.copy()` (not `copy2` — avoids `os.chmod()` EPERM on NTFS)
+3. `find_image_dirs` regex uses `[^/"]+` (not `[a-z_]+`) to match Unicode chars in image dir names
+4. Writes `.meta_` JSON sidecar for gallery metadata
+5. Rebuilds gallery `index.html`
+6. Authenticates push via `GITHUB_PAT` env var embedded in the clone URL
+7. Temp directory is cleaned up after push
+8. `MENUS_REPO_DIR` (bind mount path) is only used for `--list` read-only queries
 
 ## EXTERNAL ENDPOINTS
 
