@@ -210,6 +210,160 @@ pip install real-ladybug
 python -c "from nima_core.storage import migrate; migrate()"
 ```
 
+#### LadybugDB Schema
+
+When using the recommended **LadybugDB** backend — a custom graph database (Kùzu-based) using Cypher query language (format: `.lbug` binary) — the schema is as follows:
+
+**Node Tables:**
+
+| Table | Description |
+|-------|-------------|
+| **MemoryNode** | Primary storage (~330 nodes) |
+| | `id INT64 PRIMARY KEY` |
+| | `timestamp INT64` — Unix ms |
+| | `layer STRING` — Memory type (see Layer Types below) |
+| | `text STRING` — Full memory content |
+| | `summary STRING` — Truncated to 200 chars |
+| | `who STRING` — Person associated (David, Lilu, etc.) |
+| | `affect_json STRING` — Emotion state at capture (JSON) |
+| | `session_key STRING` — Source session |
+| | `conversation_id STRING` — Conversation context |
+| | `turn_id STRING` — Turn within conversation |
+| | `fe_score DOUBLE` — Free Energy score (importance proxy) |
+| | `strength DOUBLE` — Decay strength (default 1.0) |
+| | `decay_rate DOUBLE` — Forgetting rate (default 0.01) |
+| | `affect_decontextualized BOOL` — Emotion stripped for cold recall |
+| **Turn** | Conversation structure |
+| | `id INT64 PRIMARY KEY` |
+| | `turn_id STRING` |
+| | `timestamp INT64` |
+| | `affect_json STRING` |
+
+**Relationship Tables:**
+
+| Relationship | From → To | Properties |
+|--------------|-----------|------------|
+| `relates_to` | MemoryNode → MemoryNode | `relation STRING`, `weight DOUBLE` |
+| `has_input` | Turn → MemoryNode | — |
+| `has_contemplation` | Turn → MemoryNode | — |
+| `has_output` | Turn → MemoryNode | — |
+
+##### Layer Types (valid `layer` values)
+
+| Layer | Description |
+|-------|-------------|
+| `episodic` | Raw conversation turns (input/output) |
+| `semantic` | Extracted facts, preferences, knowledge |
+| `dream` | Consolidated insights from nightly synthesis |
+| `insight` | Key realization or connection |
+| `pattern` | Recurring behavioral pattern |
+| `synthesis` | Cross-domain connection |
+| `consolidation` | Memory pruner output (distilled) |
+| `precognition` | Predicted future session |
+| `lucid` | Spontaneously surfaced memory |
+| `input` | User input from a conversation turn |
+| `output` | Agent output from a conversation turn |
+| `contemplation` | Agent's internal thought process |
+| `legacy_vsa` | Older memory type from VSA-based systems |
+
+##### Relation Types (valid `relation` values in `relates_to`)
+
+| Relation | Meaning |
+|----------|---------|
+| `related_to` | General association |
+| `caused_by` | Causal chain |
+| `reminds_of` | Analogy or similarity |
+| `contradicts` | Opposing view |
+| `supports` | Reinforcing evidence |
+| `elicits` | Emotion trigger |
+| `refers_to` | Topic reference |
+| `part_of` | Compositional hierarchy |
+| `triggered` | An input that triggered a contemplation |
+| `produced` | A contemplation that produced an output |
+| `responded_to` | An output that responded to an input |
+
+##### Indexes (for performance)
+
+```cypher
+// Recommended indexes
+CREATE INDEX idx_memory_node_layer ON MemoryNode(layer);
+CREATE INDEX idx_memory_node_who ON MemoryNode(who);
+CREATE INDEX idx_memory_node_timestamp ON MemoryNode(timestamp);
+CREATE INDEX idx_memory_node_session ON MemoryNode(session_key);
+CREATE INDEX idx_turn_timestamp ON Turn(timestamp);
+```
+
+##### Schema Version Tracking
+
+Schema migrations are tracked in the database:
+
+```cypher
+// Create schema-version tracking table
+CREATE NODE TABLE IF NOT EXISTS _nima_schema (
+    version INT64 PRIMARY KEY,
+    applied_at INT64,
+    description STRING
+);
+```
+
+```cypher
+// Check current schema version
+MATCH (s:_nima_schema)
+RETURN s.version, s.description ORDER BY s.version DESC LIMIT 1;
+// Current version: 003
+```
+
+##### Example Cypher Queries
+
+```cypher
+// Get recent memories for a person
+MATCH (t:Turn)-[:has_input|has_output]->(m:MemoryNode {who: 'David'})
+WHERE t.timestamp > 1700000000000
+RETURN m ORDER BY m.timestamp DESC LIMIT 10;
+
+// Find memories related to a topic
+MATCH (m:MemoryNode)
+WHERE m.text CONTAINS 'consciousness' OR m.summary CONTAINS 'consciousness'
+RETURN m ORDER BY m.fe_score DESC LIMIT 5;
+
+// Get conversation thread
+MATCH (t:Turn)-[:has_input|has_output]->(m:MemoryNode {conversation_id: 'abc123'})
+RETURN m ORDER BY t.timestamp;
+
+// Find emotionally significant memories
+MATCH (m:MemoryNode)
+WHERE m.fe_score > 0.7
+RETURN m ORDER BY m.fe_score DESC LIMIT 10;
+
+// Get all related memories (graph traversal)
+MATCH (m1:MemoryNode {id: 123})-[:relates_to]->(m2:MemoryNode)
+RETURN m2;
+
+// Find dream consolidations
+MATCH (m:MemoryNode {layer: 'dream'})
+RETURN m ORDER BY m.timestamp DESC LIMIT 5;
+
+// Memories by time range
+MATCH (m:MemoryNode)
+WHERE m.timestamp >= 1704067200000 AND m.timestamp < 1704153600000
+RETURN m ORDER BY m.timestamp;
+
+// Get memory counts by layer
+MATCH (m:MemoryNode)
+RETURN m.layer, count(m) AS count ORDER BY count DESC;
+```
+
+**Supporting Files** (same `~/.nima/memory/` directory):
+
+| File | What it is |
+|------|------------|
+| `graph.sqlite` | 50MB — Graphiti temporal knowledge graph (separate system) |
+| `embedding_index.npy` | 478MB — NumPy vector index for semantic search |
+| `embedding_cache.db` | SQLite — Cached embeddings keyed by content hash |
+| `precognitions.sqlite` | SQLite — Predicted future session patterns |
+| `faiss.index` | 16MB — FAISS vector index (older, may be superseded) |
+| `.nimaignore` | Ignore patterns for memory capture (see project root) |
+
 ### Environment Variables
 
 ```bash

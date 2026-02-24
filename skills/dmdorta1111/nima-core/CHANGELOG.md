@@ -3,12 +3,38 @@
 All notable changes to NIMA Core will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.7] - 2026-02-23
+## [3.0.8] - 2026-02-24
 
 ### Added
-- **Scheduling Setup section in README** — full OpenClaw cron configs for Lucid Moments (4×/day), Dream Consolidation, Memory Pruner, Embedding Index rebuild, and Precognition explanation
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- **Security section in SKILL.md** — Comprehensive security documentation covering:
+  - What gets installed and where
+  - Credential handling table (which env vars make network calls)
+  - Safety features (input filtering, injection prevention, timeouts)
+  - Best practices (review before install, don't run as root, use containers)
+  - Data location reference
+- **`.nimaignore` file** — Specification for excluding content from memory capture
+  - Supports glob patterns (like .gitignore)
+  - Defines filters for system messages, heartbeats, passwords/secrets
+  - Note: Pattern matching implementation in hook is pending
+- **`scripts/init_db.py`** — Extracted database initialization from install.sh
+  - Standalone script with argparse
+  - Verbose mode for debugging
+  - Proper error handling
+
+### Changed
+- **`install.sh` refactored** — Cleaner, more verbose output
+  - Uses `scripts/init_db.py` instead of inline Python
+  - Shows each step clearly
+  - Data directory configurable via `NIMA_DATA_DIR`
+
+### Security
+- **Transparency** — All install actions logged, no hidden operations
+- **Defense in depth** — Multiple layers of input filtering
+- **Minimal permissions** — No root required, user home only
+
+## [3.0.7] - 2026-02-23
 
 ## [3.0.6] - 2026-02-23
 

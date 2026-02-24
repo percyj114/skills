@@ -596,6 +596,65 @@ function isHeartbeatNoise(text) {
 }
 
 /**
+ * Load and cache .nimaignore patterns.
+ * Reads from ~/.nima/.nimaignore or package directory.
+ */
+let nimaIgnorePatterns = null;
+function loadNimaIgnore() {
+  if (nimaIgnorePatterns !== null) return nimaIgnorePatterns;
+  
+  const fs = require('fs');
+  const path = require('path');
+  const homedir = require('os').homedir();
+  
+  // Try multiple locations
+  const locations = [
+    path.join(homedir, '.nima', '.nimaignore'),
+    path.join(__dirname, '..', '..', '.nimaignore'),
+    path.join(__dirname, '.nimaignore'),
+  ];
+  
+  for (const loc of locations) {
+    try {
+      if (fs.existsSync(loc)) {
+        const content = fs.readFileSync(loc, 'utf8');
+        const lines = content.split('\n');
+        nimaIgnorePatterns = lines
+          .map(l => l.trim())
+          .filter(l => l && !l.startsWith('#'))
+          .map(pattern => {
+            // Convert glob to regex
+            const escaped = pattern
+              .replace(/[.+^${}()|[\]\\]/g, '\\$&')  // Escape special regex chars
+              .replace(/\*/g, '.*')                   // * → .*
+              .replace(/\?/g, '.');                   // ? → .
+            return new RegExp(escaped, 'i');
+          });
+        console.log(`[nima-memory] Loaded ${nimaIgnorePatterns.length} .nimaignore patterns from ${loc}`);
+        return nimaIgnorePatterns;
+      }
+    } catch (e) {
+      // Ignore errors, try next location
+    }
+  }
+  
+  nimaIgnorePatterns = [];
+  return nimaIgnorePatterns;
+}
+
+/**
+ * Check if text matches any .nimaignore pattern.
+ */
+function matchesNimaIgnore(text) {
+  if (!text || typeof text !== 'string') return false;
+  
+  const patterns = loadNimaIgnore();
+  if (!patterns.length) return false;
+  
+  return patterns.some(p => p.test(text));
+}
+
+/**
  * Check if content is system noise that shouldn't be stored as memory.
  * Filters out gateway restarts, doctor hints, session metadata, etc.
  */
@@ -646,6 +705,9 @@ function isSystemNoise(text) {
     /^!+$/,   // Just exclamation marks
     /^\?+$/,  // Just question marks
   ];
+
+  // Check .nimaignore patterns
+  if (matchesNimaIgnore(text)) return true;
 
   return noisePatterns.some(p => p.test(text));
 }

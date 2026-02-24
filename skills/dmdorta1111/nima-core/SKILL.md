@@ -1,7 +1,7 @@
 ---
 name: nima-core
 description: "Noosphere Integrated Memory Architecture — Complete cognitive stack for AI agents: persistent memory, emotional intelligence, dream consolidation, hive mind, precognitive recall, and lucid moments. 4 embedding providers, LadybugDB graph backend, zero-config install. nima-core.ai"
-version: 3.0.7
+version: 3.0.8
 metadata: {"openclaw":{"emoji":"🧠","source":"https://github.com/lilubot/nima-core","homepage":"https://nima-core.ai","requires":{"bins":["python3","node"],"env":[]},"optional_env":{"NIMA_DATA_DIR":"Override default ~/.nima data directory","NIMA_EMBEDDER":"voyage|openai|ollama|local (default: local — zero external calls)","VOYAGE_API_KEY":"Required when NIMA_EMBEDDER=voyage","OPENAI_API_KEY":"Required when NIMA_EMBEDDER=openai","NIMA_OLLAMA_MODEL":"Model name when NIMA_EMBEDDER=ollama","NIMA_VOICE_TRANSCRIBER":"whisper|local (for voice notes)","WHISPER_MODEL":"tiny|base|small|medium|large","ANTHROPIC_API_KEY":"For memory pruner LLM distillation (opt-in only)"},"permissions":{"reads":["~/.nima/"],"writes":["~/.nima/","~/.openclaw/extensions/nima-*/"],"network":["voyage.ai (only if NIMA_EMBEDDER=voyage)","openai.com (only if NIMA_EMBEDDER=openai)"]},"external_calls":"All external API calls are opt-in via explicit env vars. Default mode uses local embeddings with zero network calls."}}
 ---
 
@@ -89,6 +89,65 @@ PYTHON CORE (nima_core/)
 - ✅ Default: local embeddings = **zero external calls**
 - ❌ No NIMA servers, no tracking, no analytics
 - 🔒 Embedding API calls only when using Voyage/OpenAI (opt-in)
+
+## Security
+
+### What Gets Installed
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| Python core (`nima_core/`) | `~/.nima/` | Memory, affect, cognition |
+| OpenClaw hooks | `~/.openclaw/extensions/nima-*/` | Capture, recall, affect |
+| SQLite database | `~/.nima/memory/graph.sqlite` | Persistent storage |
+| Logs | `~/.nima/logs/` | Debug logs (optional) |
+
+### Credential Handling
+
+| Env Var | Required? | Network Calls? | Purpose |
+|---------|-----------|----------------|---------|
+| `NIMA_EMBEDDER=local` | No | ❌ | Default — offline embeddings |
+| `VOYAGE_API_KEY` | Only if using Voyage | ✅ voyage.ai | Cloud embeddings |
+| `OPENAI_API_KEY` | Only if using OpenAI | ✅ openai.com | Cloud embeddings |
+| `ANTHROPIC_API_KEY` | Only if using pruner | ✅ anthropic.com | Memory distillation |
+| `NIMA_OLLAMA_MODEL` | Only if using Ollama | ❌ (localhost) | Local GPU embeddings |
+
+**Recommendation:** Start with `NIMA_EMBEDDER=local` (default). Only enable cloud providers when you need better embedding quality.
+
+### Safety Features
+
+- **Input filtering** — System messages, heartbeats, and duplicates are filtered before capture
+- **FTS5 injection prevention** — Parameterized queries prevent SQL injection
+- **Path traversal protection** — All file paths are sanitized
+- **Temp file cleanup** — Automatic cleanup of temporary files
+- **API timeouts** — Network calls have reasonable timeouts (30s Voyage, 10s local)
+
+### Best Practices
+
+1. **Review before installing** — Inspect `install.sh` and hook files before running
+2. **Backup config** — Backup `~/.openclaw/openclaw.json` before adding hooks
+3. **Don't run as root** — Installation writes to user home directories
+4. **Use containerized envs** — Test in a VM or container first if unsure
+5. **Rotate API keys** — If using cloud embeddings, rotate keys periodically
+6. **Monitor logs** — Check `~/.nima/logs/` for suspicious activity
+
+### Data Locations
+
+```text
+~/.nima/
+├── memory/
+│   ├── graph.sqlite       # SQLite backend (default)
+│   ├── ladybug.lbug       # LadybugDB backend (optional)
+│   ├── embedding_cache.db # Cached embeddings
+│   └── embedding_index.npy# Vector index
+├── affect/
+│   └── affect_state.json  # Current emotional state
+└── logs/                  # Debug logs (if enabled)
+
+~/.openclaw/extensions/
+├── nima-memory/           # Capture hook
+├── nima-recall-live/     # Recall hook
+└── nima-affect/          # Affect hook
+```
 
 **Controls:**
 ```json
