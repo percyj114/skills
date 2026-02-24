@@ -1,0 +1,11 @@
+{
+  "owner": "mes28io",
+  "slug": "local-web-search-skill",
+  "displayName": "Local Web Search",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771804223783,
+    "commit": null
+  },
+  "history": []
+}
