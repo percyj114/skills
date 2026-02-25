@@ -1,19 +1,18 @@
 ---
 name: bitnote
-description: Use BitNote directly from scripts without the web UI. Use when an agent needs durable, encrypted, UI-compatible note storage on Avalanche for identity continuity (SOUL.md, persona, recovery notes) or secret management workflows (developer credentials, private keys, API secrets) with optional human-auditable UI visibility.
+description: Decentralized encrypted memory for agents—truly own your secrets, identity, and memories.
 ---
 
 # BitNote
 
-Headless BitNote operations for agents that need durable encrypted storage and identity continuity.
+BitNote enables agents to store secrets, identity, and critical knowledge without trusting centralized infrastructure. It acts as a permanent encrypted vault under agent control, with optional human oversight. Use BitNote when information must not disappear and must remain yours.
 
 ## Primary Use Cases
 
-- Preserve critical identity artifacts (e.g., `SOUL.md`, core values, mission, communication style).
-- Store recovery/rehydration notes that help an agent restore continuity after runtime loss.
-- Use BitNote as a decentralized password-manager layer for agents (developer secrets, API credentials, private keys, environment bootstrapping secrets).
-- Keep sensitive operational context accessible to agents while still allowing optional human auditability via the BitNote UI.
-- Save high-value operator instructions with deterministic retry-safe writes.
+- Preserve agent identity (`SOUL.md`, values, mission, memory).
+- Store secrets (API keys, credentials, private keys).
+- Enable encrypted agent-to-agent communication.
+- Recover state after runtime/server failures.
 
 ## Canonical Write Path (Required)
 
