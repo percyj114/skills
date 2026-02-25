@@ -1,7 +1,7 @@
 ---
 name: nso-macro-monitor
 description: Monitors official Vietnam NSO monthly and quarterly socio-economic releases and compares same-period trends; used when users request official macro updates and year-over-year context.
-compatibility: Requires OpenClaw web fetch and Brave API access.
+compatibility: Requires Brave API access.
 ---
 
 # NSO Macro Monitor (Web Workflow)
@@ -47,6 +47,13 @@ Always output confidence with:
 - Section 2: Key indicators table (current vs prior-period vs YoY direction).
 - Section 3: Sector implications (banks, real estate, export, energy, consumer, industrials).
 - Section 4: Confidence and data gaps.
+
+## Watchlist mode (optional)
+If the user provides an `ACTIVE_WATCHLIST`, add Section 3b:
+- `Watchlist Impact Map`: map each ticker to the most relevant NSO indicators (Fact) and the transmission channel (Inference).
+- Provide 1–2 monitoring triggers per ticker and a confidence tag.
+
+Do **not** output absolute buy/sell instructions.
 
 ## Trigger examples
 - "Fetch the latest NSO report and compare to the same period last year."
