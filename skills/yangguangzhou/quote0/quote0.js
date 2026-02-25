@@ -6,6 +6,7 @@ const path = require('path');
 
 const API_BASE = 'https://dot.mindreset.tech/api/authV2/open';
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 function parseArgs(argv) {
   const out = { _: [] };
@@ -37,7 +38,7 @@ function nowSignature() {
 
 function printHelp() {
   console.log(`
-Quote/0 API CLI (v1.0.1)
+Quote/0 API CLI (v1.0.4)
 
 Usage:
   node quote0.js <command> [options]
@@ -65,8 +66,7 @@ text options:
 
 image options:
   --image <base64>     Base64 PNG image (296x152)
-  --imageFile <path>   PNG file path (auto convert to base64)
-  --allowAnyFile <bool>  Disable PNG signature check (default: false)
+  --imageFile <path>   PNG file path <=5MB (auto convert to base64)
   --link <url>         NFC redirect URL / scheme
   --border <0|1>       Border color (0=white, 1=black; default 0)
   --ditherType <type>  DIFFUSION | ORDERED | NONE
@@ -149,9 +149,16 @@ function readImageBase64(args) {
       throw new Error(`imageFile 不是普通文件: ${filePath}`);
     }
 
+    if (path.extname(filePath).toLowerCase() !== '.png') {
+      throw new Error(`imageFile 必须是 .png 文件: ${filePath}`);
+    }
+
+    if (st.size > MAX_IMAGE_BYTES) {
+      throw new Error(`imageFile 过大（>${MAX_IMAGE_BYTES} bytes）: ${filePath}`);
+    }
+
     const buf = fs.readFileSync(filePath);
-    const bypassCheck = toBool(args.allowAnyFile, false);
-    if (!bypassCheck && !isPngBuffer(buf)) {
+    if (!isPngBuffer(buf)) {
       throw new Error(`imageFile 不是有效 PNG 文件: ${filePath}`);
     }
 

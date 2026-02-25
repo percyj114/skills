@@ -1,9 +1,19 @@
 ---
 name: quote0
 description: Control MindReset Dot Quote/0 through the local quote0.js script and Dot Developer Platform APIs. Use when the user asks to configure Quote/0, push text/image content, query device status, switch next content, list tasks, or troubleshoot Dot Open API integration. Requires credentials DOT_API_KEY and (for device actions) DOT_DEVICE_ID.
+homepage: https://dot.mindreset.tech/docs/service/open
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🖼️",
+        "requires": { "bins": ["node"], "env": ["DOT_API_KEY", "DOT_DEVICE_ID"] },
+        "primaryEnv": "DOT_API_KEY",
+      },
+  }
 ---
 
-# Quote/0 技能（v1.0.1）
+# Quote/0 技能（v1.0.4）
 
 使用本地脚本调用 Dot Developer Platform API：
 
@@ -11,7 +21,7 @@ description: Control MindReset Dot Quote/0 through the local quote0.js script an
 node quote0.js <command> [options]
 ```
 
-> 在技能目录内执行即可；不要在文档里写死含个人用户名的绝对路径。
+> 在技能目录内执行命令。
 
 ---
 
@@ -23,7 +33,7 @@ node quote0.js <command> [options]
 
 ### 禁止事项
 - 不要把 API Key / Device ID 硬编码到脚本、SKILL.md、Git 提交。
-- 不要把敏感文件路径传给 `--imageFile`。
+- 不要把敏感文件路径传给 `--imageFile`（脚本会读取该路径对应的本地文件并上传）。
 
 ### 推荐注入方式（按安全优先级）
 1. **单次命令传参（最推荐）**
@@ -156,8 +166,8 @@ node quote0.js image --imageFile ./text-card.png --border 0 --ditherType NONE --
 
 关键参数：
 - `--image` 或 `--imageFile` 二选一
-- 默认会校验 `--imageFile` 是否为 PNG 文件头
-- `--allowAnyFile true` 可跳过 PNG 校验（仅限你明确知道风险时）
+- `--imageFile` 必须是 `.png` 普通文件，且大小不超过 5MB
+- 脚本会校验 PNG 文件头（不可绕过）
 - `--border`：0 白边 / 1 黑边
 - `--ditherType`：`DIFFUSION | ORDERED | NONE`
 - `--ditherKernel`：`THRESHOLD | ATKINSON | BURKES | FLOYD_STEINBERG | ...`

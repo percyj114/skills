@@ -3,9 +3,15 @@
   "slug": "quote0",
   "displayName": "Quote/0",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771955411580,
-    "commit": "https://github.com/openclaw/skills/commit/21cd5a791be49444edcf24143f5ddb889e451b2e"
+    "version": "1.0.4",
+    "publishedAt": 1771956482459,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771955411580,
+      "commit": "https://github.com/openclaw/skills/commit/21cd5a791be49444edcf24143f5ddb889e451b2e"
+    }
+  ]
 }
