@@ -13,21 +13,19 @@ MEMORY_DIR="${AGENT_MEMORY_DIR:-$HOME/.agent-memory}"
 YEAR=$(date -u +%Y)
 MONTH=$(date -u +%m)
 DAY=$(date -u +%d)
-TS=$(date -u +%s)000
 
 # Ensure directory exists
 mkdir -p "$MEMORY_DIR/$YEAR/$MONTH"
 
-# Build tags array
-TAGS_JSON="[]"
-if [ -n "$TAGS" ]; then
-    TAGS_JSON=$(echo "$TAGS" | tr ' ' '\n' | sed 's/.*/"&"/' | tr '\n' ',' | sed 's/,$//' | sed 's/^/[/' | sed 's/$/]/')
-fi
+# Build JSON safely with node (no manual escaping)
+node -e "
+const entry = {
+  ts: Date.now(),
+  topic: process.argv[1],
+  content: process.argv[2],
+  tags: process.argv[3] ? process.argv[3].split(' ').filter(Boolean) : []
+};
+process.stdout.write(JSON.stringify(entry) + '\n');
+" "$TOPIC" "$CONTENT" "$TAGS" >> "$MEMORY_DIR/$YEAR/$MONTH/$DAY.jsonl"
 
-# Escape content for JSON
-CONTENT_ESC=$(echo "$CONTENT" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
-
-# Append entry
-echo "{\"ts\":$TS,\"topic\":\"$TOPIC\",\"content\":\"$CONTENT_ESC\",\"tags\":$TAGS_JSON}" >> "$MEMORY_DIR/$YEAR/$MONTH/$DAY.jsonl"
-
-echo "✓ Memory saved: [$TOPIC] $CONTENT_ESC"
+echo "✓ Memory saved: [$TOPIC] $(echo "$CONTENT" | head -c 80)"

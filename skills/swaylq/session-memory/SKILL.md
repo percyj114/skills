@@ -2,7 +2,7 @@
 name: session-memory
 description: Persistent memory toolkit for AI agents. Save context, recall insights, track decisions across sessions.
 homepage: https://github.com/voidborne-agent/session-memory-skill
-metadata: {"openclaw":{"emoji":"🧠","requires":{"bins":["curl"]}}}
+metadata: {"openclaw":{"emoji":"🧠","requires":{"bins":["node"]}}}
 ---
 
 # Session Memory Skill 🧠
@@ -33,7 +33,7 @@ Saves a memory entry with timestamp and topic tag.
 ./scripts/recall.sh "search query"
 ```
 
-Fuzzy search through all saved memories.
+Search through all saved memories. Add `--json` for structured output.
 
 ### List Topics
 
@@ -65,7 +65,6 @@ Memories are stored in `~/.agent-memory/`:
 
 ```
 ~/.agent-memory/
-├── index.json          # Topic index
 ├── 2026/
 │   └── 02/
 │       └── 01.jsonl    # Daily memory entries
