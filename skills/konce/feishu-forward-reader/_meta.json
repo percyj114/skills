@@ -1,0 +1,11 @@
+{
+  "owner": "konce",
+  "slug": "feishu-forward-reader",
+  "displayName": "飞书转发消息读取器",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1772007686014,
+    "commit": null
+  },
+  "history": []
+}
