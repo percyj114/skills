@@ -48,24 +48,19 @@ jobs:
       - name: Secret Detection
         run: |
           # AWS Access Keys
-          ! grep -rn 'AKIA[0-9A-Z]\{16\}' --include='*.js' --include='*.ts' --include='*.py' --include='*.yml' --include='*.yaml' .
+          ! grep -rn 'AKIA[0-9A-Z]\{16\}' --include='*.{js,ts,py,env,yml,yaml}' .
 
           # OpenAI API Keys
-          ! grep -rn 'sk-[A-Za-z0-9]\{20,\}' --include='*.js' --include='*.ts' --include='*.py' .
+          ! grep -rn 'sk-[A-Za-z0-9]\{20,\}' --include='*.{js,ts,py,env}' .
 
           # GitHub Tokens
-          ! grep -rn 'ghp_[A-Za-z0-9]\{36\}\|github_pat_' .
+          ! grep -rn 'ghp_[A-Za-z0-9]\{36\}\|github_pat_' --include='*.*' .
 
           # Private Keys
-          ! grep -rn 'BEGIN.*PRIVATE KEY' .
+          ! grep -rn 'BEGIN.*PRIVATE KEY' --include='*.*' .
 
           # Connection Strings with passwords
-          ! grep -rn 'mongodb://\|mysql://\|postgres://\|redis://' --include='*.js' --include='*.ts' --include='*.py' . | grep -v 'localhost\|127.0.0.1'
-
-          # Also check .env files (hidden files)
-          if [ -f .env ]; then
-            ! grep -E 'AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|BEGIN.*PRIVATE KEY' .env
-          fi
+          ! grep -rn 'mongodb://\|mysql://\|postgres://\|redis://' --include='*.{js,ts,py,env}' . | grep -v 'localhost\|127.0.0.1'
         continue-on-error: true
 
       - name: OWASP Quick Check

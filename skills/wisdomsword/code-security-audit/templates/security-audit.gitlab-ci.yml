@@ -24,12 +24,10 @@ security-audit:
     # Secret detection
     - |
       echo "Checking for exposed secrets..."
-      ! grep -rn 'AKIA[0-9A-Z]\{16\}' --include='*.js' --include='*.ts' --include='*.py' --include='*.yml' .
-      ! grep -rn 'sk-[A-Za-z0-9]\{20,\}' --include='*.js' --include='*.ts' --include='*.py' .
-      ! grep -rn 'ghp_[A-Za-z0-9]\{36\}' .
-      ! grep -rn 'BEGIN.*PRIVATE KEY' .
-      # Also check .env files
-      if [ -f .env ]; then ! grep -E 'AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|BEGIN.*PRIVATE KEY' .env; fi
+      ! grep -rn 'AKIA[0-9A-Z]\{16\}' --include='*.{js,ts,py,env,yml}' .
+      ! grep -rn 'sk-[A-Za-z0-9]\{20,\}' --include='*.{js,ts,py,env}' .
+      ! grep -rn 'ghp_[A-Za-z0-9]\{36\}' --include='*.*' .
+      ! grep -rn 'BEGIN.*PRIVATE KEY' --include='*.*' .
 
     # OWASP quick check
     - |
