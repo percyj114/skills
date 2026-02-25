@@ -1,11 +1,17 @@
 {
   "owner": "vassiliylakhonin",
   "slug": "nonprofit-rbm-logic-model",
-  "displayName": "Nonprofit Results-Based Management Logic Model",
+  "displayName": "Nonprofit RBM Logic Model",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1771432470898,
-    "commit": "https://github.com/openclaw/skills/commit/a4fef54cead4ad58b1890e7ace10b5771446c252"
+    "version": "1.0.4",
+    "publishedAt": 1771994835298,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1771432470898,
+      "commit": "https://github.com/openclaw/skills/commit/a4fef54cead4ad58b1890e7ace10b5771446c252"
+    }
+  ]
 }
