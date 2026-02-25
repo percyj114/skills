@@ -1,0 +1,11 @@
+{
+  "owner": "quotetrade",
+  "slug": "quote-trade-operator",
+  "displayName": "Quote.Trade Operator — AI-Native Dark Pool DEX for Trading Bots and Autonomous Agents",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1771989172034,
+    "commit": null
+  },
+  "history": []
+}
