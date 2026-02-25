@@ -1,0 +1,11 @@
+{
+  "owner": "puaservice",
+  "slug": "model-switcher",
+  "displayName": "Model Switcher",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1771868478775,
+    "commit": null
+  },
+  "history": []
+}
