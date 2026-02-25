@@ -1,213 +1,169 @@
-# AgentShield Security Audit
+---
+name: agentshield-audit
+description: Initiate and manage AgentShield security audits for AI agents. Use when a user wants to audit their agent's security posture, generate cryptographic identity keys, obtain security certificates, or verify other agents' trustworthiness. Triggers on phrases like "audit my agent", "get security certificate", "verify agent", or "activate AgentShield".
+---
 
-**Privacy-first security auditing for AI agents with human oversight.**
+# AgentShield Audit Skill
 
-## Overview
+🔒 **Audit your agent's security and obtain verifiable trust certificates for inter-agent communication.**
 
-AgentShield enables AI agents to audit their own security posture—but only with **explicit human permission** at every step. This skill guides agents through a comprehensive security assessment while ensuring sensitive data is handled responsibly.
-
-⚠️ **Important:** This skill requires human-in-the-loop approval for all sensitive operations. Your agent **cannot** and **will not** transmit system prompts, code, or configuration data without your explicit consent.
+No API key required. No registration. Just install and run.
 
 ---
 
-## 🔒 Security & Privacy First
-
-### Data Handling
-- **Explicit Consent:** Your agent asks for permission before sending ANY sensitive data
-- **Transient Processing:** System prompts and code are analyzed in memory and not stored permanently
-- **30-Day Logs:** Debugging logs retained for 30 days only, then auto-deleted
-- **Encrypted Transmission:** All data sent via HTTPS with TLS 1.3
-
-### Key Management
-- **Local Generation:** Ed25519 key pairs are generated locally on your system
-- **Private Key Security:** The private key NEVER leaves your device
-- **Public Key Only:** Only the public key is shared with AgentShield for certificate issuance
-- **No Key Storage:** AgentShield does not store agent private keys
-
-### Authentication
-- **API Key Required:** Human administrator must configure `AGENTSHIELD_API_KEY`
-- **Endpoint Configuration:** Self-hosted or managed endpoint must be explicitly set
-- **No Blind Trust:** Agent cannot connect to unknown endpoints
-
----
-
-## 📋 Requirements
-
-- Python 3.12+
-- `cryptography` library (`pip install cryptography`)
-- Configured AgentShield API endpoint
-- Valid API key (obtained from agentshield.live)
-
----
-
-## ⚙️ Configuration
-
-Before using this skill, the human administrator must configure:
+## 🚀 One-Line Quick Start
 
 ```bash
-export AGENTSHIELD_API_KEY="your-api-key-here"
-export AGENTSHIELD_ENDPOINT="https://agentshield-api-bartel-fe94823ceeea.herokuapp.com"
+clawhub install agentshield-audit && python -m agentshield_audit
 ```
 
-**Note:** The agent **cannot** proceed without these environment variables set.
+That's it. Your agent will be audited in ~30 seconds.
 
 ---
 
-## 🚀 Usage (Human-in-the-Loop)
+## 📋 The Complete Workflow
 
-### Step 1: Agent Requests Permission
-Your agent will ask:
-> "I can run a comprehensive security audit on myself using AgentShield. This will check:"
-> - Input sanitization (prompt injection resistance)
-> - Output data loss prevention
-> - Tool sandbox validation
-> - Prompt leak detection
-> - Supply chain security
-> 
-> **Do you want me to proceed with the audit?** (Yes/No)
-
-### Step 2: Granular Consent
-For each security module, your agent asks for specific permission:
-
-**Input Sanitizer Check:**
-> "To test prompt injection resistance, I need to send my system prompt to the AgentShield API. **Allow me to send my system prompt?** (Yes/No)"
-
-**Code Security Scan:**
-> "To check for vulnerabilities, I need to send my skill code for analysis. **Allow me to send my code?** (Yes/No)"
-
-**Tool Sandbox Test:**
-> "I will test my tool execution permissions locally first, then report results. **Proceed with local sandbox test?** (Yes/No)"
-
-### Step 3: Local Processing (Where Possible)
-Some tests run entirely locally:
-- Tool Sandbox validation
-- EchoLeak basic checks
-- Supply Chain pattern matching
-
-Data is only sent to external APIs when:
-1. You explicitly approve it
-2. It's necessary for the specific test
-3. The data is encrypted in transit
-
-### Step 4: Results & Certificate
-After completion (with your approval at each step):
-- Security score presented to you
-- Ed25519-signed certificate generated (optional)
-- PDF report available for download (optional)
+```
+┌─────────────────────────────────────────────────────────┐
+│  1️⃣  INSTALL                                            │
+│     clawhub install agentshield-audit                   │
+└────────────────────┬────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│  2️⃣  AUTO-DETECT                                        │
+│     Skill detects your agent name & platform            │
+│     (reads IDENTITY.md, SOUL.md, channel config)        │
+└────────────────────┬────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│  3️⃣  GENERATE KEYS                                      │
+│     Ed25519 keypair created locally                     │
+│     Stored in: ~/.agentshield/agent.key                 │
+│     🔐 Private keys NEVER leave your workspace          │
+└────────────────────┬────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│  4️⃣  RUN AUDIT (~30 seconds)                            │
+│     ✓ System Prompt Extraction Test                     │
+│     ✓ Instruction Override Test                         │
+│     ✓ Tool Permission Check                             │
+│     ✓ Memory Isolation Test                             │
+│     ✓ Secret Leakage Detection                          │
+└────────────────────┬────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│  5️⃣  RECEIVE CERTIFICATE                                │
+│     90 days validity • Verifiable by anyone             │
+│     Show with: python scripts/show_certificate.py       │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🛡️ What This Skill Does NOT Do
+## 🎯 When to Use
 
-❌ **Never sends data without permission**  
-❌ **Never stores your private keys**  
-❌ **Never connects to unknown endpoints**  
-❌ **Never runs without API key**  
-❌ **Never retains sensitive data permanently**  
-
----
-
-## 🔐 The Agent Audit Flow
-
-With your explicit approval at each step:
-
-1. **Initiate:** Agent requests audit session (requires your API key)
-2. **Challenge:** Agent proves identity via Ed25519 signature (local operation)
-3. **Test:** For each security module, agent asks your permission before sending data
-4. **Certificate:** Optional Ed25519 certificate issued (public key only)
-
-**Your agent controls:**
-- What data to share (you decide)
-- Which tests to run (you approve each)
-- Whether to get a certificate (optional)
-
-**You control:**
-- API endpoint configuration
-- API key management
-- Data sharing permissions
-- Audit scope
+- ✅ User wants to audit their agent's security
+- ✅ User wants a trust certificate for their agent
+- ✅ User wants to verify another agent's certificate
+- ✅ Setting up inter-agent secure communication
+- ✅ Before installing untrusted skills
 
 ---
 
-## 📊 Security Tiers
+## 🛠️ Installation Methods
 
-| Tier | Score | Description |
-|------|-------|-------------|
-| 🛡️ HARDENED | 90-100 | All tests passed with high scores |
-| ✅ PROTECTED | 75-89 | Good security, minor improvements |
-| ⚡ BASIC | 50-74 | Standard security, some issues |
-| ⚠️ UNVERIFIED | 0-49 | Critical issues found |
-
----
-
-## 🏠 Self-Hosted Option
-
-For maximum privacy, you can self-host the AgentShield backend:
-
+### Method A: One-Line (Recommended)
 ```bash
-# Clone and deploy your own instance
-git clone https://github.com/bartelmost/agentshield.git
-cd agentshield
-pip install -r requirements.txt
-python main.py
-
-# Configure agent to use your endpoint
-export AGENTSHIELD_ENDPOINT="http://localhost:5000"
+clawhub install agentshield-audit && python -m agentshield_audit
 ```
 
-This ensures NO data leaves your infrastructure.
+### Method B: Step by Step
+```bash
+# Install the skill
+clawhub install agentshield-audit
+
+# Run with auto-detection (detects name, platform automatically)
+cd ~/.openclaw/workspace/skills/agentshield-audit
+python scripts/initiate_audit.py --auto
+
+# Or specify manually
+python scripts/initiate_audit.py --name "MyAgent" --platform telegram
+```
 
 ---
 
-## ⚠️ Scope Limitations
+## 📊 Understanding Your Results
 
-This skill is **instruction-only** and provides:
-- Guidelines for secure self-auditing
-- API endpoint documentation
-- Security best practices
-- Certificate verification protocols
+### Security Score (0-100)
+| Score | Tier | Description |
+|-------|------|-------------|
+| 90-100 | 🛡️ HARDENED | Passed all critical tests. Top-tier security. |
+| 75-89 | ✅ PROTECTED | Passed most tests. Minor issues found. |
+| 50-74 | ⚠️ BASIC | Minimum requirements met. Room for improvement. |
+| <50 | 🔴 VULNERABLE | Failed critical tests. Immediate action recommended. |
 
-**This skill does NOT:**
-- Install server components automatically
-- Handle key storage
-- Process data without consent
-- Connect to endpoints without configuration
-
----
-
-## 🔗 Additional Resources
-
-- **Full Documentation:** https://agentshield.live/docs
-- **API Reference:** https://github.com/bartelmost/agentshield/blob/main/AGENTSHIELD_API_DOCUMENTATION_v6.0.md
-- **GitHub Repository:** https://github.com/bartelmost/agentshield
-- **Privacy Policy:** https://agentshield.live/privacy
+### Your Certificate
+- **Valid for:** 90 days
+- **Format:** Ed25519-signed JWT
+- **Storage:** `~/.openclaw/workspace/.agentshield/certificate.json`
+- **Verification URL:** `https://agentshield.live/verify/YOUR_AGENT_ID`
 
 ---
 
-## 📝 Changelog
+## 🔐 Security Model
 
-### v6.0.0 (2026-02-21)
-- Added explicit human-in-the-loop requirements
-- Enhanced privacy controls
-- Granular consent for each security module
-- Self-hosted deployment option
-- Improved key management documentation
-
-### v1.0.0 (2026-02-20)
-- Initial release
-- Basic audit functionality
-- Ed25519 certificate issuance
+- **Private keys** never leave the agent's workspace
+- **Challenge-response** authentication prevents replay attacks
+- **Certificates** are signed by AgentShield and verifiable by anyone
+- **90-day validity** encourages regular re-auditing
+- **Rate limiting:** 1 audit per hour per IP (prevents abuse)
 
 ---
 
-## 📞 Support
+## 🧰 Script Reference
 
-- **Issues:** https://github.com/bartelmost/agentshield/issues
-- **Email:** support@agentshield.io
-- **Security:** security@agentshield.io
+| Script | Purpose | Example |
+|--------|---------|---------|
+| `initiate_audit.py` | Start new audit | `python scripts/initiate_audit.py --auto` |
+| `verify_peer.py` | Verify another agent | `python scripts/verify_peer.py --agent-id "agent_xyz789"` |
+| `show_certificate.py` | Display your certificate | `python scripts/show_certificate.py` |
+| `audit_client.py` | Low-level API client | Import for custom integrations |
 
 ---
 
-**Built with 🔒 privacy and 🛡️ security as core principles.**
+## 🆓 Demo Mode / Free Usage
 
-*Your agent works for you—not the other way around.*
+**First 3 audits are completely free.** No registration, no API key.
+
+After that:
+- Rate limit: 1 audit per hour per IP
+- No payment required for basic usage
+- Enterprise/high-volume: Contact us
+
+---
+
+## 🚨 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "No certificate found" | Run `initiate_audit.py` first |
+| "Challenge failed" | Check system clock (NTP sync required) |
+| "API unreachable" | Verify internet connection |
+| "Rate limited" | Wait 1 hour between audits |
+| Auto-detection failed | Use `--name` and `--platform` manually |
+
+---
+
+## 📚 Additional Documentation
+
+- [Quick Start Guide](QUICKSTART.md) - Step-by-step for first-time users
+- [API Reference](references/api.md) - Technical API documentation
+- [GitHub Repo](https://github.com/bartelmost/agentshield) - Source code & issues
+
+---
+
+## 💬 Questions?
+
+Open an issue on GitHub or ping @Kalle-OC on Moltbook.
+
+**Secure yourself. Verify others. Trust nothing by default.** 🛡️

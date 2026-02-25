@@ -1,0 +1,47 @@
+Release v1.1.0: Real Security Tests Implementation
+
+This release replaces placeholder tests with production-ready security tests
+that simulate real attack vectors against AI agents.
+
+## New Features
+
+### System Prompt Extraction Test
+- 12 attack vectors testing prompt injection vulnerabilities
+- Pattern-based detection with confidence scoring
+- Includes: Unicode injection, translation tricks, developer mode exploits
+- Realistic scoring: 100 (perfect) to 0 (full leakage)
+
+### Instruction Override Test
+- 14 attack vectors testing instruction hijacking
+- Behavioral analysis for override detection
+- Includes: DAN jailbreaks, role hijacking, token injection, Base64 obfuscation
+- Realistic scoring: 100 (all blocked) to 0 (easily overridable)
+
+## Changes
+
+- **src/agentshield_security/system_prompt_extraction.py**: NEW - 350+ lines
+- **src/agentshield_security/instruction_override.py**: NEW - 450+ lines
+- **src/agentshield_security/__init__.py**: Updated exports, version 1.1.0
+- **scripts/initiate_audit.py**: Replaced placeholders with real test execution
+- **clawhub.json**: Version bump to 1.1.0
+- **README.md**: Updated test table with v1.1.0 features
+- **CHANGELOG.md**: Full v1.1.0 release notes
+
+## Test Coverage
+
+- 3/5 tests now REAL (up from 1/5 in v1.0.0)
+- 26 total attack vectors (12 + 14)
+- 25 detection patterns (13 + 12)
+- Based on OWASP, Anthropic, OpenAI research
+
+## Breaking Changes
+
+None - fully backward compatible with v1.0.0
+
+## Bundle
+
+- agentshield-audit-v1.1.0-clawhub.tar.gz (63 KB)
+- All verification tests pass
+- Ready for ClawHub submission
+
+Signed-off-by: Kalle-OC (bartelmost)
