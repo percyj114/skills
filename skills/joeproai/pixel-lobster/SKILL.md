@@ -1,61 +1,92 @@
 ---
 name: pixel-lobster
-description: "Desktop pixel art lobster avatar that lip-syncs to TTS speech. Use when: (1) user wants a visual avatar or desktop pet, (2) user wants lip-sync animation for their AI agent's voice, (3) user asks for a talking lobster or desktop overlay. Launches an Electron app that polls the XTTS envelope endpoint and animates a pixel art lobster with 6 viseme mouth shapes, spring physics, and swimming animation. Requires Electron (npx electron) and a running XTTS/TTS server with /audio/envelope endpoint."
+description: "Pixel art desktop lobster that lip-syncs to OpenClaw TTS speech. Use when: (1) user wants a visual avatar for their AI agent, (2) user wants a desktop overlay that animates when their agent speaks, (3) user asks to set up or configure the pixel lobster. Guides the user to install the Electron app from GitHub, configure audio mode, and connect to their TTS server."
+tags: ["avatar", "tts", "desktop", "overlay", "lip-sync", "electron", "xtts", "animation"]
 ---
 
 # Pixel Lobster
 
-A transparent desktop overlay featuring a pixel art lobster that lip-syncs to TTS speech output. Swims around the screen, only moves its mouth when the AI speaks.
+A transparent desktop overlay featuring a pixel art lobster that animates when your OpenClaw agent speaks. Powered by envelope data from your local TTS server — the lobster's mouth only moves during AI speech, not music or system audio.
 
-## Quick Start
+## Requirements
+
+- Node.js 18+ with `npx` available
+- A running TTS server exposing `GET /audio/envelope` (XTTS on port 8787, or any OpenAI-compatible TTS via the OpenClaw TTS proxy)
+- Windows or Linux desktop (macOS not supported)
+
+## Install
+
+The app is a standalone Electron project. Clone it from GitHub and install dependencies:
 
 ```bash
-cd <skill_dir>/assets/app
+git clone https://github.com/JoeProAI/pixel-lobster.git
+cd pixel-lobster
 npm install
+```
+
+## Configure
+
+Copy the config template (included in this skill at `assets/config.json`) into the cloned app directory, then edit as needed:
+
+```bash
+cp <skill_dir>/assets/config.json pixel-lobster/config.json
+```
+
+Key settings:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `audioMode` | `"tts"` | `"tts"` reacts only to TTS speech; `"system"` captures all audio output |
+| `ttsUrl` | `"http://127.0.0.1:8787"` | Base URL of your TTS server |
+| `monitor` | `"primary"` | `"primary"`, `"secondary"`, `"left"`, `"right"`, or display index |
+| `lobsterScale` | `4` | Sprite scale (4 = 480px tall lobster) |
+| `clickThrough` | `false` | Start with click-through mode on so the lobster doesn't block clicks |
+| `swimEnabled` | `true` | Enable swimming animation |
+
+## Launch
+
+```bash
+cd pixel-lobster
 npm start
 ```
 
-## Setup
+Or use the included helper script:
 
-1. Ensure XTTS server is running on port 8787 (or configure `ttsUrl` in `config.json`)
-2. The server must expose `GET /audio/envelope` returning `{ id, envelope[], elapsedMs, intervalMs }`
-3. Launch the Electron app — lobster appears as a transparent overlay
-
-## Configuration
-
-Edit `assets/app/config.json`:
-
-- `audioMode`: `"tts"` (default for this skill) — only reacts to TTS speech
-- `ttsUrl`: URL of your TTS server (default `http://127.0.0.1:8787`)
-- `monitor`: `"primary"`, `"secondary"`, `"left"`, `"right"`, or index number
-- `lobsterScale`: sprite scale factor (default 4 = 480px)
-- `swimEnabled`: enable/disable swimming (default true)
-- `clickThrough`: start in click-through mode (default false)
+```bash
+bash <skill_dir>/scripts/launch.sh /path/to/pixel-lobster
+```
 
 ## Keyboard Shortcuts
 
-- **F9** — toggle click-through (lobster stops blocking mouse clicks)
-- **F12** — toggle DevTools
+| Key | Action |
+|-----|--------|
+| F9 | Toggle click-through mode |
+| F12 | Toggle DevTools |
 
-## How It Works
+## OpenClaw Integration
 
-The lobster polls the TTS server's `/audio/envelope` endpoint. When new speech audio is detected (new envelope ID), it plays through the amplitude envelope sample-by-sample, driving:
+With OpenClaw and a local XTTS server, set `audioMode` to `"tts"` and point `ttsUrl` at your XTTS instance. The lobster polls the envelope endpoint at 45ms intervals during active speech and 500ms when idle — no perceptible CPU cost.
 
-- **Mouth openness** via spring physics (natural jaw movement)
-- **Viseme selection** from envelope shape analysis (jitter, delta, syllable onsets)
-- **6 distinct mouth shapes** (A=wide ah, B=grin ee, C=round oh, D=pucker oo, E=medium eh, F=teeth ff)
-- **Variety enforcement** — never repeats same shape 3x in a row
+If you use the OpenClaw TTS proxy (port 8788), point `ttsUrl` at port 8787 (the XTTS server directly), not the proxy — the envelope endpoint is on the TTS server, not the proxy layer.
 
-The lobster swims around the screen, slows down while talking, and has idle animations (blinking, breathing, eye movement, claw motion).
+## Lip Sync Notes
 
-## Files
+If the mouth movement is ahead of or behind the audio:
 
-- `assets/app/` — complete Electron app (main.js, lobster.html, preload.js, package.json, config.json)
-- `scripts/launch.sh` — helper script to install deps and launch
+- Mouth moves too early: increase `ttsPlayStartOffsetMs` (default 1100ms)
+- Mouth moves too late: decrease `ttsPlayStartOffsetMs`
 
-## Sync Tuning
+The default is tuned for PowerShell MediaPlayer on Windows. Other playback methods may need adjustment.
 
-If lip sync is off, adjust `ttsPlayStartOffsetMs` in config.json:
-- Mouth moves too early → increase the value
-- Mouth moves too late → decrease the value
-- Default: 1100ms (tuned for PowerShell MediaPlayer playback)
+## Mouth Shapes
+
+Six visemes drive natural speech animation:
+
+- **A** — wide open "ah"
+- **B** — wide grin "ee"
+- **C** — round "oh"
+- **D** — small pucker "oo"
+- **E** — medium "eh"
+- **F** — teeth "ff"
+
+Plus **X** (closed) for silence and pauses. Spring physics and variety enforcement prevent robotic repetition.
