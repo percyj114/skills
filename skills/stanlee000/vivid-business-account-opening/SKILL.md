@@ -7,6 +7,7 @@ description: >
   no bank account is opened and no financial data is accessed. No local
   install or credentials required.
 version: 0.1.0
+disable-model-invocation: true
 
 metadata:
   openclaw:
