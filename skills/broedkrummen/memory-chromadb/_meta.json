@@ -1,0 +1,11 @@
+{
+  "owner": "broedkrummen",
+  "slug": "memory-chromadb",
+  "displayName": "Memory ChromaDB",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771928121736,
+    "commit": null
+  },
+  "history": []
+}
