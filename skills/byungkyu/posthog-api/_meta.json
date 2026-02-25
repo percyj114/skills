@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "posthog-api",
+  "displayName": "PostHog",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771887896651,
+    "commit": null
+  },
+  "history": []
+}
