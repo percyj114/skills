@@ -2,7 +2,7 @@
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-ghin--golf--tracker-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://clawhub.com/skills/ghin-golf-tracker)
 
-OpenClaw skill for analyzing GHIN (Golf Handicap and Information Network) golf statistics and handicap tracking.
+OpenClaw skill for analyzing GHIN (Golf Handicap and Information Network) golf statistics and handicap tracking. **Analysis only** - reads local JSON file, no network access or credential handling. Data collection requires separate browser automation (see privacy notes below).
 
 ## Features
 
@@ -75,48 +75,27 @@ python3 scripts/ghin_stats.py --help
 
 ## Getting Your GHIN Data
 
-GHIN does not offer a public API for score history. To get your data, use browser automation to scrape **https://www.ghin.com**.
+**Data Collection Required:** GHIN does not offer a public API for score history. The data must be collected separately using browser automation or manual export before using this analysis skill.
 
-### Using browser-use (Recommended)
+**This skill does NOT perform data collection.** It only analyzes pre-existing JSON data files.
 
-[browser-use](https://github.com/browser-use/browser-use) is an AI-powered browser automation library:
+### Data Collection Options
 
-```bash
-pip install browser-use langchain-openai
-```
+1. **Manual Export** (Most Secure): Log into GHIN.com manually and export your data
+2. **Browser Automation** (Privacy Risk): Use tools like browser-use, Selenium, or Playwright to scrape data
+3. **OpenClaw Agent**: Let your OpenClaw agent handle the scraping using browser-use
 
-```python
-import asyncio
-from browser_use import Agent, Browser, ChatBrowserUse
+⚠️ **Important:** Any automated data collection method will require transmitting your GHIN credentials to external services. This skill itself never handles credentials or performs network requests.
 
-async def main():
-    browser = Browser(use_cloud=True)
-    llm = ChatBrowserUse()
-    agent = Agent(
-        task="""Log into https://www.ghin.com with my credentials.
-        Navigate to Score History. Extract ALL scores across all years
-        (cycle through year filters). For each score get: date, score
-        with type (A/C/H), course name, course rating/slope, differential.
-        Also get current handicap index and revision history.
-        Save as JSON to ghin-data.json""",
-        llm=llm, browser=browser,
-    )
-    await agent.run(max_steps=50)
+### Required Data Points
 
-asyncio.run(main())
-```
-
-### What to scrape
-
-| Section | Data |
-|---------|------|
+| Section | Data Needed |
+|---------|-------------|
 | Score History | Date, score + type, course, CR/slope, differential (per year) |
 | Handicap Index | Current index, effective date |
 | Revision History | Historical index values with revision dates |
 
-**Tips:** GHIN shows one year at a time — cycle through each year filter to get lifetime data. Score types: `A` = adjusted, `C` = combined 9+9, `H` = home, `Ai` = imputed (exclude from stats).
-
-See [SKILL.md](SKILL.md) for the complete data collection guide and cron setup.
+**Note:** GHIN shows one year at a time — you'll need to cycle through each year filter to get complete lifetime data. Score types: `A` = adjusted, `C` = combined 9+9, `H` = home, `Ai` = imputed (exclude from stats).
 
 ## Expected Data Format
 
