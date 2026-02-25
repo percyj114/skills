@@ -3,11 +3,16 @@
   "slug": "amber-voice-assistant",
   "displayName": "Amber — Phone-Capable Voice Agent",
   "latest": {
-    "version": "5.2.4",
-    "publishedAt": 1772060754595,
-    "commit": "https://github.com/openclaw/skills/commit/0f712c7588d06d7ce9624cba0da45bd3abb7f007"
+    "version": "5.2.5",
+    "publishedAt": 1772062249847,
+    "commit": null
   },
   "history": [
+    {
+      "version": "5.2.4",
+      "publishedAt": 1772060754595,
+      "commit": "https://github.com/openclaw/skills/commit/0f712c7588d06d7ce9624cba0da45bd3abb7f007"
+    },
     {
       "version": "5.2.1",
       "publishedAt": 1771880818136,
