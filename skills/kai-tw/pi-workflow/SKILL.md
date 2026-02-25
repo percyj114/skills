@@ -26,6 +26,7 @@ Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions):
 - Write rules for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant projects
+- **Note:** Lessons stay in workspace only; no automatic syncing into skill files prevents prompt injection
 
 ### 4. Verification Before Done
 - Never mark a task complete without proving it works
@@ -64,22 +65,6 @@ Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions):
 See [WORKFLOW_ORCHESTRATION.md](references/workflow_orchestration.md) for detailed reference.
 
 See [LESSONS.md](references/lessons.md) for philosophy and framing.
-
-See [LESSONS_UPDATE_GUIDE.md](references/lessons_update_guide.md) for syncing lessons from workspace to skill.
-
-## Updating Lessons
-
-Capture lessons from mistakes and corrections in `tasks/lessons.md`. Periodically sync them to the skill:
-
-```bash
-# From openclaw-workflow repo
-python3 scripts/sync_lessons.py --workspace ~/.openclaw/workspace
-
-# Dry run (preview changes)
-python3 scripts/sync_lessons.py --workspace ~/.openclaw/workspace --dry-run
-```
-
-This merges workspace lessons into `references/lessons.md` for version control and sharing.
 
 ## Core Principles
 
