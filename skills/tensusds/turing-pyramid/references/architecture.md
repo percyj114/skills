@@ -72,44 +72,50 @@ if all(n.tension == 0 for n in needs):
     return "SATISFIED"  # nothing to do
 ```
 
-### Phase 3: Execute
+### Phase 3: Output Suggestions
 
-For each selected need:
+The skill **outputs text suggestions** — it does NOT execute actions.
+
 ```python
-retry_count = 0
-action_index = 0
-
-while retry_count < max_retries:
-    execute(actions[action_index])
-    new_satisfaction = verify_scan()
+for need in selected_needs:
+    action = weighted_random_select(need.actions, satisfaction)
     
-    if new_satisfaction > old_satisfaction:
-        # Success
-        satisfaction = min(3, satisfaction + action.impact)
-        last_satisfied = now
-        break
-    else:
-        # Failed, try next action
-        retry_count += 1
-        action_index += 1
-
-if retry_count >= max_retries:
-    # Give up — DO NOT update last_satisfied
-    log_failure(need)
-    # Need will have higher tension next cycle
+    # OUTPUT to stdout — agent reads this
+    print(f"▶ ACTION: {need.name} (tension={tension})")
+    print(f"  Suggested: {action.name} (impact: {action.impact})")
+    print(f"  Then: mark-satisfied.sh {need.name} {action.impact}")
 ```
 
-### Phase 4: Log
+**What happens next is up to the AGENT:**
+1. Agent reads the suggestion text
+2. Agent decides: execute? skip? ask human?
+3. If agent acts, agent uses its own tools (web_search, APIs, etc.)
+4. Agent calls `mark-satisfied.sh` to update state
 
-Write to `memory/YYYY-MM-DD.md`:
+The skill has no knowledge of whether the action was performed.
+
+### Phase 4: State Update (Agent-Initiated)
+
+When the **agent** completes an action, it calls:
+```bash
+./scripts/mark-satisfied.sh <need> [impact]
+```
+
+This updates `needs-state.json` with new satisfaction and timestamp.
+
+**The skill never verifies execution** — it trusts the agent's call to mark-satisfied.
+
+### Logging (Optional)
+
+Agent may append to `memory/YYYY-MM-DD.md`:
 ```markdown
 ## HH:MM — Turing Pyramid Cycle
 
 | Need | Tension | Action | Result |
 |------|---------|--------|--------|
-| connection | 15 | reply to mentions | ✓ |
-| closure | 8 | complete TODO | ✓ |
-| expression | 6 | journal entry | ✗ (retry failed) |
+| connection | 15 | reply to mentions | ✓ (agent executed) |
+| closure | 8 | complete TODO | ✓ (agent executed) |
+| expression | 6 | — | ○ (noticed, deferred) |
 ```
 
 ## The 10 Needs

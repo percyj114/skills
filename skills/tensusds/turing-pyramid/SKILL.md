@@ -1,6 +1,7 @@
 ---
 name: turing-pyramid
-description: "10-need psychological system for AI agents with cross-need dynamics. Features: automatic decay, tension-based priority, probability actions, cross-need impact cascades, deprivation protection. Run on heartbeat for autonomous self-care."
+version: 1.8.3
+description: "Decision framework for agent psychological health. 10 needs with decay, tension-based priority, cross-need cascades. Outputs action SUGGESTIONS — agent decides execution. No network access, local files only."
 requires:
   - jq
   - bc
@@ -46,7 +47,7 @@ requires:
 | competence | 4 | 48h | Skill use, effectiveness |
 | understanding | 3 | 12h | Learning, curiosity |
 | recognition | 2 | 72h | Feedback received |
-| expression | 1 | 6h | Creative output |
+| expression | 1 | 8h | Creative output |
 
 ## Core Logic
 
@@ -348,23 +349,88 @@ Idea → scratchpad/idea.md → develop → outcome
 
 **Rule of thumb:** If a scratchpad file is >7 days old, either finish it or delete it. Lingering ideas create cognitive load.
 
-## Security & Data Access
+## Security Model
 
-**No network requests** — all scans use local files only.
+### Architecture: Decision Framework, Not Executor
 
-**What this skill READS:**
-- `MEMORY.md` — your long-term memory
-- `memory/*.md` — daily logs (scans for TODOs, patterns)
-- `SOUL.md`, `AGENTS.md` — checks existence for coherence
-- `research/` — checks for recent activity
+**This skill is a decision-support system.** It does NOT execute actions — it suggests them.
 
-**What this skill WRITES:**
-- `assets/needs-state.json` — timestamps only
-- `memory/YYYY-MM-DD.md` — appends action/noticed logs
+```
+┌─────────────────────┐      ┌─────────────────────┐
+│   TURING PYRAMID    │      │       AGENT         │
+│      (Skill)        │      │   (OpenClaw/etc)    │
+├─────────────────────┤      ├─────────────────────┤
+│ • Reads local JSON  │      │ • Has web_search    │
+│ • Calculates decay  │ ──▶  │ • Has API keys      │
+│ • Outputs: "★ do X" │      │ • Has permissions   │
+│ • Zero network I/O  │      │ • DECIDES & EXECUTES│
+└─────────────────────┘      └─────────────────────┘
+```
 
-**⚠️ Privacy note:** Scans grep through your workspace files to detect patterns (e.g., "confused", "learned", "TODO"). Review what's in your workspace before enabling. The skill sees what you write.
+**What happens when you see "★ web search on topic":**
+1. The skill script outputs that text string
+2. The AGENT (you) reads it and decides whether to act
+3. If you act, YOU call web_search using YOUR tools
+4. The skill never touches the network
 
-**Does NOT access:** credentials, API keys, network, files outside workspace.
+**Actions like "post to Moltbook" or "send DM" are prompts for the agent**, not automated execution. The agent has full discretion to:
+- Execute the suggestion
+- Skip it
+- Ask for human approval first
+- Modify it
+
+### What The Skill Scripts Actually Do
+
+**READ (local files only):**
+- `assets/needs-state.json` — satisfaction levels, timestamps
+- `assets/needs-config.json` — configuration
+- `MEMORY.md`, `memory/*.md` — pattern scanning (grep)
+- `SOUL.md`, `AGENTS.md` — existence checks
+- `research/`, `scratchpad/` — activity detection
+
+**WRITE (local files only):**
+- `assets/needs-state.json` — update timestamps/satisfaction
+- `memory/YYYY-MM-DD.md` — append action logs (optional)
+
+**NEVER:**
+- Network requests (no curl, wget, fetch)
+- Credential access
+- System calls outside workspace
+- Direct execution of suggested actions
+
+### Privacy Considerations
+
+⚠️ **Scans grep through workspace files** to detect patterns (e.g., "confused", "learned", "TODO"). 
+
+Before enabling:
+1. Review what's in your workspace
+2. Move sensitive files outside scanned paths if needed
+3. The skill sees text patterns, not semantic content
+
+### For Security-Conscious Users
+
+To verify the skill is safe:
+```bash
+# Check for network commands in scripts
+grep -rn "curl\|wget\|fetch\|http" scripts/
+
+# Check what paths are accessed
+grep -rn "WORKSPACE\|HOME" scripts/
+
+# Run in test mode first
+./scripts/run-cycle.sh  # Just outputs text, executes nothing
+```
+
+### External Actions: Agent's Responsibility
+
+The config includes actions like:
+- "web search on topic from INTERESTS.md"
+- "post thought on Moltbook"  
+- "reach out to another agent"
+
+**These are suggestions, not commands.** The skill has no capability to execute them. Your agent runtime (OpenClaw, etc.) provides those capabilities, with its own permission model.
+
+**Recommended practice:** If your agent shouldn't auto-post or auto-message, configure your agent's approval settings — not this skill.
 
 ## Token Usage Estimate
 

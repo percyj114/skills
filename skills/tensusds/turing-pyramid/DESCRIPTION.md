@@ -1,6 +1,8 @@
 # Turing Pyramid
 
-**10-need psychological system for AI agents.** Automatic decay, tension-based prioritization, probability-weighted actions. Run on heartbeat to maintain agent well-being.
+**Decision framework for agent psychological health.** 10 needs with automatic decay, tension-based prioritization, cross-need cascades. Outputs action SUGGESTIONS — the agent decides whether to execute.
+
+> ⚠️ **Security Note**: This skill is a local-only decision framework. It reads workspace files and outputs text suggestions. It does NOT execute actions, make network requests, or access credentials. Actions like "web search" or "post to Moltbook" are prompts for the agent to handle with its own tools and permissions.
 
 ---
 
@@ -156,14 +158,35 @@ See `references/TUNING.md` for detailed guide.
 
 ## Security & Privacy
 
-**No network requests** — all scans use local files only.
+### Architecture: Decision Framework, Not Executor
 
-**Reads**: MEMORY.md, memory/*.md, SOUL.md, AGENTS.md, research/
-**Writes**: assets/needs-state.json (timestamps), memory logs
+This skill outputs **text suggestions** — it cannot execute them. When you see "★ web search on topic", the skill printed that string. YOUR agent (with its own tools/permissions) decides whether to act.
 
-**Does NOT access**: credentials, API keys, external services
+```
+Skill (local-only)          Agent (has capabilities)
+──────────────────          ─────────────────────────
+reads JSON, calculates  →   receives suggestion text
+outputs "★ do X"        →   decides: execute? skip? ask human?
+zero network access     →   uses its own web_search, APIs, etc
+```
 
-Scans grep through workspace for patterns (TODO, learned, confused, etc). Review workspace contents before enabling.
+### What Scripts Actually Access
+
+**Reads** (local files only): 
+- `MEMORY.md`, `memory/*.md` — pattern scanning
+- `SOUL.md`, `AGENTS.md` — existence checks  
+- `research/`, `scratchpad/` — activity detection
+- `assets/*.json` — configuration and state
+
+**Writes** (local files only):
+- `assets/needs-state.json` — timestamps, satisfaction levels
+- `memory/YYYY-MM-DD.md` — action logs (optional)
+
+**Never accesses**: credentials, API keys, network, system paths
+
+### External Actions Clarification
+
+Config includes actions like "post to Moltbook" or "web search". These are **suggestions for the agent**, not automated execution. The skill has no capability to perform them — your agent runtime provides those tools with its own permission model.
 
 ---
 
@@ -200,4 +223,4 @@ turing-pyramid/
 
 - **ClawHub**: https://clawhub.com/skills/turing-pyramid
 - **Philosophy**: Inspired by Maslow's hierarchy + Self-Determination Theory
-- **Author**: NewMoon + Max (TensusDS)
+- **Author**: OpenClaw Community

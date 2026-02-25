@@ -2,131 +2,131 @@
   "_meta": {
     "description": "v1.7.0 - cross-need impact enabled",
     "initialized": "2026-02-25T02:35:00Z",
-    "last_cycle": "2026-02-25T04:52:31Z",
+    "last_cycle": "2026-02-25T15:02:48Z",
     "test_mode": true
   },
   "needs": {
     "security": {
-      "last_satisfied": "2026-02-25T04:50:39Z",
-      "last_impact": 1.4,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T05:26:59Z",
+      "last_impact": 1.2,
+      "satisfaction": 2.9502,
       "deprivation_applied": {},
-      "last_decay_check": "2026-02-25T04:52:44Z",
+      "last_decay_check": "2026-02-25T14:59:51Z",
       "last_cross_impact": {
         "source": "integrity",
         "delta": 0,
-        "timestamp": "2026-02-25T04:51:33Z"
+        "timestamp": "2026-02-25T06:31:48Z"
       }
     },
     "integrity": {
-      "last_satisfied": "2026-02-25T04:51:33Z",
-      "last_impact": 3.0,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T06:31:48Z",
+      "last_impact": 0.3,
+      "satisfaction": 3.00,
       "deprivation_applied": {},
-      "last_decay_check": "2026-02-25T04:52:44Z",
+      "last_decay_check": "2026-02-25T14:59:51Z",
       "last_cross_impact": {
         "source": "autonomy",
         "delta": 0,
-        "timestamp": "2026-02-25T04:52:31Z"
+        "timestamp": "2026-02-25T15:02:48Z"
       }
     },
     "coherence": {
-      "last_satisfied": "2026-02-25T04:52:31Z",
-      "last_impact": 1.4,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T14:44:49Z",
+      "last_impact": 0.6,
+      "satisfaction": 2.14,
       "deprivation_applied": {},
       "last_cross_impact": {
-        "source": "closure",
+        "source": "autonomy",
         "delta": 0,
-        "timestamp": "2026-02-25T04:52:31Z"
+        "timestamp": "2026-02-25T15:02:48Z"
       },
-      "last_decay_check": "2026-02-25T04:52:44Z"
+      "last_decay_check": "2026-02-25T14:59:51Z"
     },
     "closure": {
-      "last_satisfied": "2026-02-25T04:52:31Z",
-      "last_impact": 1.7,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T13:38:25Z",
+      "last_impact": 0.35,
+      "satisfaction": 2.6910,
       "deprivation_applied": {},
-      "last_decay_check": "2026-02-25T04:52:44Z"
+      "last_decay_check": "2026-02-25T14:59:51Z"
     },
     "autonomy": {
-      "last_satisfied": "2026-02-25T04:52:31Z",
-      "last_impact": 1.4,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T15:02:48Z",
+      "last_impact": 1.0,
+      "satisfaction": 3.00,
       "deprivation_applied": {},
-      "last_decay_check": "2026-02-25T04:52:44Z",
+      "last_decay_check": "2026-02-25T15:02:48Z",
       "last_cross_impact": {
         "source": "coherence",
         "delta": 0,
-        "timestamp": "2026-02-25T04:52:31Z"
+        "timestamp": "2026-02-25T14:44:49Z"
       }
     },
     "connection": {
-      "last_satisfied": "2026-02-25T04:48:39Z",
-      "last_impact": 3.0,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T14:46:48Z",
+      "last_impact": 1.3,
+      "satisfaction": 2.9639,
       "deprivation_applied": {},
       "last_cross_impact": {
         "source": "recognition",
         "delta": 0,
-        "timestamp": "2026-02-25T04:43:19Z"
+        "timestamp": "2026-02-25T14:44:49Z"
       },
-      "last_decay_check": "2026-02-25T04:52:44Z"
+      "last_decay_check": "2026-02-25T14:59:51Z"
     },
     "competence": {
-      "last_satisfied": "2026-02-25T04:36:01Z",
-      "last_impact": 3.0,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T09:15:14Z",
+      "last_impact": 0.25,
+      "satisfaction": 2.8818,
       "deprivation_applied": {},
-      "last_decay_check": "2026-02-25T04:52:44Z",
+      "last_decay_check": "2026-02-25T14:59:51Z",
       "last_cross_impact": {
         "source": "closure",
         "delta": 0,
-        "timestamp": "2026-02-25T04:52:31Z"
+        "timestamp": "2026-02-25T13:38:25Z"
       }
     },
     "understanding": {
-      "last_satisfied": "2026-02-25T04:37:08Z",
-      "last_impact": 2.1,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T10:21:22Z",
+      "last_impact": 2.6,
+      "satisfaction": 2.5117,
       "deprivation_applied": {},
-      "last_decay_check": "2026-02-25T04:52:44Z",
+      "last_decay_check": "2026-02-25T14:59:51Z",
       "last_cross_impact": {
         "source": "connection",
         "delta": 0,
-        "timestamp": "2026-02-25T04:48:39Z"
+        "timestamp": "2026-02-25T14:46:48Z"
       }
     },
     "recognition": {
-      "last_satisfied": "2026-02-25T04:43:19Z",
-      "last_impact": 0.3,
-      "satisfaction": 2.0,
+      "last_satisfied": "2026-02-25T14:44:49Z",
+      "last_impact": 0.4,
+      "satisfaction": 1.9989,
       "deprivation_applied": {},
       "last_cross_impact": {
         "source": "connection",
         "delta": 0,
-        "timestamp": "2026-02-25T04:48:39Z"
+        "timestamp": "2026-02-25T14:46:48Z"
       },
-      "last_decay_check": "2026-02-25T04:52:44Z"
+      "last_decay_check": "2026-02-25T14:59:51Z"
     },
     "expression": {
       "last_satisfied": "2026-02-25T04:06:27Z",
       "last_impact": 1.6,
-      "satisfaction": 2.0,
+      "satisfaction": 2.14,
       "deprivation_applied": {},
-      "last_decay_check": "2026-02-25T04:52:44Z",
+      "last_decay_check": "2026-02-25T14:59:51Z",
       "last_cross_impact": {
         "source": "autonomy",
         "delta": 0,
-        "timestamp": "2026-02-25T04:52:31Z"
+        "timestamp": "2026-02-25T15:02:48Z"
       }
     },
     "curiosity": {
-      "satisfaction": 2.0,
+      "satisfaction": 2.10,
       "last_cross_impact": {
         "source": "understanding",
         "delta": 0,
-        "timestamp": "2026-02-25T04:37:08Z"
+        "timestamp": "2026-02-25T10:21:22Z"
       },
       "last_decay_check": "2026-02-25T04:52:44Z",
       "deprivation_applied": {}

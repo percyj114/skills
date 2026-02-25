@@ -187,6 +187,13 @@
       "on_action": 0.10,
       "on_deprivation": null,
       "note": "learning sparks more questions"
+    },
+    {
+      "source": "autonomy",
+      "target": "coherence",
+      "on_action": 0.15,
+      "on_deprivation": -0.1,
+      "note": "действую по ценностям → целостность"
     }
   ]
 }

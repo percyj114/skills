@@ -3,11 +3,16 @@
   "slug": "turing-pyramid",
   "displayName": "Turing Pyramid",
   "latest": {
-    "version": "1.7.1",
-    "publishedAt": 1771996117191,
-    "commit": "https://github.com/openclaw/skills/commit/39c1038b48ab1b139fc1a61c09b3c1aa5d2c4014"
+    "version": "1.8.3",
+    "publishedAt": 1772031799953,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.7.1",
+      "publishedAt": 1771996117191,
+      "commit": "https://github.com/openclaw/skills/commit/39c1038b48ab1b139fc1a61c09b3c1aa5d2c4014"
+    },
     {
       "version": "1.5.1",
       "publishedAt": 1771932386712,
