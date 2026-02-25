@@ -3,11 +3,16 @@
   "slug": "intelligent-router",
   "displayName": "Intelligent Router",
   "latest": {
-    "version": "3.1.0",
-    "publishedAt": 1771535609130,
-    "commit": "https://github.com/openclaw/skills/commit/7f55d6bbb6bdafb782f5d6625b4a9b8f064c771d"
+    "version": "3.2.0",
+    "publishedAt": 1772051840378,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.1.0",
+      "publishedAt": 1771535609130,
+      "commit": "https://github.com/openclaw/skills/commit/7f55d6bbb6bdafb782f5d6625b4a9b8f064c771d"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1771024183865,

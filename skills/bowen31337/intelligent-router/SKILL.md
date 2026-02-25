@@ -1,7 +1,7 @@
 ---
 name: intelligent-router
 description: Intelligent model routing for sub-agent task delegation. Choose the optimal model based on task complexity, cost, and capability requirements. Reduces costs by routing simple tasks to cheaper models while preserving quality for complex work.
-version: 3.1.0
+version: 3.2.0
 core: true
 ---
 
@@ -56,13 +56,59 @@ python3 skills/intelligent-router/scripts/spawn_helper.py --validate '{"kind":"a
 
 | Tier | Use For | Primary Model | Cost |
 |------|---------|---------------|------|
-| 🟢 SIMPLE | Monitoring, checks, summaries | `ollama/glm-4.7-flash` | FREE |
-| 🟡 MEDIUM | Code fixes, patches, research | DeepSeek V3.2 | $0.40/M |
-| 🟠 COMPLEX | Features, architecture, debug | Sonnet 4.6 | $3/M |
-| 🔵 REASONING | Proofs, formal logic | DeepSeek R1 32B | $0.20/M |
-| 🔴 CRITICAL | Security, production | Opus 4.6 | $5/M |
+| 🟢 SIMPLE | Monitoring, heartbeat, checks, summaries | `anthropic-proxy-6/glm-4.7` (alt: proxy-4) | $0.50/M |
+| 🟡 MEDIUM | Code fixes, patches, research, data analysis | `nvidia-nim/meta/llama-3.3-70b-instruct` | $0.40/M |
+| 🟠 COMPLEX | Features, architecture, multi-file, debug | `anthropic/claude-sonnet-4-6` | $3/M |
+| 🔵 REASONING | Proofs, formal logic, deep analysis | `nvidia-nim/moonshotai/kimi-k2-thinking` | $1/M |
+| 🔴 CRITICAL | Security, production, high-stakes | `anthropic/claude-opus-4-6` | $5/M |
 
-**SIMPLE fallback chain:** `ollama/glm-4.7-flash` → `anthropic-proxy-4/glm-4.7` → `anthropic-proxy-6/glm-4.5-air`
+**SIMPLE fallback chain:** `anthropic-proxy-4/glm-4.7` → `nvidia-nim/qwen/qwen2.5-7b-instruct` ($0.15/M)
+
+> ⚠️ **`ollama-gpu-server` is BLOCKED** for cron/spawn use. Ollama binds to `127.0.0.1` by default — unreachable over LAN from the OpenClaw host. The `router_policy.py` enforcer will reject any payload referencing it.
+
+**Tier classification uses 4 capability signals (not cost alone):**
+- `effective_params` (50%) — extracted from model ID or `known-model-params.json` for closed-source models
+- `context_window` (20%) — larger = more capable
+- `cost_input` (20%) — price as quality proxy (weak signal, last resort for unknown sizes)
+- `reasoning_flag` (10%) — bonus for dedicated thinking specialists (R1, QwQ, Kimi-K2)
+
+---
+
+## Policy Enforcer (NEW in v3.2.0)
+
+`router_policy.py` catches bad model assignments **before they are created**, not after they fail.
+
+### Validate a cron payload before submitting
+```bash
+python3 skills/intelligent-router/scripts/router_policy.py check \
+  '{"kind":"agentTurn","model":"ollama-gpu-server/glm-4.7-flash","message":"check server"}'
+# Output: VIOLATION: Blocked model 'ollama-gpu-server/glm-4.7-flash'. Recommended: anthropic-proxy-6/glm-4.7
+```
+
+### Get enforced model recommendation for a task
+```bash
+python3 skills/intelligent-router/scripts/router_policy.py recommend "monitor alphastrike service"
+# Output: Tier: SIMPLE  Model: anthropic-proxy-6/glm-4.7
+
+python3 skills/intelligent-router/scripts/router_policy.py recommend "monitor alphastrike service" --alt
+# Output: Tier: SIMPLE  Model: anthropic-proxy-4/glm-4.7  ← alternate key for load distribution
+```
+
+### Audit all existing cron jobs
+```bash
+python3 skills/intelligent-router/scripts/router_policy.py audit
+# Scans all crons, reports any with blocked or missing models
+```
+
+### Show blocklist
+```bash
+python3 skills/intelligent-router/scripts/router_policy.py blocklist
+```
+
+### Policy rules enforced
+1. **Model must be set** — no model field = Sonnet default = expensive waste
+2. **No blocked models** — `ollama-gpu-server/*` and bare `ollama/*` are rejected for cron use
+3. **CRITICAL tasks** — warns if using a non-Opus model for classified-critical work
 
 ---
 
@@ -80,6 +126,14 @@ This patches AGENTS.md with the mandatory protocol so it's always in context.
 ## CLI Reference
 
 ```bash
+# ── Policy enforcer (run before creating any cron/spawn) ──
+python3 skills/intelligent-router/scripts/router_policy.py check '{"kind":"agentTurn","model":"...","message":"..."}'
+python3 skills/intelligent-router/scripts/router_policy.py recommend "task description"
+python3 skills/intelligent-router/scripts/router_policy.py recommend "task" --alt  # alternate proxy key
+python3 skills/intelligent-router/scripts/router_policy.py audit     # scan all crons
+python3 skills/intelligent-router/scripts/router_policy.py blocklist
+
+# ── Core router ──
 # Classify + recommend model
 python3 skills/intelligent-router/scripts/router.py classify "task"
 
@@ -146,15 +200,17 @@ Local Ollama models have zero cost — always prefer them for SIMPLE tasks.
 
 ## Auto-Discovery (Self-Healing)
 
-The intelligent-router can **automatically discover working models** from all configured providers:
+The intelligent-router can **automatically discover working models** from all configured providers via **real live inference tests** (not config-existence checks).
 
 ### How It Works
 
-1. **Provider Scanning:** Reads `~/.openclaw/openclaw.json` → tests each model
-2. **Health Check:** Sends minimal test prompt to verify auth + connectivity
-3. **Auto-Classification:** Assigns tiers based on cost, capabilities, provider
-4. **Config Update:** Replaces unavailable models (like broken OAuth tokens)
-5. **Cron Integration:** Hourly refresh keeps model list current
+1. **Provider Scanning:** Reads `~/.openclaw/openclaw.json` → finds all models
+2. **Live Inference Test:** Sends `"hi"` to each model, checks it actually responds (catches auth failures, quota exhaustion, 404s, timeouts)
+3. **OAuth Bypass:** Providers with `sk-ant-oat01-*` tokens (Anthropic OAuth) are skipped in raw HTTP — OpenClaw refreshes these transparently, so they're always marked available
+4. **Thinking Model Support:** Models that return `content=None` + `reasoning_content` (GLM-4.7, Kimi-K2, Qwen3-thinking) are correctly detected as available
+5. **Auto-Classification:** Tiers assigned via `tier_classifier.py` using 4 capability signals
+6. **Config Update:** Removes unavailable models, rebuilds tier primaries from working set
+7. **Cron:** Hourly refresh (cron id: `a8992c1f`) keeps model list current, alerts if availability changes by >2
 
 ### Usage
 

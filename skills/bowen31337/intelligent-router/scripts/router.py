@@ -339,15 +339,17 @@ class IntelligentRouter:
                 return 'REASONING'
         
         # Check for complex agentic tasks (multi-step + agentic + code)
-        if is_agentic and dimension_scores:
+        # Only apply bumps when the raw score shows genuine complexity (>= 0.15).
+        # Low scores (< 0.15) indicate keyword noise, not real agentic work — leave as SIMPLE.
+        if is_agentic and dimension_scores and score >= 0.15:
             code_score = dimension_scores.get('code_presence', 0)
             multi_step = dimension_scores.get('multi_step_patterns', 0)
-            
+
             # Multi-step agentic tasks with code → COMPLEX tier
             if multi_step > 0.3 and code_score > 0:
                 if score < 0.5:
                     score = 0.5  # Bump to COMPLEX tier
-            # Regular agentic tasks → at least MEDIUM
+            # Genuine agentic tasks → at least MEDIUM (not triggered by substring matches)
             elif score < 0.4:
                 score = 0.4  # Ensure minimum MEDIUM tier
         

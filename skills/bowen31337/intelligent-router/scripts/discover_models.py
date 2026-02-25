@@ -62,66 +62,184 @@ def load_router_config() -> Dict[str, Any]:
         return json.load(f)
 
 
-def test_model_via_openclaw(provider: str, model: str) -> Dict[str, Any]:
+def test_model_live(provider_cfg: dict, provider_name: str, model_id: str, timeout: int = 30) -> Dict[str, Any]:
     """
-    Test a model by checking if it exists in the OpenClaw config.
-    Returns: {available: bool, latency: float, error: str | None}
+    Real inference test: send "hi" to the model and verify it responds.
+    Supports both OpenAI-compatible and Anthropic-messages APIs.
+
+    Returns: {available: bool, latency: float, error: str | None, response_preview: str | None}
     """
+    import urllib.request
+    import urllib.error
+
     start = time.time()
+    base_url = provider_cfg.get("baseUrl", "").rstrip("/")
+    api_key = provider_cfg.get("apiKey", "")
+    api_type = provider_cfg.get("api", "openai-completions")
+
     try:
-        # Check if model exists in config
-        config = load_openclaw_config()
-        providers = config.get("models", {}).get("providers", {})
-
-        if provider not in providers:
-            return {
-                "available": False,
-                "latency": round(time.time() - start, 3),
-                "error": f"Provider not found: {provider}",
-                "timestamp": datetime.now().isoformat()
+        if api_type == "openai-completions":
+            # Standard OpenAI /v1/chat/completions
+            url = f"{base_url}/chat/completions"
+            payload = {
+                "model": model_id,
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 5,
+                "stream": False,
+            }
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
             }
 
-        provider_config = providers[provider]
-        models = provider_config.get("models", [])
+        elif api_type == "anthropic-messages":
+            # Anthropic /v1/messages — URL suffix varies by proxy
+            if base_url.endswith("/messages"):
+                url = base_url
+            elif "/v1" in base_url:
+                url = f"{base_url}/messages"
+            else:
+                url = f"{base_url}/v1/messages"
 
-        # Find the model in provider's model list by exact ID match
-        model_config = None
-        for m in models:
-            m_id = m.get("id")
-            if m_id == model:
-                model_config = m
-                break
-
-        if not model_config:
+            payload = {
+                "model": model_id,
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 5,
+            }
+            headers = {
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            }
+        else:
             return {
                 "available": False,
-                "latency": round(time.time() - start, 3),
-                "error": f"Model not found: {model}",
-                "timestamp": datetime.now().isoformat()
+                "latency": 0.0,
+                "error": f"Unknown API type: {api_type}",
+                "response_preview": None,
+                "timestamp": datetime.now().isoformat(),
             }
 
-        latency = time.time() - start
+        body = json.dumps(payload).encode()
+        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
 
-        # Model exists in config - mark as available
-        # Note: We're doing config validation, not live inference tests
-        # to avoid API costs. Models that exist in config are assumed available.
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            latency = round(time.time() - start, 3)
+            raw = resp.read().decode()
+            data = json.loads(raw)
+
+            # Extract response text — handle thinking models:
+            # - GLM-5 style: content=None, reasoning_content="..."
+            # - MiniMax/QwQ style: content="<think>...</think>actual answer"
+            preview = None
+            if api_type == "openai-completions":
+                msg = data.get("choices", [{}])[0].get("message", {})
+                text = msg.get("content") or msg.get("reasoning_content") or ""
+                # Strip <think>...</think> blocks (MiniMax, QwQ, DeepSeek style).
+                # Also strip partial <think> (when max_tokens cuts off inside thinking block).
+                import re as _re
+                text = _re.sub(r"<think>.*?(?:</think>|$)", "", str(text), flags=_re.DOTALL).strip()
+                # For thinking models: even if all output was <think>, the model IS responding
+                if not text:
+                    finish = data.get("choices", [{}])[0].get("finish_reason", "")
+                    text = "(thinking model)" if finish in ("length", "stop") else ""
+                preview = text[:40] if text else None
+            elif api_type == "anthropic-messages":
+                content = data.get("content", [{}])
+                if content:
+                    preview = (content[0].get("text") or "")[:40] or None
+
+            return {
+                "available": True,
+                "latency": latency,
+                "error": None,
+                "response_preview": preview,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+    except urllib.error.HTTPError as e:
+        body_text = ""
+        try:
+            body_text = e.read().decode()[:120]
+        except Exception:
+            pass
         return {
-            "available": True,
-            "latency": round(latency, 3),
-            "error": None,
-            "timestamp": datetime.now().isoformat()
+            "available": False,
+            "latency": round(time.time() - start, 3),
+            "error": f"HTTP {e.code}: {body_text}",
+            "response_preview": None,
+            "timestamp": datetime.now().isoformat(),
         }
-
     except Exception as e:
         return {
             "available": False,
             "latency": round(time.time() - start, 3),
             "error": str(e)[:200],
-            "timestamp": datetime.now().isoformat()
+            "response_preview": None,
+            "timestamp": datetime.now().isoformat(),
         }
 
 
-def discover_models(config: Dict[str, Any], tier_filter: Optional[str] = None) -> Dict[str, Any]:
+def test_model_via_openclaw(provider: str, model: str, provider_cfg: dict = None, live: bool = True) -> Dict[str, Any]:
+    """
+    Test a model — live inference by default, config-only check if live=False.
+
+    Live mode: sends "hi" and checks the model actually responds (catches auth failures,
+    unavailable models, quota exhaustion, etc.)
+
+    Config-only mode: just verifies the model entry exists (zero cost, but misses real errors).
+    """
+    start = time.time()
+
+    # Config existence check (fast, always done first)
+    config = load_openclaw_config()
+    providers = config.get("models", {}).get("providers", {})
+
+    if provider not in providers:
+        return {
+            "available": False,
+            "latency": round(time.time() - start, 3),
+            "error": f"Provider not found: {provider}",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    p_cfg = provider_cfg or providers[provider]
+    models_list = p_cfg.get("models", [])
+    model_entry = next((m for m in models_list if m.get("id") == model), None)
+
+    if not model_entry:
+        return {
+            "available": False,
+            "latency": round(time.time() - start, 3),
+            "error": f"Model not found in config: {model}",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    if not live:
+        return {
+            "available": True,
+            "latency": round(time.time() - start, 3),
+            "error": None,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    # OAuth token providers (sk-ant-oat01-*): OpenClaw refreshes these transparently.
+    # Raw HTTP tests use stale cached tokens → always 401 false negatives. Skip live test.
+    api_key = p_cfg.get("apiKey", "")
+    if api_key.startswith("sk-ant-oat01-"):
+        return {
+            "available": True,
+            "latency": 0.0,
+            "error": None,
+            "response_preview": "(OAuth — tested via OpenClaw, not raw HTTP)",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    # Live inference test
+    return test_model_live(p_cfg, provider, model)
+
+
+def discover_models(config: Dict[str, Any], tier_filter: Optional[str] = None, live: bool = True) -> Dict[str, Any]:
     """
     Discover all models from OpenClaw providers and test availability.
     """
@@ -175,7 +293,7 @@ def discover_models(config: Dict[str, Any], tier_filter: Optional[str] = None) -
 
             print(f"  Testing: {model_name}... ", end="", flush=True)
 
-            result = test_model_via_openclaw(provider_name, model_id)
+            result = test_model_via_openclaw(provider_name, model_id, provider_cfg=provider_config, live=live)
 
             # Tier from capability classifier (uses real metadata, no name heuristics)
             classified_tier = _tier_lookup.get(
@@ -197,11 +315,13 @@ def discover_models(config: Dict[str, Any], tier_filter: Optional[str] = None) -
             provider_result["models"].append(model_result)
 
             if result["available"]:
-                print(f"{GREEN}✓{RESET} ({result['latency']}s)")
+                preview = result.get("response_preview", "")
+                preview_str = f' → "{preview}"' if preview else ""
+                print(f"{GREEN}✓{RESET} ({result['latency']}s{preview_str})")
                 provider_result["available"] += 1
                 discovered["available_models"] += 1
             else:
-                print(f"{RED}✗{RESET} ({result['error'][:50]})")
+                print(f"{RED}✗{RESET} ({result.get('error', 'unknown')[:60]})")
                 provider_result["unavailable"] += 1
                 discovered["unavailable_models"] += 1
 
@@ -303,6 +423,23 @@ def update_router_config(discovered: Dict[str, Any]):
                     "fallback_chain": cfg["fallbacks"][:5],
                     "use_for": use_for.get(tier_name, []),
                 }
+            # Apply manual tier_overrides (survive auto-updates)
+            # Set tier_overrides in config.json to lock a primary regardless of scorer.
+            overrides = router_cfg.get("tier_overrides", {})
+            for tier_name, override in overrides.items():
+                forced = override.get("forced_primary")
+                if not forced or tier_name not in router_cfg["routing_rules"]:
+                    continue
+                rule = router_cfg["routing_rules"][tier_name]
+                if rule["primary"] != forced:
+                    old_primary = rule["primary"]
+                    new_fallback = [old_primary] + [
+                        m for m in rule["fallback_chain"] if m != forced and m != old_primary
+                    ]
+                    rule["primary"] = forced
+                    rule["fallback_chain"] = new_fallback[:5]
+                    print(f"  Override: {tier_name} primary locked to {forced} (was {old_primary})")
+
             print(f"{GREEN}✓ Tiers and routing_rules rebuilt from capability metadata{RESET}")
             for tier, cfg in tier_cfg.items():
                 print(f"  {tier}: {cfg['primary']}")
@@ -328,6 +465,7 @@ def main():
     parser.add_argument("--auto-update", action="store_true", help="Update config.json with discovered models")
     parser.add_argument("--tier", help="Only test models from specific tier (SIMPLE/MEDIUM/COMPLEX/REASONING/CRITICAL)")
     parser.add_argument("--output", help="Output JSON file path", default=str(DISCOVERY_OUTPUT))
+    parser.add_argument("--no-live", action="store_true", help="Skip live inference tests (config-only check, free)")
     args = parser.parse_args()
 
     print(f"{BLUE}Intelligent Router - Model Auto-Discovery{RESET}")
@@ -337,7 +475,12 @@ def main():
     config = load_openclaw_config()
 
     # Discover models
-    discovered = discover_models(config, tier_filter=args.tier)
+    live = not args.no_live
+    if not live:
+        print(f"{YELLOW}⚡ Config-only mode (--no-live): skipping inference tests{RESET}")
+    else:
+        print(f"{BLUE}🔍 Live inference mode: sending 'hi' to each model to verify availability{RESET}")
+    discovered = discover_models(config, tier_filter=args.tier, live=live)
 
     # Print summary
     print_summary(discovered)
