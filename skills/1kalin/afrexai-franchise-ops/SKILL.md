@@ -1,68 +1,132 @@
 # Franchise Operations Analyzer
 
-You are a franchise operations and expansion advisor. When the user describes their franchise business (or a prospective franchise), analyze it across these dimensions:
+Evaluate franchise opportunities and manage multi-unit operations with data-driven frameworks.
 
-## 1. Unit Economics Assessment
-- Revenue per unit (monthly/annual)
-- Cost structure: fixed (rent, insurance, equipment) vs variable (labor, COGS, marketing)
-- Break-even timeline per new unit
-- Royalty + marketing fund impact on net margins
-- Compare against industry benchmarks (QSR: 15-22% net, retail: 8-15%, services: 20-35%)
+## What This Does
+- **FDD Analysis**: Break down all 23 Items of the Franchise Disclosure Document
+- **Unit Economics**: Model startup costs, breakeven timeline, and cash flow projections
+- **Territory Analysis**: Evaluate market saturation, demographics, and site selection criteria
+- **Royalty Impact Modeling**: Calculate true cost of royalties + ad fund on unit profitability
+- **Multi-Unit Scaling**: Expansion planning with shared overhead and management layering
+- **Compliance Calendar**: Track FTC Rule obligations, state registration renewals, relationship laws
 
-## 2. Expansion Readiness Score (0-100)
-Rate across 8 factors (weight in parentheses):
-- Unit profitability consistency (20%) — Are 80%+ of units profitable within 18 months?
-- Operations documentation (15%) — SOPs, training manuals, tech stack standardized?
-- Supply chain scalability (15%) — Can suppliers handle 2x volume without price spikes?
-- Territory analytics (15%) — Demographics, competition density, cannibalization risk modeled?
-- Franchisee pipeline (10%) — Qualified applicants per territory?
-- Technology infrastructure (10%) — POS, inventory, reporting centralized?
-- Brand strength (10%) — Recognition, NPS, online reviews per unit?
-- Compliance readiness (5%) — FDD current, state registrations, legal counsel retained?
+## Usage
 
-Output a scorecard with each factor rated, overall score, and top 3 improvement priorities.
+Tell the agent what you need:
 
-## 3. Territory Analysis Framework
-When evaluating a new territory:
-- Population density and median household income requirements
-- Competition mapping (direct + adjacent)
-- Cannibalization risk from existing units (minimum distance/drive-time rules)
-- Local regulatory considerations (permits, zoning, labor laws)
-- Estimated ramp timeline based on comparable territories
+- "Analyze this franchise FDD for red flags"
+- "Model unit economics for a QSR franchise at $450K investment"
+- "Compare royalty structures across these 3 franchise systems"
+- "Build a 5-year multi-unit expansion plan"
+- "What are the franchise compliance requirements in California?"
 
-## 4. Multi-Unit Operator Optimization
-For operators running 3+ units:
-- Labor scheduling optimization across units
-- Shared services opportunities (accounting, HR, maintenance)
-- Inventory consolidation and bulk purchasing leverage
-- Management layer efficiency (area manager ratios)
-- Capital allocation: reinvest vs distribute vs acquire
+## FDD Item 19 Analysis Framework
 
-## 5. Franchise Agreement Red Flags
-Scan any franchise agreement details for:
-- Unreasonable non-compete scope (>2 years, >25 miles)
-- One-sided termination clauses
-- Mandatory vendor requirements above market rates
-- Hidden fees (technology, training, transfer)
-- Territory protection gaps
-- Renewal terms that reset investment clock
+Item 19 (Financial Performance Representations) is where franchisors show earnings data — or don't.
 
-## 6. AI Automation Opportunities
-Map franchise operations to automation potential:
-- Customer service: chatbots, review management, loyalty programs
-- Operations: inventory forecasting, scheduling, quality audits
-- Marketing: local SEO, social media, email campaigns per unit
-- Finance: unit-level P&L automation, royalty calculations, tax prep
-- Training: onboarding automation, compliance tracking, performance monitoring
+### If Item 19 is provided:
+1. Check sample size (what % of units are included?)
+2. Median vs mean revenue (mean gets skewed by top performers)
+3. Time period covered (pandemic years? expansion years?)
+4. Geographic breakdown (national average hides regional variance)
+5. Unit age distribution (mature units outperform new ones)
 
-Estimate hours saved per unit per week and annual cost reduction.
+### If Item 19 is blank:
+- Not illegal, but ask why. 40% of franchisors skip it.
+- Use Item 21 (financial statements) + Item 20 (outlet count/closures) to reverse-engineer.
 
-## Output Format
-Always provide:
-1. Executive summary (3-5 bullets)
-2. Detailed analysis per relevant section
-3. Priority action items ranked by ROI impact
-4. Risk factors with mitigation strategies
-5. 90-day improvement roadmap
+## Unit Economics Template
 
-Adjust depth based on whether the user is a franchisor (system-level) or franchisee (unit-level).
+```
+INVESTMENT ANALYSIS
+━━━━━━━━━━━━━━━━━━
+Initial Franchise Fee:     $________
+Build-out & Equipment:     $________
+Working Capital (6 mo):    $________
+Total Investment:          $________
+
+MONTHLY P&L MODEL
+━━━━━━━━━━━━━━━━━━
+Gross Revenue:             $________
+  - COGS (____%):          $________
+Gross Profit:              $________
+  - Royalty (____%):       $________
+  - Ad Fund (____%):       $________
+  - Rent:                  $________
+  - Labor:                 $________
+  - Insurance:             $________
+  - Utilities:             $________
+  - Other OpEx:            $________
+Net Operating Income:      $________
+
+BREAKEVEN
+━━━━━━━━━━━━━━━━━━
+Monthly Breakeven Revenue: $________
+Months to Breakeven:       ________
+Cash-on-Cash Return (Y1):  ________%
+Payback Period:            ________ months
+```
+
+## Royalty Impact Calculator
+
+True royalty cost is higher than the percentage suggests:
+
+| Royalty Rate | On $1M Revenue | On $500K Profit | Effective Profit Impact |
+|-------------|---------------|----------------|----------------------|
+| 4% | $40,000 | — | 8.0% of profit |
+| 6% | $60,000 | — | 12.0% of profit |
+| 8% | $80,000 | — | 16.0% of profit |
+
+Add advertising fund (typically 1-3%) for total franchisor take.
+
+## FDD Red Flags Checklist
+
+- [ ] Item 3: Litigation history — active lawsuits from franchisees?
+- [ ] Item 5: Initial fees — are they refundable under any condition?
+- [ ] Item 6: Ongoing fees — hidden technology/supply fees beyond royalty?
+- [ ] Item 7: Investment range — is the spread too wide (signals uncertainty)?
+- [ ] Item 8: Sourcing restrictions — must you buy from franchisor-approved suppliers only?
+- [ ] Item 9: Franchisee obligations — non-compete scope and duration?
+- [ ] Item 11: Franchisor obligations — what training/support is actually guaranteed?
+- [ ] Item 12: Territory — is it exclusive? What's the protected radius?
+- [ ] Item 17: Renewal terms — can they change royalty rates at renewal?
+- [ ] Item 19: Financial performance — present or absent? Representative sample?
+- [ ] Item 20: Unit counts — net openings vs closures over 3 years
+- [ ] Item 21: Financial statements — is the franchisor itself profitable?
+
+## Franchise State Registration Requirements
+
+13 states require franchise registration before selling:
+California, Hawaii, Illinois, Indiana, Maryland, Michigan, Minnesota, New York, North Dakota, Rhode Island, South Dakota, Virginia, Washington, Wisconsin
+
+Additional filing states: Connecticut, Florida, Kentucky, Nebraska, Texas, Utah
+
+## Multi-Unit Expansion Model
+
+| Units | Shared Overhead Savings | Management Layer | Typical Net Margin Lift |
+|-------|------------------------|-------------------|----------------------|
+| 1 | Baseline | Owner-operator | — |
+| 2-3 | 15-20% G&A reduction | Area manager needed | +2-4% |
+| 4-6 | 25-30% G&A reduction | District manager | +3-5% |
+| 7-10 | 30-40% G&A reduction | Regional structure | +4-7% |
+| 10+ | 40%+ G&A reduction | Corporate office | +5-8% |
+
+## Franchise vs Independent Business Comparison
+
+| Factor | Franchise | Independent |
+|--------|-----------|-------------|
+| Failure rate (5yr) | ~15% | ~50% |
+| Brand recognition | Immediate | Build from zero |
+| Startup cost | Higher (franchise fee) | Lower but variable |
+| Operational freedom | Limited by system | Complete |
+| Financing access | Easier (SBA loves franchises) | Harder |
+| Exit/resale | Structured transfer process | Negotiated |
+| Ongoing costs | Royalties + ad fund | None mandated |
+
+---
+
+**Need help evaluating franchise opportunities or building operational systems for multi-unit businesses?**
+
+→ [Browse AI Agent Context Packs](https://afrexai-cto.github.io/context-packs/) — industry-specific agent configs starting at $47
+→ [Calculate Your AI Revenue Opportunity](https://afrexai-cto.github.io/ai-revenue-calculator/)
+→ [Get Your Custom Agent Setup](https://afrexai-cto.github.io/agent-setup/)

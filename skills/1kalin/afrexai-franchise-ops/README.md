@@ -1,41 +1,35 @@
 # Franchise Operations Analyzer
 
-A comprehensive AI agent skill for franchise businesses — whether you're a franchisor scaling your system or a franchisee optimizing your units.
+Evaluate franchise opportunities, analyze FDDs, model unit economics, and plan multi-unit expansion.
 
-## What It Does
+Built for franchise buyers, multi-unit operators, franchise consultants, and franchise development teams.
 
-- **Unit Economics Assessment** — Revenue, costs, margins, break-even analysis benchmarked against industry standards
-- **Expansion Readiness Score** — 8-factor scorecard (0-100) telling you exactly where your franchise system stands
-- **Territory Analysis** — Demographics, competition, cannibalization risk, regulatory considerations
-- **Multi-Unit Optimization** — Labor, inventory, shared services, capital allocation for 3+ unit operators
-- **Agreement Red Flags** — Catches unreasonable terms before you sign
-- **AI Automation Map** — Identifies where AI saves hours and dollars across every franchise function
+## Features
 
-## Who It's For
+- **FDD Red Flag Detection** — Systematic review of all 23 Franchise Disclosure Document items
+- **Unit Economics Modeling** — Startup costs, breakeven analysis, cash-on-cash returns
+- **Royalty Impact Calculator** — True profit impact of royalty + ad fund structures
+- **Territory & Site Analysis** — Market saturation, demographics, protected territory evaluation
+- **Multi-Unit Scaling** — Shared overhead savings, management layering, expansion planning
+- **Compliance Tracking** — State registration requirements, FTC Rule obligations, renewal deadlines
 
-- **Franchisors** expanding from 10 to 100+ units
-- **Multi-unit operators** running 3-20 locations
-- **Prospective franchisees** evaluating opportunities
-- **Franchise consultants** advising clients
+## Who This Is For
 
-## Example Prompts
+- **Prospective franchisees** evaluating their first (or next) franchise purchase
+- **Multi-unit operators** planning expansion across territories
+- **Franchise consultants** analyzing opportunities for clients
+- **Franchise development teams** benchmarking against competitors
 
-- "Analyze unit economics for my 12-unit QSR franchise averaging $1.2M revenue per unit"
-- "Score my franchise system's expansion readiness — we have 8 units in Texas"
-- "Evaluate this territory for a new unit: downtown Denver, 80202"
-- "Review this franchise agreement for red flags"
-- "Where can AI automation save the most across my franchise operations?"
+## Quick Start
 
-## Industry Context Packs
+Ask your agent:
+- "Analyze this franchise FDD for red flags"
+- "Model unit economics for a $450K QSR investment"
+- "Compare royalty structures across 3 franchise systems"
+- "What states require franchise registration?"
 
-For deeper industry-specific AI implementation frameworks, check out our context packs:
+## Links
 
-- [AI Agent Context Packs](https://afrexai-cto.github.io/context-packs/) — 10 industries, $47 each
-- [AI Revenue Leak Calculator](https://afrexai-cto.github.io/ai-revenue-calculator/) — Find what you're losing to manual processes
-- [Agent Setup Wizard](https://afrexai-cto.github.io/agent-setup/) — Deploy your first AI agent in under an hour
-
-**Bundles:** [Pick 3 for $97](https://buy.stripe.com/4gw4jJ7pN5Kc3HW5kB) | [All 10 for $197](https://buy.stripe.com/6oE9E35hFfkMguy28q) | [Everything Pack $247](https://buy.stripe.com/14k5nNclddcE4M014n)
-
----
-
-Built by [AfrexAI](https://afrexai-cto.github.io/context-packs/) 🖤💛
+- [AI Agent Context Packs](https://afrexai-cto.github.io/context-packs/) — $47/pack
+- [AI Revenue Calculator](https://afrexai-cto.github.io/ai-revenue-calculator/)
+- [Agent Setup Wizard](https://afrexai-cto.github.io/agent-setup/)
