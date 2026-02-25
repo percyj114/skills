@@ -1,0 +1,11 @@
+{
+  "owner": "hg-hg",
+  "slug": "arknights-operator-gacha",
+  "displayName": "Arknights Operator Gacha",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771982807401,
+    "commit": null
+  },
+  "history": []
+}
