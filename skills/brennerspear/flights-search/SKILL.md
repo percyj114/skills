@@ -1,6 +1,6 @@
 ---
 name: flights
-description: Search flights via Google Flights. Find nonstop/connecting flights, filter by time and cabin class, get booking links.
+description: Search flights via Google Flights. Find nonstop/connecting flights, filter by time and cabin class, get booking links. Supports city names (NYC, London, Tokyo) with automatic multi-airport search. No API key required.
 ---
 
 # Flight Search
@@ -13,7 +13,7 @@ Search real-time flight schedules and prices via Google Flights data.
 pip install fast-flights
 ```
 
-The `flights-search` CLI is installed at `~/.local/bin/flights-search`.
+The `flights-search` CLI is bundled at `scripts/flights-search` in this skill directory.
 
 ## CLI Usage
 
@@ -21,47 +21,56 @@ The `flights-search` CLI is installed at `~/.local/bin/flights-search`.
 flights-search <origin> <destination> <date> [options]
 ```
 
+Origin and destination accept **IATA codes** (JFK, LAX) or **city names** (NYC, London, Tokyo). City names automatically search all airports in that metro area.
+
 ### Examples
 
 ```bash
-# Basic search (auto-shows fewest stops available)
-flights-search YYZ EWR 2026-02-06
+# Search all NYC airports to LAX
+flights-search NYC LAX 2026-03-15
 
-# Nonstop flights only
-flights-search YYZ JFK 2026-02-06 --nonstop
+# Nonstop flights from NYC to Berlin
+flights-search NYC Berlin 2026-03-15 --nonstop
 
-# Filter by departure time (24h format)
-flights-search YYZ EWR 2026-02-06 --after 18        # After 6pm
-flights-search YYZ EWR 2026-02-06 --before 12       # Before noon
-flights-search YYZ EWR 2026-02-06 --after 9 --before 14
+# Evening departures only
+flights-search JFK LHR 2026-03-15 --after 17 --before 22
 
-# Cabin class
-flights-search YYZ EWR 2026-02-06 --class economy   # default
-flights-search YYZ EWR 2026-02-06 --class premium   # premium economy
-flights-search YYZ EWR 2026-02-06 --class business
-flights-search YYZ EWR 2026-02-06 --class first
+# Business class
+flights-search NYC London 2026-03-15 --class business
 
-# Get Google Flights booking link
-flights-search YYZ EWR 2026-02-06 --class business --link
-
-# Multiple passengers
-flights-search YYZ EWR 2026-02-06 --passengers 2
-
-# Show all flights (ignore stop minimization)
-flights-search YYZ EWR 2026-02-06 --all-stops
+# Multiple passengers with booking link
+flights-search SF Tokyo 2026-04-01 --passengers 2 --link
 ```
 
 ### Options
 
 | Option | Description |
 |--------|-------------|
-| `--nonstop` | Force nonstop only |
+| `--nonstop` | Nonstop flights only |
 | `--all-stops` | Show all flights regardless of stops |
 | `--after HH` | Depart after hour (24h format) |
 | `--before HH` | Depart before hour (24h format) |
 | `--class` | Cabin: economy, premium, business, first |
-| `--passengers N` | Number of travelers |
+| `--passengers N` | Number of travelers (default: 1) |
 | `--link` | Print Google Flights URL |
+
+### Supported City Names
+
+When you use a city name, the CLI searches all airports in that metro area:
+
+| City | Airports |
+|------|----------|
+| NYC / New York | JFK, EWR, LGA |
+| LA / Los Angeles | LAX, BUR, LGB, ONT, SNA |
+| SF / San Francisco | SFO, OAK, SJC |
+| Chicago | ORD, MDW |
+| DC / Washington | DCA, IAD, BWI |
+| London | LHR, LGW, STN, LTN, LCY |
+| Paris | CDG, ORY |
+| Tokyo | NRT, HND |
+| Toronto | YYZ, YTZ |
+
+60+ metro areas supported. Use any IATA code directly for airports not in the list.
 
 ## Default Behavior
 
@@ -73,21 +82,26 @@ By default, the CLI shows only flights with the **minimum stops available**:
 ## Output
 
 ```
-Depart                       Arrive                       Airline         Price      Duration
-----------------------------------------------------------------------------------------------------
-6:00 PM Fri, Feb 6           7:38 PM Fri, Feb 6           Air Canada      $361       1 hr 38 min
-9:10 PM Fri, Feb 6           10:48 PM Fri, Feb 6          Air Canada      $361       1 hr 38 min
+Searching from NYC: JFK, EWR, LGA
 
-2 nonstop flight(s) found.
+Route        Depart                       Arrive                       Airline          Price       Duration
+------------------------------------------------------------------------------------------------------------
+EWR→LAX      6:00 AM on Sat, Mar 7        9:07 AM on Sat, Mar 7        United           $289        6 hr 7 min
+EWR→LAX      12:00 PM on Sat, Mar 7       3:14 PM on Sat, Mar 7        United           $289        6 hr 14 min
+JFK→LAX      8:00 AM on Sat, Mar 7        11:30 AM on Sat, Mar 7       Delta            $304        5 hr 30 min
+
+3 flight(s) found.
 ```
-
-## Data Source
-
-Uses Google Flights data via the `fast-flights` library (reverse-engineered protobuf API). No API key required.
 
 ## Notes
 
 - Date format: `YYYY-MM-DD`
-- Airport codes: Standard IATA codes (JFK, LAX, YYZ, etc.)
+- Airport codes: Standard IATA codes (JFK, LAX, LHR, etc.)
 - Prices are in USD
 - Times shown in local airport timezone
+- No API key required — uses Google Flights data via reverse-engineered protobuf API
+- Some routes may return price-only results (missing departure/arrival times) due to upstream parsing limitations
+
+## Data Source
+
+Uses Google Flights data via the [`fast-flights`](https://github.com/AWeirdDev/flights) Python package.
