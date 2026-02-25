@@ -16,9 +16,9 @@ const CHAIN_ID_MAP = Object.freeze({
 // ─── Contract addresses (per-network) ─────────────────────────────────
 const CONTRACT_ADDRESSES = Object.freeze({
   [NETWORKS.BASE_SEPOLIA.chainId]: {
-    creditor: "0x669324C8c8011c3C0cA31faFBdD9C76219C06dB1",
-    borrowerManager: "0xFdcb4abf261944383dbac37cB8E9147E50E2a609",
-    usdc: "0x08B1797bB535C4cf86f93424137Cb3e004476624",
+    creditor: "0x1867a19816f38ec31ec3af1be15fd7104f161978",
+    borrowerManager: "0x76e51158015e869ab2875fa17b87383d8886e93c",
+    usdc: "0x55b8ff660d4f0f176de84f325d39a773a7a3bda7",
   },
   [NETWORKS.BASE_MAINNET.chainId]: {
     creditor: null,
