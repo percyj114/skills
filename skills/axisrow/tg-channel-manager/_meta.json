@@ -3,9 +3,15 @@
   "slug": "tg-channel-manager",
   "displayName": "TG Channel Manager",
   "latest": {
-    "version": "0.0.2",
-    "publishedAt": 1771692422027,
-    "commit": "https://github.com/openclaw/skills/commit/fcccb63f4718788d78e7a78d5fa321149a7b1093"
+    "version": "0.0.3",
+    "publishedAt": 1771851609332,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.2",
+      "publishedAt": 1771692422027,
+      "commit": "https://github.com/openclaw/skills/commit/fcccb63f4718788d78e7a78d5fa321149a7b1093"
+    }
+  ]
 }
