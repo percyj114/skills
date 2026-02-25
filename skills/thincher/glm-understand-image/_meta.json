@@ -3,9 +3,15 @@
   "slug": "glm-understand-image",
   "displayName": "glm-understand-image",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771775900906,
-    "commit": "https://github.com/openclaw/skills/commit/2da6cf71107cb4739291562b487de1a6cf3f7017"
+    "version": "1.0.3",
+    "publishedAt": 1771917414872,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771775900906,
+      "commit": "https://github.com/openclaw/skills/commit/2da6cf71107cb4739291562b487de1a6cf3f7017"
+    }
+  ]
 }
