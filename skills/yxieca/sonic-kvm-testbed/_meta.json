@@ -1,11 +1,17 @@
 {
   "owner": "yxieca",
   "slug": "sonic-kvm-testbed",
-  "displayName": "Sonic KVM Testbed",
+  "displayName": "SONiC KVM Testbed",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1771824241222,
-    "commit": "https://github.com/openclaw/skills/commit/b88e99d9055daff30a912cc2bf8cabdc0e28e819"
+    "version": "1.2.0",
+    "publishedAt": 1772055905983,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1771824241222,
+      "commit": "https://github.com/openclaw/skills/commit/b88e99d9055daff30a912cc2bf8cabdc0e28e819"
+    }
+  ]
 }
