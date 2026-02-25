@@ -9,6 +9,11 @@ description: Manage Wallabag bookmarks through the Wallabag Developer API with O
 
 Use this skill to operate a Wallabag instance through its API with deterministic shell commands. Keep credentials in environment variables and never hardcode secrets.
 
+## Runtime Requirements
+
+- Required binaries: `bash`, `curl`
+- Required for `tag add` and `tag remove`: `jq`
+
 ## Required Environment
 
 Set these variables before running commands:
@@ -29,7 +34,6 @@ export WALLABAG_USERNAME="..."
 export WALLABAG_PASSWORD="..."
 ```
 
-
 ## Command Interface
 
 Main command:
@@ -40,7 +44,7 @@ scripts/wallabag.sh <subcommand> [options]
 
 Subcommands:
 
-- `auth`
+- `auth [--show-token]`
 - `list [--search <text>] [--tag <name>] [--archive 0|1] [--starred 0|1] [--page <n>] [--per-page <n>]`
 - `get --id <entry_id>`
 - `create --url <url> [--title <title>] [--tags "tag1,tag2"]`
@@ -60,6 +64,7 @@ Subcommands:
 ## Operational Rules
 
 - Keep tokens in process memory only. Do not persist token state to disk.
+- `auth` does not print access tokens unless `--show-token` is explicitly passed.
 - Return JSON output unchanged where possible.
 - Emit actionable error messages on stderr and non-zero exit codes.
 - Prefer `tag add` and `tag remove` when only tag mutation is needed.
