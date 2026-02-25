@@ -178,7 +178,7 @@ def cmd_execute(args):
         print(f"Error: {error}")
     if output is not None:
         out_str = json.dumps(output, indent=2) if isinstance(output, (dict, list)) else str(output)
-        print(f"Output:\n{out_str[:2000]}")
+        print(f"Output:\n{out_str}")
 
 
 def main():
