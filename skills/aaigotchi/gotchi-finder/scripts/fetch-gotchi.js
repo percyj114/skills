@@ -1,13 +1,13 @@
 const { ethers } = require('ethers');
-const fs = require('fs');
-const path = require('path');
+const https = require('https');
 
+const BASE_RPC = 'https://mainnet.base.org';
 const AAVEGOTCHI_DIAMOND = '0xA99c4B08201F2913Db8D28e71d020c4298F29dBF';
-const BASE_RPC = process.env.BASE_MAINNET_RPC || 'https://mainnet.base.org';
+const SUBGRAPH_URL = 'https://api.goldsky.com/api/public/project_cmh3flagm0001r4p25foufjtt/subgraphs/aavegotchi-core-base/prod/gn';
 
 const ABI = [
-  'function getAavegotchiSvg(uint256 _tokenId) external view returns (string memory)',
-  'function getAavegotchi(uint256 _tokenId) external view returns (tuple(uint256 tokenId, string name, address owner, uint256 randomNumber, uint256 status, int16[6] numericTraits, int16[6] modifiedNumericTraits, uint16[16] equippedWearables, address collateral, address escrow, uint256 stakedAmount, uint256 minimumStake, uint256 kinship, uint256 lastInteracted, uint256 experience, uint256 toNextLevel, uint256 usedSkillPoints, uint256 level, uint256 hauntId, uint256 baseRarityScore, uint256 modifiedRarityScore, bool locked))'
+  'function getAavegotchi(uint256 _tokenId) external view returns (tuple(uint256 tokenId, string name, address owner, uint256 randomNumber, uint256 status, int16[6] numericTraits, int16[6] modifiedNumericTraits, uint16[16] equippedWearables, address collateral, address escrow, uint256 stakedAmount, uint256 minimumStake, uint256 kinship, uint256 lastInteracted, uint256 experience, uint256 toNextLevel, uint256 usedSkillPoints, uint256 level, uint256 hauntId, uint256 baseRarityScore, uint256 modifiedRarityScore, bool locked))',
+  'function getAavegotchiSvg(uint256 _tokenId) external view returns (string)'
 ];
 
 const STATUS_NAMES = {
@@ -17,6 +17,46 @@ const STATUS_NAMES = {
   3: 'Gotchi'
 };
 
+async function querySubgraph(tokenId) {
+  const query = `{
+    aavegotchi(id: "${tokenId}") {
+      withSetsRarityScore
+    }
+  }`;
+
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({ query });
+    const url = new URL(SUBGRAPH_URL);
+    
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': data.length
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', (chunk) => body += chunk);
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(body);
+          resolve(result.data?.aavegotchi?.withSetsRarityScore || null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    });
+
+    req.on('error', () => resolve(null));
+    req.write(data);
+    req.end();
+  });
+}
+
 async function fetchGotchi(tokenId, outputDir = '.') {
   const provider = new ethers.JsonRpcProvider(BASE_RPC);
   const contract = new ethers.Contract(AAVEGOTCHI_DIAMOND, ABI, provider);
@@ -24,22 +64,54 @@ async function fetchGotchi(tokenId, outputDir = '.') {
   try {
     console.log(`\n🔍 Fetching Gotchi #${tokenId} from Base mainnet...`);
     
-    // Fetch gotchi data
+    // Fetch gotchi data from contract
     const gotchiData = await contract.getAavegotchi(tokenId);
     const status = Number(gotchiData.status);
     const statusName = STATUS_NAMES[status] || `Unknown (${status})`;
     
+    // Fetch withSetsRarityScore from subgraph
+    const withSetsBRS = await querySubgraph(tokenId);
+    
+    const modifiedBRS = gotchiData.modifiedRarityScore.toString();
+    const displayBRS = withSetsBRS || modifiedBRS; // Use withSets if available, fallback to modified
+
+    const setBonus = withSetsBRS ? parseInt(withSetsBRS) - parseInt(modifiedBRS) : 0;
+
+    console.log(`📛 Name: ${gotchiData.name}`);
+    console.log(`⭐ Total BRS: ${displayBRS}${setBonus > 0 ? ` (Base: ${gotchiData.baseRarityScore} + Wearables: ${parseInt(modifiedBRS) - parseInt(gotchiData.baseRarityScore)} + Sets: +${setBonus})` : ` (Base: ${gotchiData.baseRarityScore} + Wearables: ${parseInt(modifiedBRS) - parseInt(gotchiData.baseRarityScore)})`}`);
+    console.log(`💜 Kinship: ${gotchiData.kinship}`);
+    console.log(`🎯 Level: ${gotchiData.level}`);
+    console.log(`✨ XP: ${gotchiData.experience}`);
+    console.log(`🔒 Locked: ${gotchiData.locked ? 'Yes' : 'No'}`);
+    
+    console.log(`\n🎭 Base Traits (without wearables):`);
+    console.log(`   Energy: ${gotchiData.numericTraits[0]}`);
+    console.log(`   Aggression: ${gotchiData.numericTraits[1]}`);
+    console.log(`   Spookiness: ${gotchiData.numericTraits[2]}`);
+    console.log(`   Brain Size: ${gotchiData.numericTraits[3]}`);
+    
+    console.log(`\n👔 Modified Traits (with wearables):`);
+    console.log(`   Energy: ${gotchiData.modifiedNumericTraits[0]} (${gotchiData.modifiedNumericTraits[0] - gotchiData.numericTraits[0] >= 0 ? '+' : ''}${gotchiData.modifiedNumericTraits[0] - gotchiData.numericTraits[0]})`);
+    console.log(`   Aggression: ${gotchiData.modifiedNumericTraits[1]} (${gotchiData.modifiedNumericTraits[1] - gotchiData.numericTraits[1] >= 0 ? '+' : ''}${gotchiData.modifiedNumericTraits[1] - gotchiData.numericTraits[1]})`);
+    console.log(`   Spookiness: ${gotchiData.modifiedNumericTraits[2]} (${gotchiData.modifiedNumericTraits[2] - gotchiData.numericTraits[2] >= 0 ? '+' : ''}${gotchiData.modifiedNumericTraits[2] - gotchiData.numericTraits[2]})`);
+    console.log(`   Brain Size: ${gotchiData.modifiedNumericTraits[3]} (${gotchiData.modifiedNumericTraits[3] - gotchiData.numericTraits[3] >= 0 ? '+' : ''}${gotchiData.modifiedNumericTraits[3] - gotchiData.numericTraits[3]})`);
+    
+    // Build result object
     const result = {
       tokenId: tokenId.toString(),
-      name: gotchiData.name || 'Unnamed',
+      name: gotchiData.name,
       owner: gotchiData.owner,
       status: status,
       statusName: statusName,
       hauntId: gotchiData.hauntId.toString(),
+      
       baseRarityScore: gotchiData.baseRarityScore.toString(),
-      modifiedRarityScore: gotchiData.modifiedRarityScore.toString(),
-      brs: gotchiData.modifiedRarityScore.toString(), // TOTAL BRS (base + wearables)
-      baseBrs: gotchiData.baseRarityScore.toString(), // Base only (no wearables)
+      modifiedRarityScore: modifiedBRS,
+      withSetsRarityScore: withSetsBRS,
+      brs: displayBRS, // DISPLAY BRS (what website shows)
+      baseBrs: gotchiData.baseRarityScore.toString(),
+      setBonus: setBonus,
+      
       kinship: gotchiData.kinship.toString(),
       level: gotchiData.level.toString(),
       experience: gotchiData.experience.toString(),
@@ -47,7 +119,6 @@ async function fetchGotchi(tokenId, outputDir = '.') {
       stakedAmount: ethers.formatEther(gotchiData.stakedAmount),
       locked: gotchiData.locked,
       
-      // Numeric traits (Energy, Aggression, Spookiness, Brain Size, Eye Shape, Eye Color)
       traits: {
         energy: gotchiData.numericTraits[0].toString(),
         aggression: gotchiData.numericTraits[1].toString(),
@@ -57,7 +128,6 @@ async function fetchGotchi(tokenId, outputDir = '.') {
         eyeColor: gotchiData.numericTraits[5].toString()
       },
       
-      // Modified traits (with wearables)
       modifiedTraits: {
         energy: gotchiData.modifiedNumericTraits[0].toString(),
         aggression: gotchiData.modifiedNumericTraits[1].toString(),
@@ -68,76 +138,40 @@ async function fetchGotchi(tokenId, outputDir = '.') {
       }
     };
     
-    if (status === 2 || status === 3) {
-      console.log(`📛 Name: ${result.name}`);
-      console.log(`⭐ Total BRS: ${result.brs} (Base: ${result.baseBrs} + Wearables: ${result.brs - result.baseBrs})`);
-      console.log(`💜 Kinship: ${result.kinship}`);
-      console.log(`🎯 Level: ${result.level}`);
-      console.log(`✨ XP: ${result.experience}`);
-      console.log(`🔒 Locked: ${result.locked ? 'Yes' : 'No'}`);
-      console.log(`\n🎭 Base Traits (without wearables):`);
-      console.log(`   Energy: ${result.traits.energy}`);
-      console.log(`   Aggression: ${result.traits.aggression}`);
-      console.log(`   Spookiness: ${result.traits.spookiness}`);
-      console.log(`   Brain Size: ${result.traits.brainSize}`);
-      console.log(`\n👔 Modified Traits (with wearables):`);
-      console.log(`   Energy: ${result.modifiedTraits.energy} (${result.modifiedTraits.energy - result.traits.energy >= 0 ? '+' : ''}${result.modifiedTraits.energy - result.traits.energy})`);
-      console.log(`   Aggression: ${result.modifiedTraits.aggression} (${result.modifiedTraits.aggression - result.traits.aggression >= 0 ? '+' : ''}${result.modifiedTraits.aggression - result.traits.aggression})`);
-      console.log(`   Spookiness: ${result.modifiedTraits.spookiness} (${result.modifiedTraits.spookiness - result.traits.spookiness >= 0 ? '+' : ''}${result.modifiedTraits.spookiness - result.traits.spookiness})`);
-      console.log(`   Brain Size: ${result.modifiedTraits.brainSize} (${result.modifiedTraits.brainSize - result.traits.brainSize >= 0 ? '+' : ''}${result.modifiedTraits.brainSize - result.traits.brainSize})`);
-    }
-    
     // Fetch SVG
     console.log(`\n📥 Fetching SVG...`);
     const svg = await contract.getAavegotchiSvg(tokenId);
     
     // Determine image type
     let imageType = 'Unknown';
-    if (svg.includes('gotchi-body') || svg.includes('gotchi-wearable')) {
-      imageType = 'Aavegotchi';
-    } else if (svg.includes('Haunt')) {
-      imageType = 'Portal';
-    }
+    if (svg.includes('class="gotchi-body"')) imageType = 'Aavegotchi';
+    else if (svg.includes('portal')) imageType = 'Portal';
     
     result.imageType = imageType;
     
     // Save JSON
-    const jsonPath = path.join(outputDir, `gotchi-${tokenId}.json`);
+    const fs = require('fs');
+    const jsonPath = `${outputDir}/gotchi-${tokenId}.json`;
     fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
-    console.log(`\n✅ Saved JSON: ${jsonPath}`);
+    console.log(`✅ Saved JSON: ${jsonPath}`);
     
     // Save SVG
-    const svgPath = path.join(outputDir, `gotchi-${tokenId}.svg`);
+    const svgPath = `${outputDir}/gotchi-${tokenId}.svg`;
     fs.writeFileSync(svgPath, svg);
     console.log(`✅ Saved SVG: ${svgPath} (${imageType})`);
     
     return result;
+    
   } catch (error) {
-    if (error.message.includes('SVG type or id does not exist')) {
-      console.error(`\n❌ Gotchi #${tokenId} does not exist on Base chain`);
-      console.error('Fatal error:', error.message);
-      process.exit(1);
-    }
+    console.error(`\n❌ Error fetching gotchi #${tokenId}:`, error.message);
     throw error;
   }
 }
 
-// CLI usage
-if (require.main === module) {
-  const tokenId = process.argv[2];
-  const outputDir = process.argv[3] || '.';
-  
-  if (!tokenId) {
-    console.error('Usage: node fetch-gotchi.js <tokenId> [outputDir]');
-    process.exit(1);
-  }
-  
-  fetchGotchi(parseInt(tokenId), outputDir)
-    .then(() => process.exit(0))
-    .catch(error => {
-      console.error('Error:', error);
-      process.exit(1);
-    });
+const tokenId = process.argv[2];
+if (!tokenId) {
+  console.error('Usage: node fetch-gotchi-updated.js <tokenId>');
+  process.exit(1);
 }
 
-module.exports = { fetchGotchi };
+fetchGotchi(tokenId);

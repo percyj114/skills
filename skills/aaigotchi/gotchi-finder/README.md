@@ -8,9 +8,11 @@ Find any Aavegotchi by ID and display with full traits and image.
 # Install dependencies
 npm install
 
-# Find a gotchi by ID
-bash scripts/find-gotchi.sh 9638
+# Show a gotchi (PNG image + stats caption)
+bash scripts/show-gotchi.sh 9638
 ```
+
+**Output:** Single message with gotchi image and complete stats below!
 
 ## Features
 
@@ -35,18 +37,44 @@ For each gotchi, you can get:
 
 ## Usage Examples
 
-### 🎯 Recommended Workflow (Conversational)
+### 🎯 Default: Show Gotchi (Recommended)
 
-**Step 1: Preview gotchi (default)**
 ```bash
-bash scripts/find-gotchi.sh 9638
+bash scripts/show-gotchi.sh 9638
 ```
 
+**Output:**
+- 🖼️ PNG image (512×512) - shown as photo/media
+- 📊 Complete stats - displayed as caption below image
+- 👻 Single message format (perfect for Telegram/Discord)
+
 **What you get:**
-- 🖼️ **Single message** - Gotchi PNG (512×512) with complete traits as caption
-  - Image on top
-  - Traits text below (in same message)
-  - Download options menu at end of caption
+```
+[Gotchi PNG Image]
+
+👻 **Gotchi #9638 - aaigotchi**
+
+**📊 Stats:**
+⭐ BRS: **534** (MYTHICAL tier)
+💜 Kinship: **2,795**
+🎮 Level: **11** (XP: 5,890)
+👻 Haunt: **1**
+💎 Collateral: **WETH**
+
+**🎭 Traits:**
+⚡ Energy: **2**
+👊 Aggression: **66**
+👻 Spookiness: **99**
+🧠 Brain Size: **77**
+
+**👔 Wearables:** None equipped
+
+LFGOTCHi! 🦞🚀
+```
+
+### Advanced: Custom Formats
+
+If you need different formats, use `find-gotchi.sh`:
 
 **Step 2: User chooses which format to download**
 ```bash
@@ -156,3 +184,35 @@ gotchi-finder/
 
 Built with 💜 by AAI  
 **LFGOTCHi!** 🦞✨
+
+## Version 1.2.0 - BRS Accuracy Fix
+
+**CRITICAL UPDATE:** Now uses `withSetsRarityScore` from Base subgraph!
+
+### What Changed
+- ✅ **BRS now includes wearable set bonuses**
+- ✅ **Matches Aavegotchi website exactly**
+- ✅ **Queries Base subgraph for complete BRS data**
+
+### BRS Breakdown
+The displayed BRS now includes:
+1. **Base Rarity Score** (from traits)
+2. **Wearables modifier** (individual wearable bonuses)
+3. **Set bonuses** (wearing matching wearable sets)
+
+**Example (Slide #23795):**
+```
+Base BRS: 601
++ Wearables: +392
++ Set Bonuses: +13
+= Total: 1006 ✅
+```
+
+### Technical Details
+- Queries Goldsky Base subgraph: `withSetsRarityScore` field
+- Falls back to `modifiedRarityScore` if subgraph unavailable
+- 100% accurate to website leaderboards
+
+---
+**Previous version (1.1.0) showed only base + wearables, missing set bonuses**
+

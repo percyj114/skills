@@ -32,22 +32,30 @@ Find and display any Aavegotchi by ID with complete traits and image.
 
 ## Usage
 
-### Interactive Workflow (Recommended)
+### Default Behavior (ALWAYS)
 
-**Step 1: Preview gotchi**
+**When you run gotchi-finder, it ALWAYS outputs:**
+
+1. **🖼️ Gotchi PNG image** (512×512) - sent as photo/media
+2. **📊 Stats as caption** - displayed below the image
+
+This creates a single message with the gotchi artwork on top and complete metadata below.
+
+**Example:**
 ```bash
 bash scripts/find-gotchi.sh 9638
 ```
 
-**Presentation order:**
-1. 🖼️ Gotchi image (PNG preview 512x512) - **shown first**
-2. 📊 Complete trait information - **shown below image**
-3. 📥 Download options menu - **at the end**
+**Output:** One Telegram message with:
+- Image at top (PNG)
+- Caption below with all stats, traits, and info
 
-**Step 2: User chooses format**
-User can then request specific format(s):
+### Additional Format Options (Optional)
+
+After seeing the default output, users can request additional formats:
+
 ```bash
-# Hi-res PNG
+# Hi-res PNG (1024×1024)
 bash scripts/find-gotchi.sh 9638 --format hires
 
 # SVG vector
@@ -91,43 +99,48 @@ bash scripts/find-gotchi.sh 9638 --format all
 - `gotchi-{ID}.png` - Standard PNG (preview/png/all)
 - `gotchi-{ID}-hires.png` - Hi-res PNG (hires/all)
 
-## Display Format
+## Display Format (OFFICIAL)
 
 ### Live Gotchis (Status 3)
 
-**Single message with image + caption:**
+**ALWAYS send as single message with media + caption:**
 
-Image: Gotchi PNG (512×512)
-
-Caption:
+**Format:**
 ```
-👻 Gotchi #{ID} "{Name}"
-
-📊 Stats:
-⭐ BRS: {brs} (Modified: {modifiedBrs})
-💜 Kinship: {kinship}
-🎯 Level: {level}
-✨ XP: {xp}
-🏰 Haunt: {haunt}
-🔒 Locked: {Yes/No}
-
-🎭 Traits:
-• Energy: {value}
-• Aggression: {value}
-• Spookiness: {value}
-• Brain Size: {value}
-• Eye Shape: {value}
-• Eye Color: {value}
-
-📥 Download options:
-• Standard PNG (512×512)
-• Hi-res PNG (1024×1024)
-• SVG (vector)
-• All formats
+media: gotchi-{ID}.png (512×512 PNG image)
+caption: (text below)
 ```
+
+**Caption Template:**
+```
+👻 **Gotchi #{ID} - {Name}**
+
+**📊 Stats:**
+⭐ BRS: **{brs}** ({TIER} tier)
+💜 Kinship: **{kinship}**
+🎮 Level: **{level}** (XP: {xp})
+👻 Haunt: **{haunt}**
+💎 Collateral: **{collateral}**
+
+**🎭 Traits:**
+⚡ Energy: **{value}**
+👊 Aggression: **{value}**
+👻 Spookiness: **{value}**
+🧠 Brain Size: **{value}**
+
+**👔 Wearables:** {None/equipped count}
+
+LFGOTCHi! 🦞🚀
+```
+
+**Rarity Tiers:**
+- BRS ≥ 580: GODLIKE
+- BRS ≥ 525: MYTHICAL  
+- BRS ≥ 475: UNCOMMON
+- BRS < 475: COMMON
 
 ### Portals (Status 0-1)
-**Single message:** Portal image with status info as caption
+**Single message:** Portal PNG image with status info as caption
 
 ## Technical Details
 
@@ -148,10 +161,34 @@ Caption:
 
 ## Files
 
-- `scripts/find-gotchi.sh` - Main entry point
+- `scripts/show-gotchi.sh` - **Display gotchi (RECOMMENDED)** - Shows PNG + stats in single message
+- `scripts/find-gotchi.sh` - Fetch and convert (advanced usage)
 - `scripts/fetch-gotchi.js` - Fetch from blockchain
 - `scripts/svg-to-png.js` - Convert SVG to PNG
 - `package.json` - Node dependencies
+
+## For OpenClaw Agents
+
+**Use `show-gotchi.sh` - it outputs the exact format needed for the message tool:**
+
+```bash
+cd ~/.openclaw/workspace/skills/gotchi-finder
+bash scripts/show-gotchi.sh 8746
+```
+
+**Output:**
+```
+PNG_PATH=./gotchi-8746.png
+CAPTION=<<EOF
+👻 **Gotchi #8746 - LE PETIT MARX**
+...complete stats...
+EOF
+```
+
+**Then use:**
+```javascript
+message(action: "send", media: PNG_PATH, caption: CAPTION)
+```
 
 ## Installation
 
