@@ -220,6 +220,19 @@ node scripts/stock_copilot_pro.mjs analyze --symbol NVDA --skip-questionnaire --
 - Watchlist local file path: `config/watchlist.json` (example: `config/watchlist.example.json`).
 - OpenClaw scheduler example: `config/openclaw-cron.example.json`.
 
+## Containerized local development
+
+Development and OpenClaw integration files are managed at repository root under
+`dev-infra/` to keep this skill folder publish-clean for ClawHub.
+
+- Start dev container: `make up`
+- Check runtime: `make check`
+- Run regression smoke: `make smoke`
+- Stop containers: `make down`
+
+OpenClaw session prompt fixtures are in
+`dev-infra/stock-copilot-pro/prompts/` (not in skill package).
+
 ## Troubleshooting
 
 - `QVERIS_API_KEY environment variable is required`
@@ -276,6 +289,6 @@ Validated via QVeris MCP tool executions:
 
 ## Disclaimer
 
-This skill is for research and educational purposes only.  
+This skill is for research and educational purposes only.
 It does not constitute financial or investment advice.
 

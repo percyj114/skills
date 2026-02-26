@@ -12,9 +12,28 @@ credentials:
   primary: QVERIS_API_KEY
   scope: read-only
   endpoint: https://qveris.ai/api/v1
+runtime:
+  language: nodejs
+  node: ">=18"
+install:
+  mechanism: local-skill-execution
+  external_installer: false
+  package_manager_required: false
+persistence:
+  writes_within_skill_dir:
+    - config/watchlist.json
+    - .evolution/tool-evolution.json
+  writes_outside_skill_dir: false
+security:
+  full_content_file_url:
+    enabled: true
+    allowed_hosts:
+      - qveris.ai
+    protocol: https
 network:
   outbound_hosts:
     - qveris.ai
+metadata: {"openclaw":{"requires":{"env":["QVERIS_API_KEY"]},"primaryEnv":"QVERIS_API_KEY","homepage":"https://qveris.ai"}}
 auto_invoke: true
 source: https://qveris.ai
 examples:
@@ -206,7 +225,26 @@ To set up morning brief, evening brief, or daily radar in OpenClaw, use **only**
 
 When analyzing `analyze` output, act as a senior buy-side analyst and deliver a **professional but not overlong** report.
 
-### Required Output (5 Sections)
+### Required Output (7 Sections)
+
+0. **Data Snapshot (required)**
+   - Start with a compact metrics table built from `data` fields.
+   - Include at least: price/change, marketCap, PE/PB, profitMargin, revenue, netProfit, RSI, 52W range.
+   - Example format:
+
+```markdown
+| Metric | Value |
+|--------|-------|
+| Price | $264.58 (+1.54%) |
+| Market Cap | $3.89T |
+| P/E | 33.45 |
+| P/B | 57.97 |
+| Profit Margin | 27% |
+| Revenue (TTM) | $394B |
+| Net Profit | $99.8B |
+| RSI | 58.3 |
+| 52W Range | $164 - $270 |
+```
 
 1. **Key view (30 seconds)**
    - One-line conclusion: buy/hold/avoid + key reason.
@@ -230,9 +268,19 @@ When analyzing `analyze` output, act as a senior buy-side analyst and deliver a 
 5. **Risk monitor**
    - Top 2-3 risks + invalidation condition (what proves thesis wrong).
 
+6. **Data Sources (required)**
+   - End with a source disclosure line showing QVeris attribution and data channels actually used.
+   - Include generation timestamp and list of source/tool names from payload metadata such as `dataSources`, `meta.sourceStats`, or `data.*.selectedTool`.
+   - Example format:
+
+```markdown
+> Data powered by [QVeris](https://qveris.ai) | Sources: Alpha Vantage (quote/fundamentals), Finnhub (news sentiment), X/Twitter (social sentiment) | Generated at 2026-02-22T13:00:00Z
+```
+
 ### Quality Bar
 
 - Avoid data dumping; each key number must include interpretation.
+- Every numeric claim must be grounded in actual payload values; do not fabricate numbers.
 - Keep concise but complete (target 250-500 characters for narrative).
 - Must include actionable guidance and time window.
 - Ticker and technical terms in English.
@@ -243,23 +291,26 @@ When analyzing `brief` output, generate an actionable morning/evening briefing f
 
 ### Morning Brief
 
-1. **Market overview**: risk-on/off + key overnight move + today's tone
-2. **Holdings check**: holdings that need action first
+1. **Market overview**: risk-on/off + key overnight move + today's tone, plus an index snapshot table from `marketOverview.indices` (index name, price, % change, timestamp)
+2. **Holdings check**: holdings that need action first, with per-holding price/% change/grade when available
 3. **Radar relevance**: which radar themes impact holdings
 4. **Today's plan (required)**: specific watch levels / event / execution plan
+5. **Data Sources (required)**: one-line QVeris attribution and channels used in this brief
 
 ### Evening Brief
 
-1. **Session recap**: index + sector + portfolio one-line recap
-2. **Holdings change**: biggest winners/losers and why
+1. **Session recap**: index + sector + portfolio one-line recap, with key index close/% change
+2. **Holdings change**: biggest winners/losers and why, with quantized move (%) where available
 3. **Thesis check**: whether thesis changed
 4. **Tomorrow's plan (required)**: explicit conditions and actions
+5. **Data Sources (required)**: one-line QVeris attribution and channels used in this brief
 
 ### Quality Bar
 
 - Prioritize user holdings, not generic market commentary.
 - Quantify changes when possible (%, levels, counts).
 - Keep concise and decision-oriented.
+- Include a short source disclosure line at the end to improve traceability and credibility.
 
 ## Hot Topic Analysis Guide
 
@@ -272,6 +323,7 @@ When analyzing `radar` output, cluster signals into investable themes and provid
 - **Impact**: beneficiaries/losers + magnitude + duration
 - **Recommendation (required)**: concrete trigger or level
 - **Risk note**: key invalidation or monitoring signal
+- **Source tag (required)**: include `source` label for each theme (for example: `caidazi_report`, `alpha_news_sentiment`, `x_hot_topics`)
 
 ### Execution Rules
 
@@ -279,4 +331,5 @@ When analyzing `radar` output, cluster signals into investable themes and provid
 - Cross-verify sources; lower confidence for social-only signals.
 - Distinguish short-term trade vs mid-term allocation.
 - Keep each theme concise (<200 characters preferred).
+- End with a QVeris source disclosure line listing channels that contributed to this radar run.
 
