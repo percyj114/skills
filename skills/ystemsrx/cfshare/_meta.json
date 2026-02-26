@@ -1,11 +1,17 @@
 {
   "owner": "ystemsrx",
   "slug": "cfshare",
-  "displayName": "CFShare",
+  "displayName": "CF Share",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770858286278,
-    "commit": "https://github.com/openclaw/skills/commit/94f52f0a9e36708913202082a89232e02db83618"
+    "version": "0.1.5",
+    "publishedAt": 1772020075897,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770858286278,
+      "commit": "https://github.com/openclaw/skills/commit/94f52f0a9e36708913202082a89232e02db83618"
+    }
+  ]
 }

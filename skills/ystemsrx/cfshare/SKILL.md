@@ -1,61 +1,156 @@
 ---
 name: cfshare
-description: Expose local services, ports, files, or directories as temporary public HTTPS links via Cloudflare Quick Tunnel. Use for sharing local services, sending downloadable files, previewing content, etc.
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "☁️",
-        "skillKey": "cfshare",
-        "requires":
-          {
-            "bins": ["cloudflared"],
-            "config": ["plugins.entries.cfshare.enabled"],
-          },
-      },
-  }
+description: Use the cfshare CLI to expose local ports/files as temporary Cloudflare Quick Tunnel URLs. Trigger when a user needs a temporary public URL for a local service, needs to share files/directories from terminal, or needs to inspect/export cfshare audit and policy state.
+metadata: { "cfshare": { "emoji": "☁️", "requires": { "bins": ["cfshare", "cloudflared"] }, "author": "ystemsrx" } }
+allowed-tools: Bash(cfshare:*)
 ---
 
-# CFShare — Cloudflare Quick Tunnel Exposure
+# CFShare CLI Skill
 
-Expose local services, ports, files, or directories as temporary public `https://*.trycloudflare.com` links.
+`cfshare` wraps Cloudflare Quick Tunnel and outputs structured JSON.
 
----
+## Install when version checks fail
 
-## Standard Workflow
+If either command fails, install missing binaries before running any `cfshare` tool.
 
-1. **`env_check()`** — Always call first to verify `cloudflared` is available and see current policy defaults.
-2. **Create exposure:**
-   - Have a running local service? → `expose_port(port, opts?)`
-   - Need to share/preview files or directories? → `expose_files(paths, opts?)`
-3. **After creation succeeds:** Present `public_url` and `expires_at` to the user. Remind them to call `exposure_stop` when finished.
-4. **Inspect / monitor:** `exposure_get(id)` with optional `probe_public: true` to verify end-to-end reachability.
-5. **Troubleshoot:** `exposure_logs(id)` when something goes wrong.
-6. **Cleanup:** `exposure_stop(id)` or `exposure_stop(id="all")`.
+```bash
+cfshare --version
+cloudflared --version
+```
 
----
+1. If `cfshare --version` fails, install `cfshare` (requires Node.js and npm):
 
-## Tool Reference
+```bash
+npm install -g @ystemsrx/cfshare
+```
 
-### 1. `env_check`
+2. If `cloudflared --version` fails, install `cloudflared` by platform:
 
-Check that `cloudflared` is installed, resolve its version, and return effective policy defaults.
+macOS:
 
----
+```bash
+brew install cloudflare/cloudflare/cloudflared
+```
 
-### 2. `expose_port`
+Debian/Ubuntu:
 
-Expose an already-running local service via Cloudflare Quick Tunnel. The tool probes `127.0.0.1:<port>` before proceeding and rejects blocked ports.
+```bash
+curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflared.list
+sudo apt-get update && sudo apt-get install -y cloudflared
+```
 
-**Errors:** `"invalid port"`, `"port blocked by policy: <N>"`, `"local service is not reachable on 127.0.0.1:<N>"`.
+Windows (PowerShell):
 
----
+```powershell
+winget install --id Cloudflare.cloudflared
+```
 
-### 3. `expose_files`
+WSL/Linux generic binary install:
 
-Copy files/directories into a temporary workspace, start a read-only static file server, and tunnel it publicly.
+```bash
+curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
+```
 
-**File Serving Behavior**
+3. Re-run both version checks. If still failing, stop and report exact stderr output to user.
+
+## CLI contract
+
+```bash
+cfshare <tool> [params-json] [options]
+```
+
+Supported tools:
+
+- `env_check`
+- `expose_port`
+- `expose_files`
+- `exposure_list`
+- `exposure_get`
+- `exposure_stop`
+- `exposure_logs`
+- `maintenance`
+- `audit_query`
+- `audit_export`
+
+Global options:
+
+- `--params '<json>'` or `--params-file <path>`
+- `--config '<json>'` or `--config-file <path>`
+- `--workspace-dir <dir>` (only used by `expose_files`)
+- `--keep-alive` (for `expose_*`, keep foreground process alive)
+- `--no-keep-alive` (default for `expose_*`, print result then exit)
+- `--compact`
+
+Command names accept `_` and `-` (for example `expose-port` == `expose_port`).
+
+## Standard workflow for agents
+
+1. Run `env_check` first.
+2. Create exposure with `expose_port` or `expose_files`.
+3. Return `public_url` and `expires_at` to user immediately.
+4. By default, `expose_*` prints result and exits.
+5. Use `--keep-alive` only when foreground lifecycle control is needed; stop with `Ctrl+C` when done.
+
+Recommended for stable automation:
+
+- Prefer `--params`/`--params-file` over positional raw JSON to reduce quoting errors.
+- Prefer `access: "token"` for sensitive content.
+- Treat `access: "none"` as publicly readable by anyone with link.
+
+## Tool usage
+
+### 1) env_check
+
+```bash
+cfshare env_check
+```
+
+Returns:
+
+- `cloudflared.ok/path/version`
+- `defaults` (effective policy + runtime paths)
+- `warnings`
+
+### 2) expose_port
+
+```bash
+cfshare expose_port --params '{"port":3000,"opts":{"access":"token","ttl_seconds":3600}}'
+```
+
+Params:
+
+- `port`: `1..65535`
+- `opts.ttl_seconds`
+- `opts.access`: `token | basic | none`
+- `opts.protect_origin`: default `access != "none"`
+- `opts.allowlist_paths`: path prefix allowlist for reverse proxy
+
+Returns:
+
+- `id`
+- `public_url` (token mode auto-appends `?token=...`)
+- `local_url`
+- `expires_at`
+- `access_info` (secrets are masked)
+
+### 3) expose_files
+
+```bash
+cfshare expose_files --params '{"paths":["./dist"],"opts":{"mode":"normal","presentation":"preview","access":"none"}}'
+```
+
+Params:
+
+- `paths`: files/directories to copy into temp workspace
+- `opts.mode`: `normal | zip` (default `normal`)
+- `opts.presentation`: `download | preview | raw` (default `download`)
+- `opts.ttl_seconds`
+- `opts.access`: `token | basic | none`
+- `opts.max_downloads`: auto-stop after threshold
+
+File Serving Behavior:
 
 Mode: normal
 
@@ -66,7 +161,7 @@ Mode: zip
 
 - All files are packaged into a ZIP archive.
 
-**Presentation**
+Presentation:
 
 - Default behaviors: download | preview | raw
 - Behavior can be overridden via query parameters.
@@ -75,69 +170,93 @@ Mode: zip
   - raw → serves original content without any wrapper.
 - If a file type is not previewable, preview automatically falls back to raw, then to download.
 
----
+Returns:
 
-### 4. `exposure_list`
+- `id`, `public_url`, `expires_at`, `mode`, `presentation`
+- `manifest`, `manifest_mode`, `manifest_meta`
 
-List all tracked sessions (both active and recently-stopped within-process).
+### 4) exposure_list
 
----
+```bash
+cfshare exposure_list
+```
 
-### 5. `exposure_get`
+Lists tracked sessions with `id/type/status/public_url/local_url/expires_at`.
 
-Get detailed information about one or more sessions. Supports three selection modes (mutually exclusive input shapes via union schema):
+### 5) exposure_get
 
----
+```bash
+cfshare exposure_get --params '{"id":"port_xxx","opts":{"probe_public":true}}'
+cfshare exposure_get --params '{"filter":{"status":"running"},"fields":["id","status","public_url"]}'
+```
 
-### 6. `exposure_stop`
+Supports selector by `id`, `ids`, or `filter`.
+Can probe public reachability via `opts.probe_public`.
 
-Stop one, several, or all exposures. Terminates cloudflared process, shuts down origin/proxy servers, and deletes temporary workspace files.
+### 6) exposure_stop
 
----
+```bash
+cfshare exposure_stop --params '{"id":"all"}'
+```
 
-### 7. `exposure_logs`
+Stops tunnel/proxy/origin and removes temporary workspace.
+Returns `{stopped, failed, cleaned}`.
 
-Fetch merged logs from cloudflared tunnel and origin server components.
+### 7) exposure_logs
 
----
+```bash
+cfshare exposure_logs --params '{"id":"files_xxx","opts":{"component":"all","lines":200}}'
+```
 
-### 8. `maintenance`
+`component`: `tunnel | origin | all`.
 
-Lifecycle management operations.
+### 8) maintenance
 
-**Action details:**
+```bash
+cfshare maintenance --params '{"action":"run_gc"}'
+cfshare maintenance --params '{"action":"set_policy","opts":{"policy":{"maxTtlSeconds":7200},"ignore_patterns":["*.pem",".env*"]}}'
+```
 
-- **`start_guard`** — Start the TTL expiration reaper (runs periodically; usually auto-started).
-- **`run_gc`** — Clean up orphaned workspace directories and stale processes not tracked by any active session.
-- **`set_policy`** — Persist a policy change to disk and reload. Requires at least one of `opts.policy` or `opts.ignore_patterns`.
+Actions:
 
----
+- `start_guard`
+- `run_gc`
+- `set_policy` (requires `opts.policy` or `opts.ignore_patterns`)
 
-### 9. `audit_query`
+### 9) audit_query
 
-Search audit event log.
+```bash
+cfshare audit_query --params '{"filters":{"event":"exposure_started","limit":100}}'
+```
 
----
+### 10) audit_export
 
-### 10. `audit_export`
+```bash
+cfshare audit_export --params '{"range":{"from_ts":"2026-01-01T00:00:00Z","output_path":"./audit.jsonl"}}'
+```
 
-Export filtered audit events to a local JSONL file.
+## Runtime files (CLI mode)
 
----
+Default CLI state directory is `~/.cfshare`:
 
-## Security & Policy Defaults
+- `policy.json`
+- `policy.ignore`
+- `audit.jsonl`
+- `sessions.json`
+- `workspaces/`
+- `exports/`
 
-Policy priority (highest wins): **policy JSON file** > **plugin config** > **built-in defaults**.
+## Important limitations in CLI mode
 
----
+- `expose_port` and `expose_files` exit by default after printing result; use `--keep-alive` to hold foreground.
+- Current session registry is in-process memory; separate `cfshare` invocations do not restore full live session state.
+- `basic` mode credentials are masked in outputs, so `token` is usually the practical authenticated mode for agent-delivered links.
 
-## Response Behavior Rules
+## Troubleshooting
 
-When presenting results to the user, the LLM **must**:
+- `cloudflared binary not found`: install `cloudflared` or set `--config '{"cloudflaredPath":"..."}'`
+- `local service is not reachable on 127.0.0.1:<port>`: start service first
+- `path blocked by ignore policy`: adjust `policy.ignore` or `maintenance set_policy`
+- `port blocked by policy`: update `blockedPorts` in policy if intentional
 
-1. **Always display `public_url` and `expires_at`** after creating an exposure.
-2. **Present timestamps** in the user’s local time zone using a human-readable format (`yyyy-mm-dd HH:MM:SS`). Never include timezone indicators or raw ISO strings.
-3. **Warn** when `access` mode is `"none"` — the link is publicly accessible without authentication.
-4. **Include cleanup instructions** — include `exposure_stop` guidance after successful sharing.
-5. **On error**, suggest `exposure_logs(id)` for diagnostics.
-6. **For security** — if user intent is ambiguous or potentially sensitive, request confirmation before creating exposure.
+Use `CFSHARE_LOG_LEVEL=info` or `CFSHARE_LOG_LEVEL=debug` for more stderr logs.
