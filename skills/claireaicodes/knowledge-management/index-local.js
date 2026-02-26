@@ -9,11 +9,53 @@ const path = require('path');
 const crypto = require('crypto');
 
 // ============ CONFIGURATION ============
-const WORKSPACE = path.resolve('/home/ubuntu/.openclaw/workspace');
+function resolveWorkspace() {
+  // Priority 1: CLI argument (explicit override)
+  const workspaceArgIdx = process.argv.indexOf('--workspace');
+  if (workspaceArgIdx !== -1 && workspaceArgIdx + 1 < process.argv.length) {
+    return path.resolve(process.argv[workspaceArgIdx + 1]);
+  }
+
+  // Priority 2: Environment variable
+  if (process.env.OPENCLAW_WORKSPACE) {
+    return path.resolve(process.env.OPENCLAW_WORKSPACE);
+  }
+
+  // Priority 3: Current directory IF it looks like a workspace (contains MEMORY.md or memory/)
+  const cwd = process.cwd();
+  if (cwd) {
+    try {
+      if (fs.existsSync(path.join(cwd, 'MEMORY.md')) || fs.existsSync(path.join(cwd, 'memory'))) {
+        return cwd;
+      }
+    } catch (e) {
+      // ignore and fall through
+    }
+  }
+
+  // Priority 4: Hardcoded default (maintains backward compatibility for cron)
+  return path.resolve('/home/ubuntu/.openclaw/workspace');
+}
+
+const WORKSPACE = resolveWorkspace();
 const MEMORY_DIR = path.join(WORKSPACE, 'memory');
 const MEMORY_FILE = path.join(WORKSPACE, 'MEMORY.md');
-const STATE_FILE = path.join(MEMORY_DIR, 'local-sync-state.json');
-const SYNC_LOG = path.join(MEMORY_DIR, 'local-sync-log.md');
+
+// Determine output directory for organized KM files (default: workspace/memory/KM)
+function resolveOutputDir() {
+  // CLI override: --output-dir <path>
+  const outArgIdx = process.argv.indexOf('--output-dir');
+  if (outArgIdx !== -1 && outArgIdx + 1 < process.argv.length) {
+    const outPath = process.argv[outArgIdx + 1];
+    return path.isAbsolute(outPath) ? outPath : path.resolve(WORKSPACE, outPath);
+  }
+  // Default: memory/KM inside workspace
+  return path.join(WORKSPACE, 'memory', 'KM');
+}
+
+const OUTPUT_DIR = resolveOutputDir();
+const STATE_FILE = path.join(OUTPUT_DIR, 'local-sync-state.json');
+const SYNC_LOG = path.join(OUTPUT_DIR, 'local-sync-log.md');
 
 // Content type folders (relative to workspace)
 const CONTENT_TYPES = ['Research', 'Decision', 'Insight', 'Lesson', 'Pattern', 'Project', 'Reference', 'Tutorial'];
@@ -26,6 +68,7 @@ function log(level, message) {
 
 function info(msg) { log('INFO', msg); }
 function error(msg) { log('ERROR', msg); }
+function warning(msg) { log('WARN', msg); }
 function debug(msg) { if (process.argv.includes('--verbose')) log('DEBUG', msg); }
 
 // ============ MEMORY PARSER (unchanged) ============
@@ -630,7 +673,7 @@ function main() {
   // Initialize components
   const parser = new MemoryParser(WORKSPACE);
   const classifier = new EntryClassifier();
-  const storage = new LocalStorageManager(WORKSPACE);
+  const storage = new LocalStorageManager(OUTPUT_DIR);
   const orchestrator = new LocalOrchestrator(parser, classifier, storage);
 
   switch (args.tool) {
@@ -659,7 +702,7 @@ function main() {
       return { success: true };
 
     case 'summarize':
-      const outputDir = args.output_dir || WORKSPACE;
+      const outputDir = args.output_dir || OUTPUT_DIR;
       storage.generateIndex(outputDir);
       return { success: true };
 
@@ -673,12 +716,27 @@ function main() {
 Knowledge Management Skill (Local Storage)
 Usage: km <tool> [options]
 
+Input Workspace (where MEMORY.md and memory/ live) - detected automatically:
+  1. OPENCLAWORKSPACE environment variable
+  2. --workspace <path> CLI argument
+  3. Current working directory (pwd) - 'cd /path/to/workspace && km ...'
+  4. Default: ~/.openclaw/workspace
+
+Output Directory (where Research/, Decision/, etc. are stored):
+  --output-dir <path>  - Override default output location
+                       - Default: <workspace>/memory/KM
+                       - Can be absolute or relative to workspace
+
 Tools:
-  sync       - Sync memory files to local folders (default: days_back=7)
-  classify   - Parse and classify entries, output JSON
-  summarize  - Generate index files for each content type
-  cleanup    - Remove orphaned files not tracked in state
+  sync       - Sync memory entries to output directory
+  classify   - Parse and classify without storing (JSON output)
+  summarize  - Generate index files in output directory
+  cleanup    - Remove orphaned files from output directory
   list_types - List all available content types
+
+Global Options:
+  --workspace <path>   - Input workspace (where source files are)
+  --output-dir <path>  - Output directory for organized files (default: memory/KM)
 
 Options (sync):
   --days_back <num>  - How many days of daily files to include (default: 7)
@@ -690,17 +748,31 @@ Options (classify):
   --days_back <num>  - 0 = only MEMORY.md, otherwise include daily files
 
 Options (summarize):
-  --output_dir <path> - Where to write index files (default: workspace root)
+  --output_dir <path> - Override where to write index files (default: output dir)
 
 Options (cleanup):
   --dry_run          - Preview what would be deleted
 
 Examples:
-  km sync --dry_run --days_back 1
+  # Use default locations (input at workspace root, output in memory/KM)
   km sync --days_back 7 --cleanup
+
+  # Custom input and output
+  km sync --workspace /custom/input --output-dir /custom/output
+
+  # Dry run
+  km sync --dry_run --days_back 1
+
+  # Classify entries
   km classify --days_back 3 > entries.json
-  km summarize --output_dir ~/.openclaw/workspace
+
+  # Generate indexes
+  km summarize
+
+  # Cleanup orphans
   km cleanup --dry_run
+
+  # List content types
   km list_types
 `);
         return { success: true };

@@ -1,6 +1,6 @@
 {
   "name": "openclaw-skill-knowledge-management",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Knowledge management skill — sync memory files to local organized folders with intelligent classification",
   "main": "index-local.js",
   "bin": {

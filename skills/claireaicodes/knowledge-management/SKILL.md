@@ -2,13 +2,7 @@
 name: knowledge-management
 description: Organize and classify OpenClaw knowledge entries into local folders by content type (Research, Decision, Insight, Lesson, Pattern, Project, Reference, Tutorial).
 homepage: https://github.com/ClaireAICodes/openclaw-skill-knowledge-management
-metadata:
-  {
-    "openclaw": {
-      "emoji": "📚",
-      "bins": ["km"]
-    }
-  }
+metadata: { "openclaw": { "emoji": "📚", "requires": { "bins": ["km"] } } }
 ---
 
 # Knowledge Management Skill (Local Storage)
@@ -26,24 +20,52 @@ Organize your OpenClaw memory files into a structured local knowledge base. Auto
 
 ## Setup
 
-No API keys needed! Ensure your workspace has the required folders:
+No API keys needed! The skill uses two locations:
 
+- **Input Workspace**: Where `MEMORY.md` and `memory/` daily files are read from.
+- **Output Directory**: Where organized folders (`Research/`, `Decision/`, etc.) are written.
+
+Both are detected automatically:
+
+### Input Workspace (source files)
+1. `OPENCLAWORKSPACE` environment variable
+2. `--workspace <path>` CLI argument
+3. Current working directory (if it contains `MEMORY.md`)
+4. Default: `~/.openclaw/workspace`
+
+### Output Directory (organized files)
+1. `--output-dir <path>` CLI argument (relative to workspace or absolute)
+2. Default: `<workspace>/memory/KM`
+
+The skill will create the output directory and all content-type folders automatically.
+
+If you want to pre-create:
 ```bash
-mkdir -p ~/.openclaw/workspace/{Research,Decision,Insight,Lesson,Pattern,Project,Reference,Tutorial}
+mkdir -p ~/.openclaw/workspace/memory/KM/{Research,Decision,Insight,Lesson,Pattern,Project,Reference,Tutorial}
 ```
-
-The skill will create missing folders automatically.
 
 ## Usage Examples
 
-### Sync last 7 days with cleanup
+### Default locations (input at workspace root, output in memory/KM)
 ```bash
+# From any directory (workspace auto-detected)
 km sync --days_back 7 --cleanup
+```
+
+### Custom input workspace and output directory
+```bash
+km sync --workspace /custom/input/workspace --output-dir /custom/output/KM --days_back 7
+```
+
+### Using environment variables
+```bash
+export OPENCLAWORKSPACE=/custom/input/workspace
+km sync --output-dir /custom/output/KM --days_back 7
 ```
 
 ### Dry run (preview only)
 ```bash
-km sync --days_back 14 --dry_run
+km sync --dry_run --days_back 1
 ```
 
 ### Classify entries and export JSON
@@ -51,9 +73,11 @@ km sync --days_back 14 --dry_run
 km classify --days_back 3 > entries.json
 ```
 
-### Generate index files
+### Generate index files (default: output directory)
 ```bash
-km summarize --output_dir ~/.openclaw/workspace
+km summarize
+# or specify different location
+km summarize --output_dir ~/some/other/folder
 ```
 
 ### Preview orphan cleanup
@@ -61,23 +85,40 @@ km summarize --output_dir ~/.openclaw/workspace
 km cleanup --dry_run
 ```
 
+### List content types
+```bash
+km list_types
+```
+
 ## Storage Structure
+
+Assuming default configuration:
+- Input workspace: `~/.openclaw/workspace`
+- Output directory: `~/.openclaw/workspace/memory/KM`
 
 ```
 ~/.openclaw/workspace/
-├── Research/
-│   ├── 20260215T1448_Title_Here_HASH.md
+├── MEMORY.md                (source file - you edit this)
+├── memory/                  (daily memory files)
+│   ├── 2025-02-11.md
+│   ├── 2025-02-12.md
 │   └── ...
-├── Decision/
-├── Insight/
-├── Lesson/
-├── Pattern/
-├── Project/
-├── Reference/
-├── Tutorial/
-├── Research_Index.md
-├── Decision_Index.md
-└── ... (other index files)
+└── memory/KM/               (organized output by the skill)
+    ├── local-sync-state.json
+    ├── local-sync-log.md
+    ├── Research/
+    │   ├── 20260215T1448_Title_Here_HASH.md
+    │   └── ...
+    ├── Decision/
+    ├── Insight/
+    ├── Lesson/
+    ├── Pattern/
+    ├── Project/
+    ├── Reference/
+    ├── Tutorial/
+    ├── Research_Index.md
+    ├── Decision_Index.md
+    └── ... (other index files)
 ```
 
 ### File Naming
@@ -154,6 +195,8 @@ openclaw cron add \
   --message "km sync --days_back 7"
 ```
 
+Note: By default, the skill reads `MEMORY.md` from `~/.openclaw/workspace` and writes organized files to `~/.openclaw/workspace/memory/KM`. Use `--workspace` or `--output-dir` to customize these locations.
+
 ## Troubleshooting
 
 **"km: command not found"**
@@ -166,7 +209,7 @@ openclaw cron add \
 - Check write permissions; run with `--verbose`.
 
 **Old entries not syncing**
-- They may already be in state. Clear `memory/local-sync-state.json` to force re-sync (caution: may duplicate files).
+- They may already be in state. Clear `memory/KM/local-sync-state.json` to force re-sync (caution: may duplicate files).
 
 **Duplicate files**
 - Run `km cleanup` to remove orphans, then `km sync` to create missing files.
