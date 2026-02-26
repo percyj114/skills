@@ -1,209 +1,223 @@
----
-name: fairscale-solana
-description: Solana wallet reputation. Ask anything in plain English — "is this a bot?", "whale?", "diamond hands?" — get instant answers.
-license: MIT
-metadata:
-  author: FairScale
-  version: "3.4.0"
----
+# FairScale Reputation Skill
 
-# FairScale — Reputation Intelligence for Solana
+Real-time wallet reputation scoring for Solana. Use this skill to check if a wallet is trustworthy before transacting.
 
-**Docs:** https://docs.fairscale.xyz
+## What This Skill Does
 
----
+- **Check wallet reputation** before any transaction
+- **Assess risk level** for a given transaction amount
+- **Apply custom rules** for your specific use case
+- **Batch check** multiple wallets at once
 
-## TWO ACCESS METHODS
+## When To Use This Skill
 
-### Method 1: API Key (Recommended)
+Use FairScale when:
+- An agent needs to decide whether to transact with a wallet
+- Filtering wallets for airdrops, whitelists, or access control
+- Assessing risk before accepting a trade or swap
+- Verifying counterparty reputation in agent-to-agent transactions
 
-Use if you have a FairScale API key.
+## Endpoints
 
-```
-GET https://api.fairscale.xyz/score?wallet=WALLET_ADDRESS
-Header: fairkey: YOUR_API_KEY
-```
+### GET /score
+Get the FairScore (0-100) for any Solana wallet.
 
-**Example:**
-```bash
-curl "https://api.fairscale.xyz/score?wallet=GFTVQdZumAnBRbmaRgN9n3Z5qH5nXvjMZXJ3EyqP32Tn" \
-  -H "fairkey: YOUR_API_KEY"
-```
-
-Get your key: https://sales.fairscale.xyz
-
----
-
-### Method 2: x402 Micropayments (For Agents with Wallets)
-
-No API key needed. Pay $0.05 USDC per call.
+**Free tier:** 100 calls/day
+**Pro tier:** 10,000 calls/day
 
 ```
-GET https://x402.fairscale.xyz/score?wallet=WALLET_ADDRESS
+GET https://api.fairscale.xyz/score?wallet=ADDRESS
 ```
 
-**Flow:**
-1. Call endpoint → Get 402 response with payment details
-2. Send 0.05 USDC to treasury wallet shown
-3. Retry with header: `x-payment-signature: YOUR_TX_SIGNATURE`
-4. Get wallet data
-
-**Pricing:**
-| Request | Price |
-|---------|-------|
-| Single wallet | $0.05 USDC |
-| Batch (10 wallets) | $0.40 USDC |
-
----
-
-## WHICH METHOD TO USE
-
-| Situation | Use |
-|-----------|-----|
-| Have API key configured | Method 1 (API Key) |
-| Agent has Solana wallet with USDC | Method 2 (x402) |
-| No API key, no wallet | Cannot access — need one or the other |
-
-**Check for API key first.** If `$FAIRSCALE_API_KEY` is set, use Method 1. Otherwise, try Method 2.
-
----
-
-## RESPONSE FIELDS
-
-| Field | Use |
-|-------|-----|
-| `fairscore` | The score (0-100) — **USE THIS** |
-| `tier` | bronze / silver / gold / platinum |
-| `badges` | Array — list each `badge.label` |
-| `features` | Object — raw metrics for custom logic |
-
----
-
-## QUICK RESPONSE FORMAT
-
-For simple "check this wallet" requests:
-
-```
-📊 FairScore: [fairscore]/100 | Tier: [tier]
-
-[✅ TRUSTED | ⚡ MODERATE | ⚠️ CAUTION | 🚨 HIGH RISK]
-
-🏅 Badges: [badge labels]
+**Response:**
+```json
+{
+  "wallet": "7xK9...",
+  "fairscore": 72,
+  "tier": "gold",
+  "vouch_boost": 1.5
+}
 ```
 
-**Risk thresholds:**
-- ≥60 → ✅ TRUSTED
-- 40-59 → ⚡ MODERATE  
-- 20-39 → ⚠️ CAUTION
-- <20 → 🚨 HIGH RISK
+### GET /check
+Pre-transaction risk assessment. Returns risk level and recommended max transaction amount.
 
----
-
-## NATURAL LANGUAGE → FEATURES
-
-When users ask in plain English, translate to the right features:
-
-| User asks | Check these | Logic |
-|-----------|-------------|-------|
-| "trustworthy?" | `fairscore` | ≥60 = yes |
-| "whale?" / "deep pockets?" | `lst_percentile_score`, `stable_percentile_score`, `native_sol_percentile` | All >70 = whale |
-| "bot?" / "sybil?" | `burst_ratio`, `platform_diversity` | burst >50 OR diversity <20 = bot |
-| "diamond hands?" | `conviction_ratio`, `no_instant_dumps` | conviction >60 = yes |
-| "active user?" | `active_days`, `tx_count`, `platform_diversity` | All >40 = active |
-| "OG?" / "veteran?" | `wallet_age_score` | >70 = OG |
-| "airdrop eligible?" | `wallet_age_score >50`, `platform_diversity >30`, `burst_ratio <30` | All must pass |
-| "creditworthy?" | `conviction_ratio`, `no_instant_dumps`, `wallet_age_score` | All >50 = yes |
-
----
-
-## RESPONSE EXAMPLES
-
-**"Is this a whale?"**
-```
-🐋 Whale Check: GFTVQd...P32Tn
-
-💰 LST Holdings: 97.7% — Top 3% 
-💵 Stablecoins: 27.5% — Low
-◎ Native SOL: 45.2% — Moderate
-
-Verdict: 🟡 PARTIAL WHALE — Heavy DeFi, not cash-rich.
-```
-
-**"Is this a bot?"**
-```
-🤖 Bot Check: GFTVQd...P32Tn
-
-⚡ Burst Ratio: 16.8% — Organic ✅
-🌐 Platforms: 96.6% — Diverse ✅
-
-Verdict: ✅ HUMAN — Not a bot.
-```
-
-**"Airdrop eligible?"**
-```
-🎁 Airdrop Check: GFTVQd...P32Tn
-
-📅 Age: 79.2% ✅
-🌐 Diversity: 96.6% ✅
-🤖 Burst: 16.8% ✅
-
-Verdict: ✅ ELIGIBLE
-```
-
----
-
-## CUSTOM CRITERIA
-
-When users define their own rules:
-
-> "Only wallets with conviction > 70"
+**Free tier:** 100 calls/day
 
 ```
-🔧 Custom Check: GFTVQd...P32Tn
-
-• Conviction > 70%: ❌ 69.7%
-
-Verdict: ❌ FAILS
+GET https://api.fairscale.xyz/check?wallet=ADDRESS&amount=500
 ```
 
----
+**Response:**
+```json
+{
+  "wallet": "7xK9...",
+  "fairscore": 72,
+  "risk_level": "medium",
+  "recommendation": "proceed_with_caution",
+  "max_suggested_amount_usd": 1000,
+  "amount_check": {
+    "requested": 500,
+    "max_suggested": 1000,
+    "proceed": true
+  }
+}
+```
 
-## ALL FEATURES
+### POST /score/custom
+Apply custom scoring rules. Pro tier required.
 
-| Feature | Description |
-|---------|-------------|
-| `fairscore` | Overall score (0-100) |
-| `tier` | bronze/silver/gold/platinum |
-| `wallet_age_score` | Account age percentile |
-| `tx_count` | Transaction count percentile |
-| `active_days` | Active days percentile |
-| `platform_diversity` | DeFi protocols used |
-| `conviction_ratio` | Holding behavior |
-| `burst_ratio` | Bot-like patterns (high = bad) |
-| `no_instant_dumps` | Doesn't quick-sell |
-| `lst_percentile_score` | LST holdings |
-| `stable_percentile_score` | Stablecoin holdings |
-| `native_sol_percentile` | SOL balance |
-| `net_sol_flow_30d` | Accumulating or draining |
+```
+POST https://api.fairscale.xyz/score/custom
+Content-Type: application/json
 
----
+{
+  "wallet": "7xK9...",
+  "rules": {
+    "min_score": 60,
+    "min_age_days": 180,
+    "no_rug_history": true,
+    "min_transaction_count": 100,
+    "min_volume_usd": 10000,
+    "max_burst_ratio": 0.5,
+    "min_tier": "silver"
+  }
+}
+```
 
-## CRITICAL RULES
+**Response:**
+```json
+{
+  "wallet": "7xK9...",
+  "passes": true,
+  "fairscore": 72,
+  "rule_results": {
+    "min_score": { "pass": true, "required": 60, "actual": 72 },
+    "min_age_days": { "pass": true, "required": 180, "actual": 340 },
+    "no_rug_history": { "pass": true, "actual": false },
+    "min_transaction_count": { "pass": true, "required": 100, "actual": 523 }
+  },
+  "recommendation": "proceed"
+}
+```
 
-1. **ALWAYS call the API** — Never guess, never reuse old data
-2. **Check for API key first** — Use Method 1 if `$FAIRSCALE_API_KEY` is set
-3. **Fall back to x402** — If no API key, use Method 2 (if agent has wallet)
-4. **Use exact endpoint** — `/score?wallet=ADDRESS`
-5. **Translate user intent** — Map plain English to features
-6. **Give verdicts** — Users want yes/no answers, not data dumps
-7. **If API fails** — Say "❌ Couldn't fetch data. Try again."
+### POST /batch
+Score multiple wallets at once. Pro tier required.
 
-**Never invent data. Never guess. Always call the API.**
+```
+POST https://api.fairscale.xyz/batch
+Content-Type: application/json
 
----
+{
+  "wallets": ["address1", "address2", "address3"]
+}
+```
 
-## LINKS
+**Response:**
+```json
+{
+  "count": 3,
+  "results": [
+    { "wallet": "address1", "fairscore": 72, "tier": "gold" },
+    { "wallet": "address2", "fairscore": 45, "tier": "silver" },
+    { "wallet": "address3", "fairscore": 23, "tier": "bronze" }
+  ]
+}
+```
+
+## Score Interpretation
+
+| Score | Tier | Risk Level | Recommendation |
+|-------|------|------------|----------------|
+| 80-100 | Platinum | Low | Proceed |
+| 60-79 | Gold | Medium | Proceed with caution |
+| 40-59 | Silver | High | Small amounts only |
+| 0-39 | Bronze | Very High | Avoid |
+
+## Example Usage
+
+### Basic Trust Check
+```
+User: "Should I accept a 500 USDC trade from wallet 7xK9...?"
+
+Agent steps:
+1. Call GET /check?wallet=7xK9...&amount=500
+2. Response: score 34, risk "very_high", recommendation "avoid"
+3. Respond: "This wallet has a very low reputation score (34/100). I recommend not proceeding with this trade."
+```
+
+### Filtering for Airdrop
+```
+User: "Filter this list of wallets for my airdrop - only 60+ score"
+
+Agent steps:
+1. Call POST /batch with wallet list
+2. Filter results where fairscore >= 60
+3. Return qualifying wallets
+```
+
+### Custom Agent Rules
+```
+Agent config: "Only trade with wallets that have score 70+, age 6+ months, no rug history"
+
+Before each trade:
+1. Call POST /score/custom with rules
+2. Check if passes: true
+3. Proceed only if passes
+```
+
+## Rate Limits
+
+| Tier | Daily Limit | Rate Limit |
+|------|-------------|------------|
+| Free | 100 calls | 10/minute |
+| Pro | 10,000 calls | 100/minute |
+| Enterprise | Unlimited | 1000/minute |
+
+## Authentication
+
+**Free tier:** No authentication required. Rate limited by IP.
+
+**Pro/Enterprise:** Include API key in header:
+```
+x-api-key: fs_your_api_key_here
+```
+
+Get an API key:
+```
+POST https://api.fairscale.xyz/register
+{ "wallet": "your_solana_wallet" }
+```
+
+## Upgrade to Pro
+
+For higher limits and custom scoring:
+
+```
+POST https://api.fairscale.xyz/upgrade
+{
+  "api_key": "fs_your_key",
+  "tier": "pro",
+  "signature": "payment_tx_signature"
+}
+```
+
+Cost: $50 USDC/month
+
+## Available Custom Rules
+
+| Rule | Type | Description |
+|------|------|-------------|
+| min_score | number | Minimum FairScore (0-100) |
+| min_age_days | number | Minimum wallet age in days |
+| no_rug_history | boolean | Reject if wallet has rug history |
+| min_transaction_count | number | Minimum number of transactions |
+| min_volume_usd | number | Minimum total volume in USD |
+| max_burst_ratio | number | Maximum burst ratio (0-1) |
+| min_tier | string | Minimum tier (bronze/silver/gold/platinum) |
+
+## Support
 
 - Docs: https://docs.fairscale.xyz
-- API Key: https://sales.fairscale.xyz
-- Twitter: @FairScaleXYZ
+- API Status: https://status.fairscale.xyz
+- Contact: api@fairscale.xyz
