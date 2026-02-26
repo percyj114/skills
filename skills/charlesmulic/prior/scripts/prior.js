@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const VERSION = "0.2.6";
+const VERSION = "0.2.9";
 const API_URL = process.env.PRIOR_BASE_URL || "https://api.cg3.io";
 const CONFIG_PATH = path.join(os.homedir(), ".prior", "config.json");
 
@@ -226,7 +226,8 @@ Examples:
   }
 
   const key = await ensureKey();
-  const stdin = await readStdin();
+  // Only read stdin if required flags are missing (avoids hanging on empty pipe)
+  const stdin = (args.title && args.content && args.tags) ? null : await readStdin();
 
   // Merge stdin JSON with CLI args (CLI wins)
   if (stdin) {
@@ -236,8 +237,8 @@ Examples:
     if (stdin.model && !args.model) args.model = stdin.model;
     if (stdin.problem && !args.problem) args.problem = stdin.problem;
     if (stdin.solution && !args.solution) args.solution = stdin.solution;
-    if (stdin.errorMessages && !args.errorMessages) args.errorMessages = stdin.errorMessages;
-    if (stdin.failedApproaches && !args.failedApproaches) args.failedApproaches = stdin.failedApproaches;
+    if ((stdin.errorMessages || stdin.error_messages) && !args.errorMessages) args.errorMessages = stdin.errorMessages || stdin.error_messages;
+    if ((stdin.failedApproaches || stdin.failed_approaches) && !args.failedApproaches) args.failedApproaches = stdin.failedApproaches || stdin.failed_approaches;
     if (stdin.effort) {
       if (stdin.effort.tokensUsed && !args.effortTokens) args.effortTokens = String(stdin.effort.tokensUsed);
       if (stdin.effort.durationSeconds && !args.effortDuration) args.effortDuration = String(stdin.effort.durationSeconds);
@@ -355,7 +356,8 @@ Examples:
   }
 
   const key = await ensureKey();
-  const stdin = await readStdin();
+  // Only read stdin if positional args are missing (avoids hanging on empty pipe)
+  const stdin = (args._[0] && args._[1]) ? null : await readStdin();
 
   // Merge stdin JSON with CLI args (positional args and flags win)
   if (stdin) {
