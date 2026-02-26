@@ -53,11 +53,11 @@ CONFIG_SCHEMA = {
     "max_position": {"default": 5.0, "env": "SIMMER_SPRINT_MAX_POSITION", "type": float,
                      "help": "Max $ per trade"},
     "signal_source": {"default": "binance", "env": "SIMMER_SPRINT_SIGNAL", "type": str,
-                      "help": "Price feed source (binance, coingecko)"},
+                      "help": "Price feed source (binance)"},
     "lookback_minutes": {"default": 5, "env": "SIMMER_SPRINT_LOOKBACK", "type": int,
                          "help": "Minutes of price history for momentum calc"},
-    "min_time_remaining": {"default": 60, "env": "SIMMER_SPRINT_MIN_TIME", "type": int,
-                           "help": "Skip fast_markets with less than this many seconds remaining"},
+    "min_time_remaining": {"default": 0, "env": "SIMMER_SPRINT_MIN_TIME", "type": int,
+                           "help": "Skip fast_markets with less than this many seconds remaining (0 = auto: 10%% of window)"},
     "asset": {"default": "BTC", "env": "SIMMER_SPRINT_ASSET", "type": str,
               "help": "Asset to trade (BTC, ETH, SOL)"},
     "window": {"default": "5m", "env": "SIMMER_SPRINT_WINDOW", "type": str,
@@ -72,6 +72,7 @@ TRADE_SOURCE = "sdk:fastloop"
 _automaton_reported = False
 SMART_SIZING_PCT = 0.05  # 5% of balance per trade
 MIN_SHARES_PER_ORDER = 5  # Polymarket minimum
+MAX_SPREAD_PCT = 0.10     # Skip if CLOB bid-ask spread exceeds this
 
 # Asset → Binance symbol mapping
 ASSET_SYMBOLS = {
@@ -150,9 +151,16 @@ if _automaton_max:
     MAX_POSITION_USD = min(MAX_POSITION_USD, float(_automaton_max))
 SIGNAL_SOURCE = cfg["signal_source"]
 LOOKBACK_MINUTES = cfg["lookback_minutes"]
-MIN_TIME_REMAINING = cfg["min_time_remaining"]
 ASSET = cfg["asset"].upper()
 WINDOW = cfg["window"]  # "5m" or "15m"
+
+# Dynamic min_time_remaining: 0 = auto (10% of window duration)
+_window_seconds = {"5m": 300, "15m": 900, "1h": 3600}
+_configured_min_time = cfg["min_time_remaining"]
+if _configured_min_time > 0:
+    MIN_TIME_REMAINING = _configured_min_time
+else:
+    MIN_TIME_REMAINING = max(30, _window_seconds.get(WINDOW, 300) // 10)
 VOLUME_CONFIDENCE = cfg["volume_confidence"]
 DAILY_BUDGET = cfg["daily_budget"]
 
@@ -238,6 +246,79 @@ def _api_request(url, method="GET", data=None, headers=None, timeout=15):
         return {"error": str(e)}
 
 
+CLOB_API = "https://clob.polymarket.com"
+
+
+def fetch_live_midpoint(token_id):
+    """Fetch live midpoint price from Polymarket CLOB for a single token."""
+    result = _api_request(f"{CLOB_API}/midpoint?token_id={quote(str(token_id))}", timeout=5)
+    if not result or not isinstance(result, dict) or result.get("error"):
+        return None
+    try:
+        return float(result["mid"])
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
+def fetch_live_prices(clob_token_ids):
+    """Fetch live YES midpoint from Polymarket CLOB.
+
+    Args:
+        clob_token_ids: List of [yes_token_id, no_token_id] from Gamma.
+
+    Returns:
+        float or None: Live YES price (0-1).
+    """
+    if not clob_token_ids or len(clob_token_ids) < 1:
+        return None
+    yes_token = clob_token_ids[0]
+    return fetch_live_midpoint(yes_token)
+
+
+def fetch_orderbook_summary(clob_token_ids):
+    """Fetch order book for YES token and return spread + depth summary.
+
+    Args:
+        clob_token_ids: List of [yes_token_id, no_token_id] from Gamma.
+
+    Returns:
+        dict with spread_pct, best_bid, best_ask, bid_depth_usd, ask_depth_usd
+        or None on failure.
+    """
+    if not clob_token_ids or len(clob_token_ids) < 1:
+        return None
+    yes_token = clob_token_ids[0]
+    result = _api_request(f"{CLOB_API}/book?token_id={quote(str(yes_token))}", timeout=5)
+    if not result or not isinstance(result, dict):
+        return None
+
+    bids = result.get("bids", [])
+    asks = result.get("asks", [])
+    if not bids or not asks:
+        return None
+
+    try:
+        best_bid = float(bids[0]["price"])
+        best_ask = float(asks[0]["price"])
+        spread = best_ask - best_bid
+        mid = (best_ask + best_bid) / 2
+        spread_pct = spread / mid if mid > 0 else 0
+
+        # Sum depth (top 5 levels)
+        bid_depth = sum(float(b.get("size", 0)) * float(b.get("price", 0)) for b in bids[:5])
+        ask_depth = sum(float(a.get("size", 0)) * float(a.get("price", 0)) for a in asks[:5])
+
+        return {
+            "best_bid": best_bid,
+            "best_ask": best_ask,
+            "spread_pct": spread_pct,
+            "bid_depth_usd": bid_depth,
+            "ask_depth_usd": ask_depth,
+        }
+    except (KeyError, ValueError, IndexError, TypeError):
+        return None
+
+
 # =============================================================================
 # Sprint Market Discovery
 # =============================================================================
@@ -264,6 +345,15 @@ def discover_fast_market_markets(asset="BTC", window="5m"):
             if not closed and slug:
                 # Parse end time from question (e.g., "5:30AM-5:35AM ET")
                 end_time = _parse_fast_market_end_time(m.get("question", ""))
+                # Capture CLOB token IDs for live price fetching
+                clob_tokens_raw = m.get("clobTokenIds", "[]")
+                if isinstance(clob_tokens_raw, str):
+                    try:
+                        clob_tokens = json.loads(clob_tokens_raw)
+                    except (json.JSONDecodeError, ValueError):
+                        clob_tokens = []
+                else:
+                    clob_tokens = clob_tokens_raw or []
                 markets.append({
                     "question": m.get("question", ""),
                     "slug": slug,
@@ -271,6 +361,7 @@ def discover_fast_market_markets(asset="BTC", window="5m"):
                     "end_time": end_time,
                     "outcomes": m.get("outcomes", []),
                     "outcome_prices": m.get("outcomePrices", "[]"),
+                    "clob_token_ids": clob_tokens,
                     "fee_rate_bps": int(m.get("fee_rate_bps") or m.get("feeRateBps") or 0),
                 })
     return markets
@@ -367,29 +458,6 @@ def get_binance_momentum(symbol="BTCUSDT", lookback_minutes=5):
         return None
 
 
-def get_coingecko_momentum(asset="bitcoin", lookback_minutes=5):
-    """Fallback: get price from CoinGecko (less accurate, ~1-2 min lag)."""
-    url = f"https://api.coingecko.com/api/v3/simple/price?ids={asset}&vs_currencies=usd"
-    result = _api_request(url)
-    if not result or isinstance(result, dict) and result.get("error"):
-        return None
-    price_now = result.get(asset, {}).get("usd")
-    if not price_now:
-        return None
-    # CoinGecko doesn't give candle data on free tier, so just return current price
-    # Agent would need to track history across calls for momentum
-    return {
-        "momentum_pct": 0,  # Can't calculate without history
-        "direction": "neutral",
-        "price_now": price_now,
-        "price_then": price_now,
-        "avg_volume": 0,
-        "latest_volume": 0,
-        "volume_ratio": 1.0,
-        "candles": 0,
-    }
-
-
 COINGECKO_ASSETS = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana"}
 
 
@@ -399,8 +467,9 @@ def get_momentum(asset="BTC", source="binance", lookback=5):
         symbol = ASSET_SYMBOLS.get(asset, "BTCUSDT")
         return get_binance_momentum(symbol, lookback)
     elif source == "coingecko":
-        cg_id = COINGECKO_ASSETS.get(asset, "bitcoin")
-        return get_coingecko_momentum(cg_id, lookback)
+        print("  ⚠️  CoinGecko free tier doesn't provide candle data — switch to binance")
+        print("  Run: python fastloop_trader.py --set signal_source=binance")
+        return None
     else:
         return None
 
@@ -573,7 +642,8 @@ def run_fast_market_strategy(dry_run=True, positions_only=False, show_config=Fal
     log(f"  Found {len(markets)} active fast markets")
 
     if not markets:
-        log("  No active fast markets found")
+        log("  No active fast markets found — may be outside market hours or wrong asset/window")
+        log(f"  Check: asset={ASSET}, window={WINDOW}")
         if not quiet:
             print("📊 Summary: No markets available")
         return
@@ -581,9 +651,16 @@ def run_fast_market_strategy(dry_run=True, positions_only=False, show_config=Fal
     # Step 2: Find best fast_market to trade
     best = find_best_fast_market(markets)
     if not best:
-        log(f"  No fast_markets with >{MIN_TIME_REMAINING}s remaining")
+        # Show what we skipped so users understand the gap
+        now = datetime.now(timezone.utc)
+        for m in markets:
+            end_time = m.get("end_time")
+            if end_time:
+                secs_left = (end_time - now).total_seconds()
+                log(f"  Skipped: {m['question'][:50]}... ({secs_left:.0f}s left < {MIN_TIME_REMAINING}s min)")
+        log(f"  All {len(markets)} markets have <{MIN_TIME_REMAINING}s remaining — waiting for next window")
         if not quiet:
-            print("📊 Summary: No tradeable fast_markets (too close to expiry)")
+            print(f"📊 Summary: No tradeable markets (all {len(markets)} too close to expiry)")
         return
 
     end_time = best.get("end_time")
@@ -591,13 +668,19 @@ def run_fast_market_strategy(dry_run=True, positions_only=False, show_config=Fal
     log(f"\n🎯 Selected: {best['question']}")
     log(f"  Expires in: {remaining:.0f}s")
 
-    # Parse current market odds
-    try:
-        prices = json.loads(best.get("outcome_prices", "[]"))
-        market_yes_price = float(prices[0]) if prices else 0.5
-    except (json.JSONDecodeError, IndexError, ValueError):
-        market_yes_price = 0.5
-    log(f"  Current YES price: ${market_yes_price:.3f}")
+    # Fetch live CLOB price (falls back to stale Gamma snapshot)
+    clob_tokens = best.get("clob_token_ids", [])
+    live_price = fetch_live_prices(clob_tokens) if clob_tokens else None
+    if live_price is not None:
+        market_yes_price = live_price
+        log(f"  Current YES price: ${market_yes_price:.3f} (live CLOB)")
+    else:
+        try:
+            prices = json.loads(best.get("outcome_prices", "[]"))
+            market_yes_price = float(prices[0]) if prices else 0.5
+        except (json.JSONDecodeError, IndexError, ValueError):
+            market_yes_price = 0.5
+        log(f"  Current YES price: ${market_yes_price:.3f} (Gamma snapshot ⚠️)")
 
     # Fee info (fast markets charge 10% on winnings)
     fee_rate_bps = best.get("fee_rate_bps", 0)
@@ -634,6 +717,19 @@ def run_fast_market_strategy(dry_run=True, positions_only=False, show_config=Fal
                       "skip_reason": ", ".join(dict.fromkeys(skip_reasons))}
             print(json.dumps({"automaton": report}))
             _automaton_reported = True
+
+    # Check order book spread and depth
+    book = fetch_orderbook_summary(clob_tokens) if clob_tokens else None
+    if book:
+        log(f"  Spread: {book['spread_pct']:.1%} (bid ${book['best_bid']:.3f} / ask ${book['best_ask']:.3f})")
+        log(f"  Depth: ${book['bid_depth_usd']:.0f} bid / ${book['ask_depth_usd']:.0f} ask (top 5)")
+        if book["spread_pct"] > MAX_SPREAD_PCT:
+            log(f"  ⏸️  Spread {book['spread_pct']:.1%} > 10% — illiquid, skip")
+            if not quiet:
+                print(f"📊 Summary: No trade (wide spread: {book['spread_pct']:.1%})")
+            skip_reasons.append("wide spread")
+            _emit_skip_report()
+            return
 
     # Check minimum momentum
     if momentum_pct < MIN_MOMENTUM_PCT:
@@ -675,13 +771,16 @@ def run_fast_market_strategy(dry_run=True, positions_only=False, show_config=Fal
         return
 
     # Fee-aware EV check: require enough divergence to cover fees
+    # EV = win_prob * payout_after_fees - (1 - win_prob) * cost
+    # At the buy price, win_prob ≈ buy_price (market-implied).
+    # We need our edge (divergence) to overcome the fee drag.
     if fee_rate > 0:
         buy_price = market_yes_price if side == "yes" else (1 - market_yes_price)
-        win_profit = (1 - buy_price) * (1 - fee_rate)
-        breakeven = buy_price / (win_profit + buy_price)
-        fee_penalty = breakeven - 0.50  # how much fees shift breakeven above 50%
-        min_divergence = fee_penalty + 0.02  # plus buffer
-        log(f"  Breakeven:        {breakeven:.1%} win rate (fee-adjusted, min divergence {min_divergence:.3f})")
+        # Fee cost per share in price terms: fee applies to winnings (1 - buy_price)
+        fee_cost = (1 - buy_price) * fee_rate
+        # Minimum divergence must exceed fee cost + buffer
+        min_divergence = fee_cost + 0.02
+        log(f"  Fee cost/share:   ${fee_cost:.3f} (min divergence {min_divergence:.3f})")
         if divergence < min_divergence:
             log(f"  ⏸️  Divergence {divergence:.3f} < fee-adjusted minimum {min_divergence:.3f} — skip")
             if not quiet:
