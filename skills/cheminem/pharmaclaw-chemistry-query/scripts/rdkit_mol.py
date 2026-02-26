@@ -11,7 +11,40 @@ from rdkit.Chem import BRICS
 from rdkit.Chem.Draw import rdMolDraw2D
 from rdkit.Chem import rdChemReactions
 
+def _sanitize_input(value, label="input", max_len=2000):
+    """Sanitize user input: length limit and null-byte rejection."""
+    if not isinstance(value, str):
+        raise ValueError(f"Invalid {label}: expected string")
+    if '\x00' in value:
+        raise ValueError(f"Invalid {label}: null bytes not allowed")
+    if len(value) > max_len:
+        raise ValueError(f"Invalid {label}: exceeds {max_len} character limit")
+    return value.strip()
+
+
+def _sanitize_output_path(path, allowed_dir=None):
+    """Sanitize output file path: prevent path traversal and restrict to allowed directory."""
+    path = os.path.normpath(path)
+    if '..' in path.split(os.sep):
+        raise ValueError(f"Invalid output path: path traversal not allowed")
+    # Block absolute paths unless within allowed_dir
+    if os.path.isabs(path):
+        if allowed_dir:
+            real_path = os.path.realpath(path)
+            real_allowed = os.path.realpath(allowed_dir)
+            if not real_path.startswith(real_allowed + os.sep) and real_path != real_allowed:
+                raise ValueError(f"Invalid output path: must be within {allowed_dir}")
+        else:
+            raise ValueError(f"Invalid output path: absolute paths not allowed without allowed_dir")
+    # Only allow safe extensions
+    _, ext = os.path.splitext(path)
+    if ext.lower() not in ('.png', '.svg', '.json', '.xyz', '.txt', ''):
+        raise ValueError(f"Invalid output extension: {ext}")
+    return path
+
+
 def get_mol(smiles):
+    smiles = _sanitize_input(smiles, "SMILES")
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         raise ValueError(f"Invalid SMILES: {smiles}")
@@ -19,13 +52,17 @@ def get_mol(smiles):
 
 def resolve_target(target):
     """Resolve name to SMILES using PubChem"""
+    target = _sanitize_input(target, "target", max_len=500)
+    # Reject shell metacharacters (extra safety even though we use list args)
+    if re.search(r'[;&|`$]', target):
+        raise ValueError(f"Invalid target: shell metacharacters not allowed")
     mol_try = Chem.MolFromSmiles(target)
     if mol_try is not None:
         return target
     # PubChem lookup
     script_dir = os.path.dirname(__file__)
     proc = subprocess.run([sys.executable, "query_pubchem.py", "--compound", target, "--type", "structure", "--format", "smiles"],
-                          cwd=script_dir, capture_output=True, text=True)
+                          cwd=script_dir, capture_output=True, text=True, timeout=30)
     if proc.returncode != 0:
         raise ValueError(f"PubChem lookup failed for '{target}': {proc.stderr.strip()}")
     out = proc.stdout.strip()
@@ -113,7 +150,7 @@ def main():
 
         elif args.action == "draw":
             mol = get_mol(args.smiles)
-            output = args.output or f"mol.{args.format}"
+            output = _sanitize_output_path(args.output or f"mol.{args.format}")
             if args.format == "svg":
                 drawer = rdMolDraw2D.MolDraw2DSVG(300, 300)
                 drawer.DrawMolecule(mol)

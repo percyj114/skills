@@ -7,7 +7,25 @@ from PIL import Image
 
 WORK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
 
+def _validate_smiles(smiles):
+    """Validate SMILES before passing to subprocess."""
+    if not smiles or not isinstance(smiles, str):
+        raise ValueError("SMILES must be a non-empty string")
+    smiles = smiles.strip()
+    if len(smiles) > 2000:
+        raise ValueError("SMILES too long (max 2000 chars)")
+    if '\x00' in smiles:
+        raise ValueError("Invalid SMILES: null bytes not allowed")
+    # RDKit validation
+    from rdkit import Chem
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f"Invalid SMILES: '{smiles}'")
+    return Chem.MolToSmiles(mol, canonical=True)
+
+
 def analyze(smiles):
+    smiles = _validate_smiles(smiles)
     # Props
     proc = subprocess.run(["python3", "rdkit_mol.py", "--smiles", smiles, "--action", "props"], cwd=WORK_DIR, capture_output=True, text=True)
     props = json.loads(proc.stdout)

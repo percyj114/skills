@@ -14,8 +14,14 @@ def main():
     base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
     timeout = 15
     
-    orig_compound = args.compound
-    is_cid = args.compound.isdigit()
+    orig_compound = args.compound.strip()
+    if not orig_compound or len(orig_compound) > 1000:
+        print(json.dumps({"error": "Invalid compound: empty or too long (max 1000 chars)"}))
+        sys.exit(1)
+    if '\x00' in orig_compound:
+        print(json.dumps({"error": "Invalid compound: null bytes not allowed"}))
+        sys.exit(1)
+    is_cid = orig_compound.isdigit()
     identifier = "cid" if is_cid else "name"
     
     # Resolve CID for structure/synthesis/similar if name

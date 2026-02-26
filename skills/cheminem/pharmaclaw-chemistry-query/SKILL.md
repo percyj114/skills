@@ -21,7 +21,7 @@ dependencies:
     works without Java/OPSIN.
 ---
 
-# Chemistry Query Agent v1.4.0
+# Chemistry Query Agent v1.4.1
 
 ## Overview
 
@@ -140,6 +140,16 @@ All features verified end-to-end with RDKit 2024.03+:
 - `scripts/chembl_query.py`, `scripts/pubmed_search.py`, `scripts/admet_predict.py` — Additional query modules
 
 ## Changelog
+
+**v1.4.1** (2026-02-25)
+- Security hardening: input sanitization for all subprocess calls (SMILES, compound names, output paths)
+- Added `_sanitize_input()` — length limits, null-byte rejection for all user inputs
+- Added `_sanitize_output_path()` — prevents path traversal, restricts extensions, blocks arbitrary file writes
+- Added shell metacharacter rejection in `resolve_target()`
+- Added SMILES validation via RDKit in `chem_ui.py` before subprocess calls
+- Added compound input validation in `query_pubchem.py` (length/null-byte checks)
+- Added timeout to `resolve_target()` PubChem subprocess call
+- Addresses VirusTotal "suspicious" classification for argument injection vectors
 
 **v1.4.0** (2026-02-14)
 - Fixed PubChem SMILES/InChI endpoint (property/CanonicalSMILES/TXT)
