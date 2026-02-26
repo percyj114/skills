@@ -165,26 +165,67 @@ curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs \
     "variantIds": ["4012", "4013", "4014"]
   }'
 
-# 3) Generate AI mockups (studio + on-model)
-curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups \
+# 3) Preflight mockup inputs and extract recommendedRequest
+PREFLIGHT=$(curl -sS -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup/preflight \
   -H "Authorization: Bearer $CLAW_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "placement": "front",
     "variantId": "4012",
-    "promptHints": {
-      "printMethod": "dtg",
-      "safeZonePreset": "apparel_chest_standard"
-    }
-  }'
+    "placement": "front"
+  }')
+echo "$PREFLIGHT" | jq '.data.recommendedRequest'
+REC_VARIANT_ID=$(echo "$PREFLIGHT" | jq -r '.data.recommendedRequest.variantId')
+REC_PLACEMENT=$(echo "$PREFLIGHT" | jq -r '.data.recommendedRequest.placement')
+REC_TECHNIQUE=$(echo "$PREFLIGHT" | jq -r '.data.recommendedRequest.technique // empty')
 
-# 4) Approve AI mockup candidate (sets printOnDemand.primaryMockup)
+# 4) Generate seeded AI mockups
+# This endpoint always generates a real Printful seed mockup first, then AI candidates.
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"variantId\": \"$REC_VARIANT_ID\",
+    \"placement\": \"$REC_PLACEMENT\",
+    \"idempotencyKey\": \"ai-mockup-1\",
+    \"promptHints\": {
+      \"printMethod\": \"$REC_TECHNIQUE\",
+      \"safeZonePreset\": \"apparel_chest_standard\"
+    }
+  }"
+
+# 5) Poll AI generation status
+curl https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups/{generationId} \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+
+# 6) Approve selected candidate for storefront use
 curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups/{generationId}/approve \
   -H "Authorization: Bearer $CLAW_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"candidateId":"cand_white"}'
+  -d '{"candidateId":"cand_white","mode":"primary_and_append"}'
 
-# 5) Publish (requires printOnDemand.variants; local_upload requires at least one design)
+# 7) (Alternative deterministic flow) Create Printful task directly
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup-tasks \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"variantId\": \"$REC_VARIANT_ID\",
+    \"placement\": \"$REC_PLACEMENT\",
+    \"technique\": \"$REC_TECHNIQUE\",
+    \"idempotencyKey\": \"mockup-task-1\"
+  }"
+
+# 8) Poll task status
+curl https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup-tasks/{taskId} \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+# If you receive 429/RATE_LIMITED, retry with exponential backoff and jitter.
+
+# 9) Store completed task result
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup-tasks/{taskId}/store \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"setPrimary": true}'
+
+# 10) Publish (requires printOnDemand.variants; local_upload requires at least one design)
 curl -X PATCH https://api.clawver.store/v1/products/{productId} \
   -H "Authorization: Bearer $CLAW_API_KEY" \
   -H "Content-Type: application/json" \
@@ -262,9 +303,13 @@ All authenticated endpoints require: `Authorization: Bearer $CLAW_API_KEY`
 | `/v1/products/{id}/pod-designs/{designId}/public-preview` | GET | Get public POD design preview (active products) |
 | `/v1/products/{id}/pod-designs/{designId}` | PATCH | Update POD design metadata (name/placement/variantIds) |
 | `/v1/products/{id}/pod-designs/{designId}` | DELETE | Archive POD design |
-| `/v1/products/{id}/pod-designs/{designId}/ai-mockups` | POST | Generate AI mockup candidates (two-step) |
-| `/v1/products/{id}/pod-designs/{designId}/ai-mockups/{generationId}` | GET | Get generation status + refreshed preview URLs |
-| `/v1/products/{id}/pod-designs/{designId}/ai-mockups/{generationId}/approve` | POST | Approve candidate and set primary mockup |
+| `/v1/products/{id}/pod-designs/{designId}/ai-mockups` | POST | Generate seeded AI mockup candidates (Printful seed first) |
+| `/v1/products/{id}/pod-designs/{designId}/ai-mockups/{generationId}` | GET | Poll AI generation and refresh candidate preview URLs |
+| `/v1/products/{id}/pod-designs/{designId}/ai-mockups/{generationId}/approve` | POST | Approve AI candidate and update product mockup |
+| `/v1/products/{id}/pod-designs/{designId}/mockup/preflight` | POST | Resolve Printful-backed dimensions, placement, and style inputs |
+| `/v1/products/{id}/pod-designs/{designId}/mockup-tasks` | POST | Create a Printful mockup task |
+| `/v1/products/{id}/pod-designs/{designId}/mockup-tasks/{taskId}` | GET | Poll task status and retrieve mockup URLs |
+| `/v1/products/{id}/pod-designs/{designId}/mockup-tasks/{taskId}/store` | POST | Persist completed task result to product storage |
 | `/v1/products/{id}/pod-designs/{designId}/mockup` | POST | Legacy Printful mockup generation; may return 202 |
 | `/v1/products/printful/catalog` | GET | Browse POD catalog |
 | `/v1/products/printful/catalog/{id}` | GET | Get POD variants |
@@ -343,7 +388,7 @@ function verifyWebhook(body, signature, secret) {
 
 Responses are JSON with either `{"success": true, "data": {...}}` or `{"success": false, "error": {...}}`.
 
-Common error codes: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `RESOURCE_NOT_FOUND`, `CONFLICT`, `RATE_LIMIT_EXCEEDED`
+Common error codes: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `RESOURCE_NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`
 
 ## Platform Fee
 
