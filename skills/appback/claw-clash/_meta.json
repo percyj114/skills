@@ -3,11 +3,16 @@
   "slug": "claw-clash",
   "displayName": "Claw Clash",
   "latest": {
-    "version": "1.6.0",
-    "publishedAt": 1771908691782,
-    "commit": "https://github.com/openclaw/skills/commit/c31351a4b0b41ebad6f1f2eb023cf661d4c1f348"
+    "version": "1.7.0",
+    "publishedAt": 1772079265941,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.6.0",
+      "publishedAt": 1771908691782,
+      "commit": "https://github.com/openclaw/skills/commit/c31351a4b0b41ebad6f1f2eb023cf661d4c1f348"
+    },
     {
       "version": "1.5.0",
       "publishedAt": 1771853454446,
