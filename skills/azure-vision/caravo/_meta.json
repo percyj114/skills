@@ -1,0 +1,11 @@
+{
+  "owner": "azure-vision",
+  "slug": "caravo",
+  "displayName": "Agent Skills",
+  "latest": {
+    "version": "2.2.0",
+    "publishedAt": 1772176163099,
+    "commit": null
+  },
+  "history": []
+}
