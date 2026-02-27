@@ -1,16 +1,35 @@
 ---
 name: neolata-mem
-description: Graph-native memory engine for AI agents — hybrid vector+keyword search, biological decay, Zettelkasten linking, conflict resolution. Zero infrastructure. npm install and go.
+version: 0.8.4
+description: Graph-native memory engine for AI agents — hybrid vector+keyword search, biological decay, Zettelkasten linking, trust-gated conflict resolution, explainability, episodes, compression & consolidation. Zero dependencies. npm install and go.
 metadata:
   openclaw:
     requires:
       bins:
         - node
     optionalEnv:
-      - OPENAI_API_KEY        # For OpenAI embeddings/extraction
-      - NVIDIA_API_KEY        # For NVIDIA NIM embeddings
-      - SUPABASE_URL          # For Supabase storage backend
-      - SUPABASE_KEY          # Supabase anon key (preferred) or service key
+      - OPENAI_API_KEY           # For OpenAI embeddings/extraction (read by code)
+      - OPENCLAW_GATEWAY_TOKEN   # For OpenClaw LLM gateway routing (read by code)
+      - NVIDIA_API_KEY           # For NVIDIA NIM embeddings (passed via config)
+      - AZURE_API_KEY            # For Azure OpenAI embeddings (passed via config)
+      - SUPABASE_URL             # For Supabase storage backend (passed via config)
+      - SUPABASE_KEY             # Supabase anon key — prefer over service key (passed via config)
+    dataFlow:
+      local:
+        - "Default: JSON files in ./neolata-mem-data/ (configurable dir)"
+        - "In-memory mode: storage.type='memory' — nothing written to disk"
+      remote:
+        - "Supabase: if storage.type='supabase', memories are stored/read from your Supabase project"
+        - "Embeddings: if configured, text is sent to OpenAI/NVIDIA/Azure/Ollama for vectorization"
+        - "LLM: if configured, text sent to OpenAI/OpenClaw/Ollama for extraction/compression/evolution"
+        - "Webhooks: if webhookWritethrough is enabled, each store event POSTs to the configured URL"
+      note: "No data leaves the host unless you explicitly configure a remote backend, embedding provider, LLM, or webhook. Default config is fully local (JSON storage + no embeddings)."
+    securityNotes:
+      - "Prefer Supabase anon key + RLS over service key — service key bypasses row-level security"
+      - "Webhook URLs are an explicit exfiltration surface — only configure trusted endpoints"
+      - "Test with storage.type='memory' first to evaluate without persisting any data"
+      - "All env vars except OPENAI_API_KEY and OPENCLAW_GATEWAY_TOKEN are passed via config objects, not read from env directly"
+    license: Elastic-2.0
     homepage: https://github.com/Jeremiaheth/neolata-mem
     repository: https://github.com/Jeremiaheth/neolata-mem
 ---
@@ -21,7 +40,7 @@ Graph-native memory for AI agents with hybrid search, biological decay, and zero
 
 **npm package:** `@jeremiaheth/neolata-mem`
 **Repository:** [github.com/Jeremiaheth/neolata-mem](https://github.com/Jeremiaheth/neolata-mem)
-**License:** MIT | **Tests:** 144/144 passing | **Node:** ≥18
+**License:** Elastic-2.0 | **Tests:** 367/367 passing (34 files) | **Node:** ≥18
 
 ## When to Use This Skill
 
@@ -56,6 +75,29 @@ No Docker. No Python. No Neo4j. No cloud API required.
 > ```
 > Source is fully auditable at [github.com/Jeremiaheth/neolata-mem](https://github.com/Jeremiaheth/neolata-mem).
 
+## Security & Data Flow
+
+**Default configuration is fully local** — JSON files on disk, no network calls, no embeddings, no external services.
+
+Data only leaves the host if you **explicitly configure** one of these:
+
+| Feature | What leaves | Where it goes | How to avoid |
+|---------|------------|---------------|-------------|
+| Embeddings (OpenAI/NVIDIA/Azure) | Memory text | Embedding API endpoint | Use `noop` embeddings or Ollama (local) |
+| LLM (OpenAI/OpenClaw/Ollama) | Memory text for extraction/compression | LLM API endpoint | Don't configure `llm` option, or use Ollama |
+| Supabase storage | All memory data | Your Supabase project | Use `json` or `memory` storage (default) |
+| Webhook writethrough | Store/decay event payloads | Your webhook URL | Don't configure `webhookWritethrough` |
+
+**Key security properties:**
+- Only 2 env vars are read directly by code: `OPENAI_API_KEY` and `OPENCLAW_GATEWAY_TOKEN`. All others (Supabase, NVIDIA, Azure) are passed via explicit config objects.
+- All provider URLs are validated against SSRF (private IPs blocked, cloud metadata blocked).
+- Supabase: prefer anon key + RLS over service key. Service key bypasses row-level security.
+- JSON storage uses atomic writes (temp file + rename) to prevent corruption.
+- All user content sent to LLMs is XML-fenced with injection guards.
+- Test safely with `storage: { type: 'memory' }` — nothing touches disk or network.
+
+See `docs/guide.md § Security` for the full security model.
+
 ## Quick Start (Zero Config)
 
 ```javascript
@@ -79,6 +121,7 @@ const mem = createMemory({
   },
 });
 
+// Agent IDs like 'kuro' and 'maki' are just examples — use any string.
 await mem.store('kuro', 'Found XSS in login form', { category: 'finding', importance: 0.9 });
 const results = await mem.search('kuro', 'security vulnerabilities');
 ```
@@ -112,14 +155,47 @@ const path = await mem.path(idA, idB);       // Shortest path between memories
 const clusters = await mem.clusters();        // Detect topic clusters
 ```
 
-### Conflict Resolution
-Detect contradictions before storing:
+### Conflict Resolution & Quarantine
+Detect contradictions before storing — with claim-based structural detection or LLM-based semantic detection:
 ```javascript
-const conflicts = await mem.detectConflicts('agent', 'Server uses port 443');
-// Returns: { conflicts: [...], updates: [...], novel: true/false }
+// Structural (no LLM needed): claim-based conflict detection
+await mem.store('agent', 'Server uses port 443', {
+  claim: { subject: 'server', predicate: 'port', value: '443' },
+  provenance: { source: 'user_explicit', trust: 1.0 },
+  onConflict: 'quarantine',  // low-trust conflicts quarantined for review
+});
 
+// Semantic (requires LLM): LLM classifies as conflict/update/novel
 await mem.evolve('agent', 'Server now uses port 8080');
-// Archives old fact, stores new one with link to predecessor
+
+// Review quarantined memories
+const quarantined = await mem.listQuarantined();
+await mem.reviewQuarantine(quarantined[0].id, { action: 'activate' });
+```
+
+### Predicate Schema Registry
+Define per-predicate rules for conflict handling, normalization, and deduplication:
+```javascript
+const mem = createMemory({
+  predicateSchemas: {
+    'preferred_language': { cardinality: 'single', conflictPolicy: 'supersede', normalize: 'lowercase_trim' },
+    'spoken_languages':   { cardinality: 'multi', dedupPolicy: 'corroborate' },
+    'salary':             { cardinality: 'single', conflictPolicy: 'require_review', normalize: 'currency' },
+  },
+});
+```
+
+Options: `cardinality` (single/multi), `conflictPolicy` (supersede/require_review/keep_both), `normalize` (none/trim/lowercase/lowercase_trim/currency), `dedupPolicy` (corroborate/store).
+
+### Explainability API
+Understand why search returned or filtered specific memories:
+```javascript
+const results = await mem.search('agent', 'query', { explain: true });
+console.log(results.meta);        // query options, result count
+console.log(results[0].explain);  // retrieved, rerank, statusFilter details
+
+const detail = await mem.explainMemory(memoryId);
+// { id, status, trust, confidence, provenance, claimSummary }
 ```
 
 ### Multi-Agent Support
@@ -127,6 +203,33 @@ await mem.evolve('agent', 'Server now uses port 8080');
 await mem.store('kuro', 'Vuln found in API gateway');
 await mem.store('maki', 'API gateway deployed to prod');
 const all = await mem.searchAll('API gateway');  // Cross-agent search
+```
+
+### Episodes (Temporal Grouping)
+Group related memories into named episodes:
+```javascript
+const ep = await mem.createEpisode('Deploy v2.0', [id1, id2, id3], { tags: ['deploy'] });
+const ep2 = await mem.captureEpisode('kuro', 'Standup', { start: '...', end: '...' });
+const results = await mem.searchEpisode(ep.id, 'database migration');
+const { summary } = await mem.summarizeEpisode(ep.id);  // requires LLM
+```
+
+### Memory Compression & Consolidation
+Consolidate redundant memories into digests:
+```javascript
+await mem.compress([id1, id2, id3], { method: 'llm', archiveOriginals: true });
+await mem.compressEpisode(episodeId);
+await mem.autoCompress({ minClusterSize: 3, maxDigests: 5 });
+
+// Full maintenance: dedup → contradictions → corroborate → compress → prune
+await mem.consolidate({ dedupThreshold: 0.95, compressAge: 30, pruneAge: 90 });
+```
+
+### Labeled Clusters
+Persistent named groups:
+```javascript
+await mem.createCluster('Security findings', [id1, id2]);
+await mem.autoLabelClusters();  // LLM labels unlabeled clusters
 ```
 
 ### Event Emitter
@@ -212,6 +315,11 @@ await mem.decay();
 | Memory decay | ✅ | ❌ | ❌ |
 | Memory graph / linking | ✅ | ❌ | ❌ |
 | Conflict resolution | ✅ | Partial | ❌ |
+| Quarantine lane | ✅ | ❌ | ❌ |
+| Predicate schemas | ✅ | ❌ | ❌ |
+| Explainability API | ✅ | ❌ | ❌ |
+| Episodes & compression | ✅ | ❌ | ❌ |
+| Labeled clusters | ✅ | ❌ | ❌ |
 | Multi-agent | ✅ | ✅ | Per-agent |
 | Zero infrastructure | ✅ | ❌ | ✅ |
 | Event emitter | ✅ | ❌ | ❌ |
