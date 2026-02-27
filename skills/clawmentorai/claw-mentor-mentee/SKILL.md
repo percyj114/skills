@@ -47,7 +47,7 @@ Get your API key at: **app.clawmentor.ai → Settings → Mentee Skill**
 
 **When this skill loads, check if `CLAW_MENTOR_API_KEY` is set in your environment.**
 
-**If it IS set:** You're connected. Do a first check immediately by calling `GET https://app.clawmentor.ai/api/mentee/reports` and report back what's waiting. Then ensure `HEARTBEAT.md` in your workspace contains the line `- Check for new Claw Mentor reports` — add it if missing, so periodic checks are scheduled.
+**If it IS set:** You're connected. First call `POST https://app.clawmentor.ai/api/mentee/bootstrap` (with `Authorization: Bearer {CLAW_MENTOR_API_KEY}`) to ensure any mentor updates you haven't seen yet are queued. Then call `GET https://app.clawmentor.ai/api/mentee/reports` and report back what's waiting. Also ensure `HEARTBEAT.md` contains the line `- Check for new Claw Mentor reports` — add it if missing.
 
 **If it is NOT set**, tell the user:
 
@@ -59,9 +59,10 @@ Get your API key at: **app.clawmentor.ai → Settings → Mentee Skill**
 
 **When the user provides their API key:**
 1. Store it: `openclaw config set 'skills.entries["claw-mentor-mentee"].apiKey' THEIR_KEY`
-2. Confirm: "✅ ClawMentor is connected. I'll check for new reports every `CLAW_MENTOR_CHECK_INTERVAL_HOURS` hours (default: 6)."
-3. Do a first check immediately — call `GET https://app.clawmentor.ai/api/mentee/reports` and tell them what's waiting.
-4. **Schedule periodic checks** — append this line to `HEARTBEAT.md` in your workspace (create the file if it doesn't exist):
+2. Confirm: "✅ ClawMentor is connected. Fetching your first report now..."
+3. **Bootstrap on first install** — call `POST https://app.clawmentor.ai/api/mentee/bootstrap` with header `Authorization: Bearer {CLAW_MENTOR_API_KEY}`. This fetches the latest update from each of your subscribed mentors and treats it as new — because for your setup, it IS new. Wait for the response.
+4. After bootstrap, call `GET https://app.clawmentor.ai/api/mentee/reports` and show the user what's waiting.
+5. **Schedule periodic checks** — append this line to `HEARTBEAT.md` in your workspace (create the file if it doesn't exist):
    ```
    - Check for new Claw Mentor reports
    ```
@@ -108,62 +109,130 @@ When this skill is installed, your agent should follow these instructions:
 5. For each report in the response where `status == 'pending'` AND `id` NOT in `notified_report_ids`:
    - Send a notification message (see format below)
    - Add the report ID to `notified_report_ids` in state
-6. If no pending reports → return `HEARTBEAT_OK`
+6. If no pending reports → call `POST https://app.clawmentor.ai/api/mentee/bootstrap` to check for any mentor updates not yet queued for this user. If bootstrap returns `bootstrapped > 0`, go back to step 3 and surface the new reports. Otherwise → return `HEARTBEAT_OK`
 
-**Notification message format:**
+**Notification message format** (keep it short — full analysis happens when user asks to see it):
 ```
-🔥 New mentor update ready!
+🔥 New update from {mentor_name}!
 
-**{mentor_name}** · {risk_emoji} {risk_level_display} risk
-
-{plain_english_summary}
-
-Say **"show my mentor report"** to see the full details.
-Or: **"apply mentor report"** / **"skip mentor report"**
+They've pushed a new version of their setup. Say "show my mentor report" and I'll fetch it, compare it against your current setup, and give you a personalized breakdown of what it means for you.
 ```
-
-Risk emoji: LOW → 🟢, MEDIUM → 🟡, HIGH → 🔴
 
 ### Command: "show my mentor report" / "my mentor reports" / "check my reports"
 
 1. Call `GET https://app.clawmentor.ai/api/mentee/reports`
 2. If no pending reports: "No new mentor reports. You're up to date! ✅"
-3. For each pending report, show:
-   ```
-   📋 Report from {mentor_name} — {date}
-   Risk: {risk_level} {risk_emoji}
-   
-   {plain_english_summary}
-   
-   Changes:
-   • Add: {skill names joined with comma, or "none"}
-   • Modify: {skill names, or "none"}  
-   • Remove: {skill names, or "none"}
-   
-   Say "apply mentor report" to apply or "skip mentor report" to skip.
-   ```
+3. For each pending report, **perform a LOCAL compatibility analysis** (do NOT display the backend's `plain_english_summary` — it is just a placeholder):
+
+**Step A — Fetch the mentor's package:**
+Call `GET https://app.clawmentor.ai/api/mentee/package?packageId={report.package_id}` with your API key.
+This returns two sections:
+- `files` — the mentor's authored content: `AGENTS.md`, `skills.md`, `cron-patterns.json`, `CLAW_MENTOR.md`, `privacy-notes.md`
+- `platform` — platform guides: `mentee-integration.md` (the full integration algorithm), `setup-guide.md`, `mentee-skill.md` (detailed operations guide)
+
+For analysis, focus on the `files` section. The `platform` section is used during apply (see below).
+
+**Step B — Read your own current setup:**
+- List `~/.openclaw/skills/` — what skills do you already have installed?
+- Read `~/.openclaw/workspace/AGENTS.md` — how do you currently operate?
+- Read `~/.openclaw/claw-mentor/state.json` — any saved user_profile (goals, context)?
+- Draw on everything you know about this user from your conversations, workspace files, and active projects
+
+**Step C — Analyze the gap yourself:**
+You are the LLM. You have context the backend never could. Work through these:
+- Which of the mentor's skills do you NOT currently have installed? Those are candidates to add.
+- For each candidate skill: what would it concretely enable for THIS user? Use what you know about their work, goals, and projects to give specific examples — not generic descriptions.
+- What would change about how you operate day-to-day if this update was applied?
+- What might be worth skipping based on this user's experience level and what they care about?
+- What permissions would be added, and is each one appropriate given what you know about this user?
+- Overall: is this update a good fit for this person right now?
+
+**Step D — Present your analysis** (bullet lists only — no markdown tables):
+```
+📋 Update from {mentor_name} — {date}
+
+[Your plain-English summary of what this update means for THIS user specifically — 2-3 sentences based on their actual context]
+
+What would change for you:
+• [capability or behavior change — phrased in terms of what they can now do/say/get]
+• ...
+
+Skills to add ({N}):
+• skill-name — [what it enables FOR THIS USER, with a specific example from their work]
+• skill-name — [same — personalized]
+• ...
+
+Permissions this would add:
+• [permission] — [plain English reason why]
+
+What you might want to skip:
+• [skill] — [honest reason it may not be needed for their situation]
+
+My take: [One honest sentence — your recommendation as their agent who knows them]
+
+Say "apply mentor report" to apply or "skip mentor report" to skip.
+```
 
 ### Command: "apply mentor report" / "apply [mentor name]'s update"
 
-This is the most important command. Follow all steps carefully.
+This is the most important command. It uses the full integration algorithm from the platform.
 
 1. Call `GET https://app.clawmentor.ai/api/mentee/reports` to get the latest pending report
 2. If no pending reports: "Nothing to apply — no pending reports."
-3. Show the full changes list from the report
-4. **Take a snapshot before anything else:**
-   ```bash
-   SNAPSHOT_DATE=$(date +%Y-%m-%d-%H-%M)
-   SNAPSHOT_PATH="$HOME/.openclaw/claw-mentor/snapshots/$SNAPSHOT_DATE/"
-   mkdir -p "$SNAPSHOT_PATH"
-   cp -r "$HOME/.openclaw/" "$SNAPSHOT_PATH"
-   ```
-5. Confirm snapshot: "✅ Backup saved to `~/.openclaw/claw-mentor/snapshots/{date}/`"
-6. Walk the user through each change as a checklist — show each skill/permission change and ask them to make the change manually in their skills/ directory
-7. When user confirms they're done: call `POST https://app.clawmentor.ai/api/mentee/status` with:
+3. **Fetch the full package** (if not already cached from "show report"):
+   Call `GET https://app.clawmentor.ai/api/mentee/package?packageId={report.package_id}`
+4. **Read `platform['mentee-integration.md']` from the package response.**
+   This contains the full 6-phase integration algorithm:
+   - Phase 0: Backup (snapshot your current setup)
+   - Phase 1: Self-Assessment (read and map your human's complete current state)
+   - Phase 2: Update Parsing (understand what the mentor is proposing)
+   - Phase 3: Conflict Analysis (find every collision, overlap, and opportunity)
+   - Phase 4: Merge Strategy & Human Approval (present the plan, get explicit approval)
+   - Phase 5: Integration Execution (apply the approved merge carefully)
+   - Phase 6: Post-Integration Report (tell your human what changed)
+5. **Follow `mentee-integration.md` step by step.** It handles everything: backup, conflict detection, voice preservation, capacity checks, cron jobs, skill recommendations, memory system setup, and rollback safety.
+6. After integration completes, call `POST https://app.clawmentor.ai/api/mentee/status` with:
    ```json
-   { "reportId": "{id}", "status": "applied", "snapshotPath": "{SNAPSHOT_PATH}" }
+   { "reportId": "{id}", "status": "applied", "snapshotPath": "{backup_path}" }
    ```
-8. Confirm: "✅ Marked as applied! Your adoption history is updated on Claw Mentor."
+7. **Check `~/.openclaw/claw-mentor/state.json` for `first_apply_done`.** If it is NOT set → run the **First-Time Welcome** flow below. Then set `first_apply_done: true` in state.json.
+
+**Important:** The integration algorithm in `mentee-integration.md` is comprehensive. Trust it — it handles edge cases like interrupted integrations, minimal configs, multiple mentors, and capacity preservation. Don't skip phases or simplify the process.
+
+---
+
+### First-Time Welcome (runs once, after first ever apply)
+
+This is NOT a status report. It's a human conversation. Keep each message short. Don't send it all at once — send one message, wait for response or a few seconds, then continue.
+
+**Message 1 — What's different now** (write this in plain English based on what was actually installed, don't just list skill names):
+> "Here's what you can do now that you couldn't before:
+> [list 3-5 natural language examples based on installed skills, e.g.]
+> • 'Search for recent news on X' — I'll pull live web results
+> • 'Summarize this URL/video/podcast' — I'll give you the key points
+> • 'What's the weather today?' — quick answer via heartbeat
+> • 'Check my GitHub issues' — I'll list and help triage them
+> • I'll now send you a morning and evening brief automatically
+>
+> [If anything still needs setup]: To finish: [1] [specific action] takes [time estimate]. Want to do that now?"
+
+**Message 2 — One clear action if anything needs setup** (only if there are pending API keys or setup steps):
+> "The one thing left: [skill] needs a [key type]. Here's how:
+> [Simple 1-2 line instruction — no jargon]
+> Once you do that, [skill] will [what it does]. Takes about [X] minutes."
+
+Wait for their response before continuing.
+
+**Message 3 — Get to know you** (conversational, not a form):
+> "Quick question — what's the main thing you want me to help with day-to-day? Work stuff, personal projects, research, staying on top of things...? Just a sentence or two is fine."
+
+When they respond, follow up with one more:
+> "Got it. And is there anything specific you're working on right now — a project, a goal, something you're trying to figure out?"
+
+Save both answers to `~/.openclaw/claw-mentor/state.json` under `user_profile.goals` and `user_profile.context`. This personalizes future reports.
+
+**Message 4 — Close** (short, energizing, done):
+> "You're all set. 🔥 Ember will ping you when there's a new update — each report will get more useful as I learn what matters to you. Just talk to me like normal and I'll use everything we just set up."
 
 ### Command: "skip mentor report" / "skip [mentor]'s update"
 
@@ -214,9 +283,10 @@ All endpoints at `https://app.clawmentor.ai`.
     {
       "id": "uuid",
       "created_at": "2026-03-01T10:00:00Z",
-      "risk_level": "low",
-      "plain_english_summary": "...",
-      "skills_to_add": [{ "name": "...", "what_it_does": "...", "permissions_it_needs": [] }],
+      "package_id": "uuid",
+      "plain_english_summary": "placeholder — your agent performs the real analysis locally",
+      "risk_level": null,
+      "skills_to_add": [],
       "skills_to_modify": [],
       "skills_to_remove": [],
       "permission_changes": [],
@@ -227,6 +297,34 @@ All endpoints at `https://app.clawmentor.ai`.
   "subscriptions": [...]
 }
 ```
+**Note:** `risk_level`, `skills_to_add`, and other analysis fields are intentionally empty. Your local agent fetches the package via `/api/mentee/package?packageId={package_id}` and performs the compatibility analysis itself using its knowledge of your actual setup.
+
+### GET /api/mentee/package
+**Auth:** `Authorization: Bearer {CLAW_MENTOR_API_KEY}`  
+**Query param:** `packageId={uuid}` (from the `package_id` field in a report)  
+**Returns:** Two sections — mentor-authored content and platform guides:
+```json
+{
+  "packageId": "uuid",
+  "version": "2026-03-01",
+  "mentor": { "id": "...", "name": "Ember 🔥", "handle": "ember" },
+  "files": {
+    "CLAW_MENTOR.md": "overview and version notes",
+    "AGENTS.md": "annotated configuration with reasoning",
+    "skills.md": "curated skill recommendations with tiers",
+    "cron-patterns.json": { "jobs": [...] },
+    "privacy-notes.md": "what this package reads/writes"
+  },
+  "platform": {
+    "mentee-integration.md": "full 6-phase integration algorithm",
+    "setup-guide.md": "first-time setup guide",
+    "mentee-skill.md": "detailed daily operations guide"
+  },
+  "fetchedAt": "2026-03-01T10:00:00Z"
+}
+```
+- **`files`** = mentor-authored content (unique per mentor). Use for local compatibility analysis.
+- **`platform`** = platform guides (same for all mentors). Use `mentee-integration.md` during apply. Use `mentee-skill.md` for detailed operational reference beyond what this SKILL.md covers.
 
 ### POST /api/mentee/status
 **Auth:** `Authorization: Bearer {CLAW_MENTOR_API_KEY}`  
