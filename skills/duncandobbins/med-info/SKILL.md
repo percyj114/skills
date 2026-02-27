@@ -1,141 +1,106 @@
 ---
 name: med-info
-description: Medication info with citations and traceable IDs (RxCUI/NDC/set_id) from authoritative public sources (openFDA, RxNorm/RxClass, DailyMed, MedlinePlus). Includes label sections plus optional recalls/shortages/FAERS and Orange/Purple Book context.
+description: Label-backed medication answers with citations and traceable IDs. RxCUI/NDC/set_id, key label sections, optional recalls/shortages/FAERS/interactions.
 metadata: {"clawdbot": {"emoji": "💊", "os": ["darwin", "linux"], "requires": {"bins": ["python3"]}}}
 ---
 
 # med-info
 
-**Medication info with citations—fast.**
+**Medication answers you can cite.**
 
-Get a label-backed, traceable summary from authoritative public sources (FDA labeling + NLM identifiers). Designed for reference and research — **not** medical advice.
+`med-info` turns a drug name (or RxCUI, NDC, SPL set_id) into a **label-backed** summary with **traceable identifiers** and **source links**.
 
-**Privacy:** don’t include PHI. Query by medication name, **RxCUI**, **NDC**, or label **set_id**.
+Use it when you want “show your work” medication information for notes, training, QA, internal docs, or agent workflows.
 
-## Highlights
+Not medical advice.
 
-- **Citations & traceability:** includes identifiers (RxCUI, NDC, SPL set_id) plus label dates and source links when available.
-- **Label-first answers:** pulls key sections (boxed warning, indications, dosing, contraindications, warnings, interactions, adverse reactions).
-- **Normalization:** resolves brand/generic names → RxNorm best-match RxCUI; supports NDC lookups.
-- **Patient-friendly context:** links to MedlinePlus Connect when available.
-- **Optional add-ons:** recalls, shortages, FAERS aggregates, drug classes, DailyMed history/media, Orange Book, Purple Book.
+## What you get
 
-## Why install
+- **Authoritative sources first**: FDA labeling via openFDA + DailyMed, identifiers via RxNorm/RxClass.
+- **Citations + traceability**: RxCUI, NDC (product/package), SPL set_id, effective dates, and URLs.
+- **The sections you actually need**: boxed warning, indications, dosing, contraindications, warnings, interactions, adverse reactions.
+- **Optional safety context** (opt-in flags): recalls, shortages, FAERS aggregates, interactions, drug class, hazardous drug flag, REMS linkouts, Orange Book, Purple Book.
+- **Automation friendly**: `--json` output for pipelines.
 
-- You want **“show your work”** medication info for notes, training materials, QA, or internal docs.
-- You need a quick path from a messy drug name to **clean IDs** (RxCUI/NDC/set_id).
-- You’re building automations and need **JSON output** you can audit and reproduce.
-- You care about privacy: no patient context required (and none should be provided).
+## Privacy
 
-## Sources
+Do not include PHI. Query by drug name or identifiers only.
 
-This skill queries:
-- **openFDA** (drug labels, NDC directory, recalls/enforcement reports, shortages, FAERS)
-- **RxNorm (RxNav)** for normalization (RxCUI, brand↔generic mapping)
-- **RxClass (RxNav)** for drug class membership
-- **DailyMed** for SPL history/media (including labeler-submitted images)
-- **Orange Book** data files for TE/RLD context
-- **Purple Book** monthly data for biologics, biosimilars, and interchangeability
-- **MedlinePlus Connect** for patient-friendly summaries
+## Quickstart
 
-## Safety rules
-
-- For clinical decisions, **verify against the full official label**. This tool extracts key sections and returns references.
-- Do not include PHI (patient-identifying information).
-- The script treats all user input as untrusted and **escapes values** when constructing openFDA `search` queries to prevent query-injection style surprises.
-
-## Example commands
-
-### 1) Summarize a drug by name
 ```bash
 cd {baseDir}
-python3 scripts/med_info.py "metoprolol succinate" 
+python3 scripts/med_info.py "Eliquis" --brief
 ```
 
-### 2) Query by NDC
+Common workflows:
+
 ```bash
-python3 scripts/med_info.py "70518-4370"     # product_ndc (example)
-python3 scripts/med_info.py "70518-4370-0"   # package_ndc (example)
+# Only the sections you care about
+python3 scripts/med_info.py "Eliquis" --sections contraindications,drug_interactions --brief
+
+# Find keyword hits in label text (fast way to answer "does the label mention X?")
+python3 scripts/med_info.py "Eliquis" --find ritonavir --find CYP3A4 --find P-gp --find-max 8
+
+# Deterministic lookups by identifier (best for reproducibility)
+python3 scripts/med_info.py "70518-4370-0"   # NDC (package)
+python3 scripts/med_info.py "70518-4370"     # NDC (product)
+python3 scripts/med_info.py "05999192-ebc6-4198-bd1e-f46abbfb4f8a"  # SPL set_id
 ```
 
-### 3) JSON output (for pipelines)
-```bash
-python3 scripts/med_info.py "ibuprofen" --json
-```
+## Disambiguation (when there are multiple labels)
 
-### 4) Find a keyword in the label text
 ```bash
-python3 scripts/med_info.py "Eliquis" --find ritonavir
-python3 scripts/med_info.py "metformin" --find crush --find chew
-```
-
-### 5) Disambiguate labels (candidates, pick, set_id)
-```bash
-# show label candidates
 python3 scripts/med_info.py "metformin" --candidates
-
-# pick the 2nd candidate
-python3 scripts/med_info.py "metformin" --candidates --pick 2
-
-# force a specific label by set_id
-python3 scripts/med_info.py "05999192-ebc6-4198-bd1e-f46abbfb4f8a"  # set_id
-# or
+python3 scripts/med_info.py "metformin" --candidates --pick 2 --brief
 python3 scripts/med_info.py "metformin" --set-id "05999192-ebc6-4198-bd1e-f46abbfb4f8a"
 ```
 
-### 6) Recalls, shortages, FAERS, and drug classes (optional)
+## Optional add-ons
+
 ```bash
-python3 scripts/med_info.py "metformin" --recalls
-python3 scripts/med_info.py "amphetamine" --shortages
+# Pharmacist-friendly output bundle
+python3 scripts/med_info.py "Eliquis" --pharmacist --brief
+
+# Safety signals and operational context (opt-in)
+python3 scripts/med_info.py "metformin" --recalls --brief
+python3 scripts/med_info.py "amphetamine" --shortages --brief
 python3 scripts/med_info.py "Eliquis" --faers --faers-max 10
+python3 scripts/med_info.py "Eliquis" --interactions --interactions-max 20
 python3 scripts/med_info.py "Eliquis" --rxclass
-```
+python3 scripts/med_info.py "cyclophosphamide" --hazardous
+python3 scripts/med_info.py "isotretinoin" --rems
 
-### 7) DailyMed and images (optional)
-```bash
-python3 scripts/med_info.py "Eliquis" --dailymed
-python3 scripts/med_info.py "Eliquis" --images
-
-# Note: RxImage was retired in 2021, so --rximage is an alias for --images.
-python3 scripts/med_info.py "Eliquis" --rximage
-```
-
-### 8) Orange Book and Purple Book (optional)
-```bash
-python3 scripts/med_info.py "metformin" --orangebook
+# Reference datasets
 python3 scripts/med_info.py "adalimumab" --purplebook
+python3 scripts/med_info.py "metformin" --orangebook
+
+# Chemistry (best-effort)
+python3 scripts/med_info.py "ibuprofen" --chem
 ```
 
-### 9) Output shaping (optional)
+## Output shaping
+
 ```bash
-# only print a couple sections
-python3 scripts/med_info.py "Eliquis" --sections contraindications,drug_interactions
-
-# brief output
+python3 scripts/med_info.py "ibuprofen" --json
 python3 scripts/med_info.py "Eliquis" --brief --sections all
-
-# print redacted URLs queried
-python3 scripts/med_info.py "Eliquis" --print-url --brief
+python3 scripts/med_info.py "Eliquis" --print-url --brief   # prints queried URLs (api_key redacted)
 ```
 
-## What it returns
+## Sources (high level)
 
-- RxNorm resolution (best-match RxCUI + name)
-- openFDA label match (effective_time, set_id when present) and key sections:
-  - boxed warning
-  - indications and usage
-  - dosage and administration
-  - contraindications
-  - warnings and precautions
-  - drug interactions
-  - adverse reactions
-- MedlinePlus Connect links (if available)
+- openFDA: drug labels, NDC directory, recalls/enforcement, shortages, FAERS
+- RxNorm / RxClass (RxNav): normalization and drug classes
+- DailyMed: SPL label history and media
+- MedlinePlus Connect: patient-friendly summaries (links)
+- Orange Book and Purple Book: best-effort context
 
-## Environment (optional)
+## Safety notes
 
+- For clinical decisions, verify against the **full official label**.
+- Input is treated as untrusted, openFDA `search` strings are escaped to prevent query injection.
+
+## Keys and rate limits
+
+Works without any keys. Optionally:
 - `OPENFDA_API_KEY`: increases openFDA rate limits for heavy usage.
-
-## Implementation notes
-
-- The scripts are intentionally conservative. If multiple candidates exist, it will show the top few and pick the best-scoring RxNorm match.
-- Prefer querying by **RxCUI** (more precise) after resolution.

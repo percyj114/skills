@@ -3,11 +3,16 @@
   "slug": "med-info",
   "displayName": "Med Info",
   "latest": {
-    "version": "0.2.2",
-    "publishedAt": 1771036780920,
-    "commit": "https://github.com/openclaw/skills/commit/1eec3577ffc5d3c07a9cb92ee6821ec8a98aff9f"
+    "version": "0.2.3",
+    "publishedAt": 1772080983945,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.2",
+      "publishedAt": 1771036780920,
+      "commit": "https://github.com/openclaw/skills/commit/1eec3577ffc5d3c07a9cb92ee6821ec8a98aff9f"
+    },
     {
       "version": "0.2.1",
       "publishedAt": 1770956363146,
