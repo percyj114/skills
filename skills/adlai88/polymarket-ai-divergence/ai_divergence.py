@@ -29,57 +29,7 @@ sys.stdout.reconfigure(line_buffering=True)
 # Configuration
 # =============================================================================
 
-def _load_config(schema, skill_file, config_filename="config.json"):
-    """Load config with priority: config.json > env vars > defaults."""
-    config_path = Path(skill_file).parent / config_filename
-    file_cfg = {}
-    if config_path.exists():
-        try:
-            with open(config_path) as f:
-                file_cfg = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
-    result = {}
-    for key, spec in schema.items():
-        if key in file_cfg:
-            result[key] = file_cfg[key]
-        elif spec.get("env") and os.environ.get(spec["env"]):
-            val = os.environ.get(spec["env"])
-            type_fn = spec.get("type", str)
-            try:
-                result[key] = type_fn(val) if type_fn != str else val
-            except (ValueError, TypeError):
-                result[key] = spec.get("default")
-        else:
-            result[key] = spec.get("default")
-    return result
-
-
-def _get_config_path(skill_file, config_filename="config.json"):
-    """Get path to config file."""
-    return Path(skill_file).parent / config_filename
-
-
-def _update_config(updates, skill_file, config_filename="config.json"):
-    """Update config values and save to file."""
-    config_path = Path(skill_file).parent / config_filename
-    existing = {}
-    if config_path.exists():
-        try:
-            with open(config_path) as f:
-                existing = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
-    existing.update(updates)
-    with open(config_path, "w") as f:
-        json.dump(existing, f, indent=2)
-    return existing
-
-
-# Aliases for compatibility
-load_config = _load_config
-get_config_path = _get_config_path
-update_config = _update_config
+from simmer_sdk.skill import load_config, update_config, get_config_path
 
 CONFIG_SCHEMA = {
     "min_divergence": {"env": "SIMMER_DIVERGENCE_MIN", "default": 5.0, "type": float},
@@ -91,7 +41,7 @@ CONFIG_SCHEMA = {
     "daily_budget": {"env": "SIMMER_DIVERGENCE_DAILY_BUDGET", "default": 25.0, "type": float},
 }
 
-_config = load_config(CONFIG_SCHEMA, __file__)
+_config = load_config(CONFIG_SCHEMA, __file__, slug="polymarket-ai-divergence")
 
 DEFAULT_MIN_DIVERGENCE = _config["min_divergence"]
 DEFAULT_DIRECTION = _config["default_direction"]
@@ -105,6 +55,7 @@ KELLY_CAP = _config["kelly_cap"]
 DAILY_BUDGET = _config["daily_budget"]
 
 TRADE_SOURCE = "sdk:divergence"
+SKILL_SLUG = "polymarket-ai-divergence"
 _automaton_reported = False
 MIN_SHARES_PER_ORDER = 5.0
 
@@ -174,7 +125,7 @@ def execute_trade(market_id, side, amount):
             market_id=market_id,
             side=side,
             amount=amount,
-            source=TRADE_SOURCE,
+            source=TRADE_SOURCE, skill_slug=SKILL_SLUG,
         )
         return {
             "success": result.success,
@@ -538,6 +489,7 @@ def main():
         direction = "bearish"
 
     markets = get_markets()
+    markets = [m for m in markets if m.get('is_live_now', True) is not False]  # skip not-yet-open markets (no-op if field absent)
 
     if args.json:
         filtered = [m for m in markets if abs(m.get("divergence") or 0) >= args.min / 100]
