@@ -100,6 +100,33 @@ homebutler deploy --all                                 # Deploy to all remote s
 Installs homebutler on remote servers via SSH. Auto-detects remote OS/architecture.
 Install path priority: `/usr/local/bin` → `sudo /usr/local/bin` → `~/.local/bin` (with PATH auto-registration in .profile/.bashrc/.zshrc).
 
+### Top Processes
+```bash
+homebutler processes                 # Local top 10 by CPU
+homebutler processes --server rpi    # Remote server
+homebutler processes --all           # All servers
+```
+Returns: PID, CPU%, memory%, process name
+
+### Web Dashboard
+```bash
+homebutler serve                     # Start on localhost:8080
+homebutler serve --port 9090         # Custom port
+homebutler serve --demo              # Demo mode with dummy data
+```
+Launches a web dashboard with real-time server monitoring. Cards: ServerOverview, SystemStatus, Docker, Processes, Alerts, Ports, WakeOnLAN. Server dropdown switches all cards to show selected server's data.
+
+### Interactive Setup
+```bash
+homebutler init                      # Setup wizard
+```
+Auto-detects local machine, walks through adding remote servers with SSH key discovery and connection testing.
+
+### SSH Trust
+```bash
+homebutler trust --server rpi        # Trust a remote server's host key (TOFU)
+```
+
 ### MCP Server
 ```bash
 homebutler mcp                       # Start MCP server (JSON-RPC over stdio)
@@ -109,6 +136,8 @@ Starts a built-in MCP (Model Context Protocol) server for use with Claude Deskto
 ### Version
 ```bash
 homebutler version
+homebutler -v
+homebutler --version
 ```
 
 ## Output Format
@@ -129,7 +158,7 @@ If no config found, sensible defaults are used.
 - `servers` — Server list with SSH connection details
 - `wake` — Named WOL targets with MAC + broadcast
 - `alerts.cpu/memory/disk` — Threshold percentages
-- `output` — Default output format
+
 
 ### Multi-Server Config Example
 ```yaml
