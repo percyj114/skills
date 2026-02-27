@@ -1,0 +1,11 @@
+{
+  "owner": "clarityprotocol",
+  "slug": "clarity-literature",
+  "displayName": "Clarity Literature",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772055677030,
+    "commit": null
+  },
+  "history": []
+}
