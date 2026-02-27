@@ -1,6 +1,6 @@
 {
   "name": "captcha-auto",
-  "version": "1.0.3",
+  "version": "1.0.7",
   "description": "智能验证码自动识别 Skill - 混合模式（本地 Tesseract OCR + 阿里云千问 3 VL Plus 视觉模型降级）",
   "main": "index.mjs",
   "type": "module",
@@ -13,7 +13,7 @@
     "playwright",
     "tesseract"
   ],
-  "author": "Aphrodite",
+  "author": "Lie Troksky and Aphrodite",
   "license": "MIT",
   "dependencies": {
     "playwright-core": "^1.40.0",

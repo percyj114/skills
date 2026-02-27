@@ -3,9 +3,15 @@
   "slug": "captcha-auto",
   "displayName": "Captcha Auto",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1771956265530,
-    "commit": "https://github.com/openclaw/skills/commit/a1d82dfae39401c0267b576eee2705db5f63d33e"
+    "version": "1.0.7",
+    "publishedAt": 1772006104443,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1771956265530,
+      "commit": "https://github.com/openclaw/skills/commit/a1d82dfae39401c0267b576eee2705db5f63d33e"
+    }
+  ]
 }

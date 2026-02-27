@@ -124,20 +124,9 @@ async function analyzePageWithVision(screenshotPath, config) {
           content: [
             {
               type: 'text',
-              text: `这是一个网页截图，请分析：
-1. 找出验证码图片中的文字内容（只返回验证码文字，不要其他描述）
-2. 描述验证码图片在页面中的大概位置
-3. 找出验证码输入框的位置
-4. 找出提交/验证按钮的位置和文字
-
-请用 JSON 格式返回：
-{
-  "captchaText": "验证码文字",
-  "captchaLocation": "位置描述",
-  "inputLocation": "输入框位置",
-  "buttonLocation": "按钮位置",
-  "buttonText": "按钮文字"
-}`
+              text: `这是一个网页截图，请识别验证码图片中的文字。
+只返回验证码文字本身（通常是 4-6 位字母数字），不要任何其他描述或解释。
+如果看不到验证码或无法识别，返回"UNRECOGNIZABLE"。`
             },
             {
               type: 'image_url',
@@ -146,7 +135,7 @@ async function analyzePageWithVision(screenshotPath, config) {
           ]
         }
       ],
-      max_tokens: 500,
+      max_tokens: 20,
       temperature: 0.1
     })
   });
@@ -157,102 +146,216 @@ async function analyzePageWithVision(screenshotPath, config) {
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.choices[0].message.content.trim();
   
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch (e) {}
+  console.log(`   视觉模型原始响应："${content}"`);
   
-  return { rawText: content };
-}
-
-async function cropCaptchaRegion(page, screenshotPath, outputPrefix) {
-  try {
-    const captchaImgSelectors = [
-      'img[alt*="captcha" i]',
-      'img[alt*="验证码" i]',
-      'img[id*="captcha" i]',
-      'img[class*="captcha" i]'
-    ];
-    
-    for (const selector of captchaImgSelectors) {
-      const img = page.locator(selector).first();
-      if (await img.count() > 0) {
-        const box = await img.boundingBox();
-        if (box) {
-          const croppedPath = path.join(WORKSPACE_DIR, `${outputPrefix}_captcha_cropped.png`);
-          await page.screenshot({ 
-            path: croppedPath, 
-            clip: { x: box.x, y: box.y, width: box.width, height: box.height }
-          });
-          console.log(`✅ 已裁剪验证码区域：${outputPrefix}_captcha_cropped.png`);
-          return croppedPath;
-        }
-      }
-    }
-  } catch (e) {
-    console.log('⚠️ 无法裁剪验证码区域，使用全屏截图');
+  // 检查是否是无法识别
+  if (content.toUpperCase() === 'UNRECOGNIZABLE' || content.length === 0) {
+    throw new Error('视觉模型无法识别验证码');
   }
   
-  return screenshotPath;
+  // 尝试提取纯字母数字（去除可能的标点、空格等）
+  const cleanedText = content.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  
+  if (cleanedText.length === 0) {
+    throw new Error('视觉模型返回的内容不包含有效字符');
+  }
+  
+  console.log(`   清洗后验证码："${cleanedText}"`);
+  
+  return { captchaText: cleanedText, rawResponse: content };
 }
 
+// 不再裁剪验证码区域，直接使用全屏截图
+// Qwen VL 可以自行识别全屏截图中的验证码位置
+
 async function fillInContext(context, captchaText, contextName = '主页面') {
-  const preciseSelectors = [
-    'input[placeholder*="验证码"]',
-    'input[placeholder*="captcha" i]',
-    'input[name*="captcha" i]',
+  // ========== 策略 1: 精确选择器匹配（按优先级排序）==========
+  // 高优先级：id/name 包含 captcha（更可靠）
+  const highPrioritySelectors = [
     'input[id*="captcha" i]',
-    'input[aria-label*="验证码"]',
+    'input[name*="captcha" i]',
     'input[aria-label*="captcha" i]'
   ];
+  
+  // 中优先级：placeholder 包含验证码相关词（但不包含 search/query）
+  const mediumPrioritySelectors = [
+    'input[placeholder*="验证码"]',
+    'input[placeholder*="verification code" i]',
+    'input[placeholder*="security code" i]'
+  ];
 
-  for (const selector of preciseSelectors) {
+  console.log('   尝试高优先级选择器（id/name 包含 captcha）...');
+  for (const selector of highPrioritySelectors) {
+    const inputs = await context.locator(selector).all();
+    if (inputs.length > 0) {
+      console.log(`   选择器 "${selector}" 找到 ${inputs.length} 个元素`);
+    }
+    for (const input of inputs) {
+      try {
+        if (await input.isVisible()) {
+          await input.fill(captchaText);
+          const id = await input.getAttribute('id');
+          const name = await input.getAttribute('name');
+          console.log(`✅ 已填写到输入框 (${contextName}, ${selector}) - id="${id || ''}", name="${name || ''}"`);
+          return true;
+        }
+      } catch (e) {}
+    }
+  }
+  
+  console.log('   高优先级未找到，尝试中优先级选择器（placeholder）...');
+  for (const selector of mediumPrioritySelectors) {
     const inputs = await context.locator(selector).all();
     for (const input of inputs) {
       try {
-        const box = await input.boundingBox();
-        if (box && box.width > 30 && box.width < 300 && box.height > 20) {
-          const isVisible = await input.isVisible();
-          if (!isVisible) continue;
-          
+        if (await input.isVisible()) {
           await input.fill(captchaText);
-          console.log(`✅ 已填写到输入框 (${contextName}, ${selector})`);
+          const id = await input.getAttribute('id');
+          const name = await input.getAttribute('name');
+          console.log(`✅ 已填写到输入框 (${contextName}, ${selector}) - id="${id || ''}", name="${name || ''}"`);
           return true;
         }
       } catch (e) {}
     }
   }
 
-  console.log(`   ⚠️ 精确匹配失败，尝试通用 type="text" 选择器...`);
-  const textInputs = await context.locator('input[type="text"]').all();
+  // ========== 策略 2: 获取所有输入框，用 accessibility 信息判断 ==========
+  console.log(`   ⚠️ 精确匹配失败，尝试 accessibility 分析...`);
   
-  for (const input of textInputs) {
+  // 获取页面上所有 input 元素（不限制 type）
+  const allInputs = await context.locator('input').all();
+  
+  // 排除关键词
+  const excludeKeywords = ['search', 'query', 'email', 'username', 'password', 'phone', 'tel', 'hidden'];
+  
+  // 验证码相关关键词（用于加分）
+  const captchaKeywords = ['captcha', '验证码', 'image', 'code', 'verify', 'answer'];
+  
+  let bestCandidate = null;
+  let bestScore = 0;
+  
+  for (const input of allInputs) {
     try {
+      // 检查是否可见
+      if (!await input.isVisible()) continue;
+      
+      // 获取边界框
       const box = await input.boundingBox();
-      if (box && box.width > 50 && box.width < 300 && box.height > 15) {
-        const isVisible = await input.isVisible();
-        if (!isVisible) continue;
-        
-        const placeholder = await input.getAttribute('placeholder');
-        const name = await input.getAttribute('name');
-        const id = await input.getAttribute('id');
-        
-        const excludeKeywords = ['search', 'query', 'width', 'height', 'email'];
-        const text = (placeholder + ' ' + name + ' ' + id).toLowerCase();
-        const isExcluded = excludeKeywords.some(kw => text.includes(kw));
-        
-        if (isExcluded) {
-          console.log(`   ⚠️ 跳过可能的非验证码输入框：${id || name || 'unknown'}`);
-          continue;
+      if (!box || box.width < 50 || box.width > 400 || box.height < 15 || box.height > 100) continue;
+      
+      // 跳过 hidden 类型
+      const type = await input.getAttribute('type');
+      if (type === 'hidden' || type === 'submit' || type === 'button') continue;
+      
+      // 收集 accessibility 信息
+      const placeholder = (await input.getAttribute('placeholder')) || '';
+      const name = (await input.getAttribute('name')) || '';
+      const id = (await input.getAttribute('id')) || '';
+      const ariaLabel = (await input.getAttribute('aria-label')) || '';
+      const role = await input.getAttribute('role') || '';
+      
+      const allText = (placeholder + ' ' + name + ' ' + id + ' ' + ariaLabel + ' ' + role).toLowerCase();
+      
+      // 排除明显不是验证码的
+      const isExcluded = excludeKeywords.some(kw => allText.includes(kw));
+      if (isExcluded) continue;
+      
+      // 计算匹配分数
+      let score = 0;
+      
+      // 尺寸加分（验证码输入框通常较小）
+      if (box.width >= 80 && box.width <= 250) score += 10;
+      if (box.height >= 30 && box.height <= 60) score += 5;
+      
+      // 关键词加分
+      for (const kw of captchaKeywords) {
+        if (allText.includes(kw)) score += 20;
+      }
+      
+      // placeholder 存在加分
+      if (placeholder) score += 5;
+      
+      // aria-label 存在加分（说明有无障碍标识）
+      if (ariaLabel) score += 10;
+      
+      console.log(`   候选输入框：id="${id || ''}", placeholder="${placeholder.substring(0, 30)}", score=${score}`);
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestCandidate = input;
+      }
+      
+    } catch (e) {
+      // 跳过无法访问的元素
+    }
+  }
+  
+  // 如果找到最佳候选，填写它
+  if (bestCandidate && bestScore > 0) {
+    try {
+      await bestCandidate.fill(captchaText);
+      console.log(`✅ 已填写到输入框 (accessibility 评分：${bestScore})`);
+      return true;
+    } catch (e) {
+      console.log(`   ⚠️ 填写失败：${e.message}`);
+    }
+  }
+  
+  // ========== 策略 3: 位置启发式 - 找验证码图片附近的输入框 ==========
+  console.log(`   ⚠️ accessibility 分析未找到，尝试基于位置查找...`);
+  try {
+    const captchaImgSelectors = [
+      'img[alt*="captcha" i]',
+      'img[id*="captcha" i]',
+      'img[class*="captcha" i]',
+      'img[src*="captcha" i]'
+    ];
+    
+    for (const selector of captchaImgSelectors) {
+      const captchaImg = context.locator(selector).first();
+      if (await captchaImg.count() > 0) {
+        const captchaBox = await captchaImg.boundingBox();
+        if (captchaBox) {
+          for (const input of allInputs) {
+            try {
+              const box = await input.boundingBox();
+              if (box && await input.isVisible()) {
+                const verticalDist = Math.abs((box.y + box.height/2) - (captchaBox.y + captchaBox.height/2));
+                const horizontalDist = Math.abs((box.x + box.width/2) - (captchaBox.x + captchaBox.width/2));
+                
+                // 如果在附近，很可能是验证码输入框
+                if (verticalDist < 150 && horizontalDist < 400) {
+                  await input.fill(captchaText);
+                  console.log(`✅ 基于位置找到输入框 (距离验证码：垂直${verticalDist.toFixed(0)}px, 水平${horizontalDist.toFixed(0)}px)`);
+                  return true;
+                }
+              }
+            } catch (e) {}
+          }
         }
+        break; // 找到验证码图片后只处理一次
+      }
+    }
+  } catch (e) {
+    console.log(`   ⚠️ 位置查找失败：${e.message}`);
+  }
+  
+  // ========== 策略 4: 最后手段 - 填写第一个合适的可见输入框 ==========
+  console.log(`   ⚠️ 位置查找失败，尝试第一个可见输入框...`);
+  for (const input of allInputs) {
+    try {
+      if (await input.isVisible()) {
+        const type = await input.getAttribute('type');
+        if (type === 'hidden' || type === 'submit' || type === 'button') continue;
         
-        await input.fill(captchaText);
-        console.log(`✅ 已填写到输入框 (${contextName}, id="${id || ''}", name="${name || ''}")`);
-        return true;
+        const box = await input.boundingBox();
+        if (box && box.width > 50 && box.width < 400) {
+          await input.fill(captchaText);
+          console.log(`✅ 已填写到第一个可见输入框`);
+          return true;
+        }
       }
     } catch (e) {}
   }
@@ -295,13 +398,16 @@ async function fillAndSubmit(page, captchaText, outputPrefix) {
     console.log(`💡 验证码已识别，请手动填写并提交`);
   }
 
+  // ========== 查找并点击提交按钮 ==========
   console.log('\n🔍 查找验证按钮...');
+  
+  // 策略 1: 文本匹配按钮
   const buttonSelectors = [
     'button:has-text("Validate")',
     'button:has-text("Submit")',
     'button:has-text("验证")',
     'button:has-text("提交")',
-    'button:has-text("登录")',
+    'button:has-text("Check")',
     'input[type="submit"]',
     'button[type="submit"]'
   ];
@@ -314,7 +420,7 @@ async function fillAndSubmit(page, captchaText, outputPrefix) {
         const text = await btn.textContent().catch(() => '');
         const value = await btn.getAttribute('value').catch(() => '');
         
-        if (/validate|submit|verify|确认 | 提交 | 验证 | 登录/i.test(text + value)) {
+        if (/validate|submit|verify|check|确认 | 提交 | 验证 | 登录/i.test(text + value)) {
           await btn.click();
           console.log(`✅ 已点击：${selector} (${text || value})`);
           buttonFound = true;
@@ -325,14 +431,123 @@ async function fillAndSubmit(page, captchaText, outputPrefix) {
     if (buttonFound) break;
   }
 
+  // 策略 2: accessibility 分析找按钮
   if (!buttonFound) {
-    console.log('⚠️ 未找到明显按钮，尝试第一个提交按钮...');
-    const firstBtn = page.locator('button, input[type="submit"]').first();
-    if (await firstBtn.count() > 0) {
-      await firstBtn.click();
-      console.log('✅ 已点击第一个按钮');
-      buttonFound = true;
+    console.log('⚠️ 文本匹配失败，尝试 accessibility 分析...');
+    
+    const allButtons = await page.locator('button, input[type="submit"], input[type="button"]').all();
+    
+    // 按钮相关关键词
+    const buttonKeywords = ['submit', 'validate', 'verify', 'check', '确认', '提交', '验证', '登录', 'ok', 'go'];
+    const excludeKeywords = ['menu', 'header', 'nav', 'open', 'close', 'toggle', 'cancel', 'back'];
+    
+    let bestBtn = null;
+    let bestScore = 0;
+    
+    for (const btn of allButtons) {
+      try {
+        if (!await btn.isVisible()) continue;
+        
+        const box = await btn.boundingBox();
+        if (!box || box.width < 40 || box.width > 250 || box.height < 25 || box.height > 100) continue;
+        
+        const text = (await btn.textContent().catch(() => '')).toLowerCase();
+        const ariaLabel = (await btn.getAttribute('aria-label')) || '';
+        const name = (await btn.getAttribute('name')) || '';
+        const value = (await btn.getAttribute('value')) || '';
+        
+        const allText = (text + ' ' + ariaLabel + ' ' + name + ' ' + value).toLowerCase();
+        
+        // 排除明显不是提交按钮的
+        const isExcluded = excludeKeywords.some(kw => allText.includes(kw));
+        if (isExcluded) continue;
+        
+        // 计算分数
+        let score = 0;
+        
+        // 关键词加分
+        for (const kw of buttonKeywords) {
+          if (allText.includes(kw)) score += 20;
+        }
+        
+        // 按钮位置加分（验证码按钮通常在输入框下方）
+        if (inputFound) {
+          const inputs = await page.locator('input').all();
+          for (const input of inputs) {
+            try {
+              const inputBox = await input.boundingBox();
+              if (inputBox) {
+                const verticalDist = box.y - (inputBox.y + inputBox.height);
+                if (verticalDist >= 0 && verticalDist < 100) {
+                  score += 15; // 在输入框下方附近
+                }
+              }
+            } catch (e) {}
+          }
+        }
+        
+        // 尺寸适中加分
+        if (box.width >= 60 && box.width <= 150) score += 5;
+        if (box.height >= 30 && box.height <= 60) score += 5;
+        
+        console.log(`   候选按钮：text="${text.substring(0, 20)}", score=${score}`);
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestBtn = btn;
+        }
+        
+      } catch (e) {}
     }
+    
+    if (bestBtn && bestScore > 0) {
+      try {
+        await bestBtn.click();
+        console.log(`✅ 已点击最佳候选按钮 (accessibility 评分：${bestScore})`);
+        buttonFound = true;
+      } catch (e) {
+        console.log(`   ⚠️ 点击失败：${e.message}`);
+      }
+    }
+  }
+
+  // 策略 3: 位置启发式 - 找输入框附近的按钮
+  if (!buttonFound && inputFound) {
+    console.log('⚠️ accessibility 分析未找到，尝试基于位置查找...');
+    try {
+      const inputs = await page.locator('input').all();
+      for (const input of inputs) {
+        try {
+          const inputBox = await input.boundingBox();
+          if (inputBox) {
+            const buttons = await page.locator('button').all();
+            for (const btn of buttons) {
+              try {
+                const box = await btn.boundingBox();
+                if (box && await btn.isVisible()) {
+                  const verticalDist = Math.abs((box.y + box.height/2) - (inputBox.y + inputBox.height/2));
+                  const horizontalDist = Math.abs((box.x + box.width/2) - (inputBox.x + inputBox.width/2));
+                  
+                  if (verticalDist < 100 && horizontalDist < 300) {
+                    await btn.click();
+                    console.log(`✅ 基于位置点击按钮 (距离输入框：垂直${verticalDist.toFixed(0)}px, 水平${horizontalDist.toFixed(0)}px)`);
+                    buttonFound = true;
+                    break;
+                  }
+                }
+              } catch (e) {}
+            }
+            if (buttonFound) break;
+          }
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.log(`   ⚠️ 位置查找失败：${e.message}`);
+    }
+  }
+
+  if (!buttonFound) {
+    console.log('⚠️ 未找到合适的提交按钮');
   }
 
   return { inputFound, buttonFound };
@@ -394,47 +609,35 @@ async function recognizeCaptcha(options = {}) {
     await page.screenshot({ path: screenshots.page, fullPage: true });
     console.log(`✅ 页面已截图：${outputPrefix}_page.png`);
 
-    const captchaCropPath = await cropCaptchaRegion(page, screenshots.page, outputPrefix);
-
     let captchaText = null;
     let analysis = null;
-    let finalScreenshotPath = captchaCropPath;
 
+    // 策略 1：本地 Tesseract OCR（仅当截图较小且清晰时有效）
+    // 注意：全屏截图会导致 Tesseract 识别所有页面文字，所以跳过
     if (!skipLocal) {
-      const localResult = await recognizeWithTesseract(finalScreenshotPath);
-      
-      if (localResult.success) {
-        captchaText = localResult.text;
-        recognitionMethod = 'tesseract';
-        console.log(`✅ 本地 OCR 成功：${captchaText}`);
-      } else {
-        console.log('⚠️ 本地 OCR 不可靠，需要降级到视觉模型...');
-        console.log('📸 重新截图（确保验证码未刷新）...');
-        
-        await page.waitForTimeout(1000);
-        screenshots.page = path.join(WORKSPACE_DIR, `${outputPrefix}_page.png`);
-        await page.screenshot({ path: screenshots.page, fullPage: true });
-        finalScreenshotPath = await cropCaptchaRegion(page, screenshots.page, outputPrefix);
-      }
+      console.log('⚠️ 全屏截图模式下跳过本地 OCR（会识别整个页面文字）');
     }
 
-    if (!captchaText) {
-      try {
-        analysis = await analyzePageWithVision(finalScreenshotPath, config);
-        captchaText = analysis.captchaText || '';
-        
-        if (!captchaText) {
-          throw new Error('视觉模型未能识别验证码文字');
-        }
-        
-        recognitionMethod = 'vision';
-        console.log(`✅ 视觉模型识别成功：${captchaText}`);
-        console.log('📊 分析结果:');
-        console.log(JSON.stringify(analysis, null, 2));
-        
-      } catch (visionError) {
-        throw new Error(`视觉模型识别失败：${visionError.message}`);
+    // 策略 2：视觉模型识别（使用全屏截图）
+    try {
+      // 重新截图确保验证码未刷新
+      console.log('📸 重新截图（确保验证码未刷新）...');
+      await page.waitForTimeout(1000);
+      screenshots.page = path.join(WORKSPACE_DIR, `${outputPrefix}_page.png`);
+      await page.screenshot({ path: screenshots.page, fullPage: true });
+      
+      analysis = await analyzePageWithVision(screenshots.page, config);
+      captchaText = analysis.captchaText || '';
+      
+      if (!captchaText) {
+        throw new Error('视觉模型未能识别验证码文字');
       }
+      
+      recognitionMethod = 'vision';
+      console.log(`✅ 视觉模型识别成功：${captchaText}`);
+      
+    } catch (visionError) {
+      throw new Error(`视觉模型识别失败：${visionError.message}`);
     }
 
     const { inputFound, buttonFound } = await fillAndSubmit(page, captchaText, outputPrefix);
