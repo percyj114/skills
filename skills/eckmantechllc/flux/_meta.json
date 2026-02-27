@@ -3,11 +3,16 @@
   "slug": "flux",
   "displayName": "Flux",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771610463912,
-    "commit": "https://github.com/openclaw/skills/commit/9ef15e3de5e4c4915d0badadae254798ee610483"
+    "version": "2.3.0",
+    "publishedAt": 1772144949174,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771610463912,
+      "commit": "https://github.com/openclaw/skills/commit/9ef15e3de5e4c4915d0badadae254798ee610483"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1771092153456,
