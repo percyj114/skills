@@ -1,6 +1,6 @@
 # CopilotKit Agent Patterns
 
-**Version 1.0.0**  
+**Version 2.0.0**  
 CopilotKit  
 February 2026
 
@@ -14,37 +14,37 @@ February 2026
 
 ## Abstract
 
-Architecture and implementation patterns for building AI agents that integrate with CopilotKit via the AG-UI protocol. Contains 20 rules covering agent design, event streaming, state synchronization, human-in-the-loop checkpoints, and generative UI emission. Applies to both BuiltInAgent and custom agent implementations.
+Architecture and implementation patterns for building AI agents that integrate with CopilotKit via the AG-UI protocol. Contains 20 rules covering agent design with BuiltInAgent (@copilotkit/runtime/v2), event streaming, state synchronization, human-in-the-loop checkpoints, and generative UI emission. Applies to both BuiltInAgent and custom agent implementations.
 
 ---
 
 ## Table of Contents
 
 1. [Agent Architecture](#1-agent-architecture) — **CRITICAL**
-   - 1.1 [Configure MCP Servers for External Tools](#1.1-configure-mcp-servers-for-external-tools)
-   - 1.2 [Set maxSteps to Prevent Infinite Loops](#1.2-set-maxsteps-to-prevent-infinite-loops)
-   - 1.3 [Use BuiltInAgent with defineTool for Simple Agents](#1.3-use-builtinagent-with-definetool-for-simple-agents)
-   - 1.4 [Use resolveModel for Provider-Agnostic Models](#1.4-use-resolvemodel-for-provider-agnostic-models)
+   - 1.1 [Configure MCP Servers for External Tools](#11-configure-mcp-servers-for-external-tools)
+   - 1.2 [Set maxSteps to Prevent Infinite Loops](#12-set-maxsteps-to-prevent-infinite-loops)
+   - 1.3 [Use BuiltInAgent for Direct-to-LLM Agents](#13-use-builtinagent-for-direct-to-llm-agents)
+   - 1.4 [Use Provider/Model String Format for Model Selection](#14-use-providermodel-string-format-for-model-selection)
 2. [AG-UI Protocol](#2-ag-ui-protocol) — **HIGH**
-   - 2.1 [Always Emit Error Events on Failure](#2.1-always-emit-error-events-on-failure)
-   - 2.2 [Emit AG-UI Events in Correct Order](#2.2-emit-ag-ui-events-in-correct-order)
-   - 2.3 [Emit STATE_SNAPSHOT for Frontend Sync](#2.3-emit-state-snapshot-for-frontend-sync)
-   - 2.4 [Follow Tool Call Event Lifecycle](#2.4-follow-tool-call-event-lifecycle)
-   - 2.5 [Stream Text Incrementally](#2.5-stream-text-incrementally)
+   - 2.1 [Always Emit Error Events on Failure](#21-always-emit-error-events-on-failure)
+   - 2.2 [Emit AG-UI Events in Correct Order](#22-emit-ag-ui-events-in-correct-order)
+   - 2.3 [Emit STATE_SNAPSHOT for Frontend Sync](#23-emit-state_snapshot-for-frontend-sync)
+   - 2.4 [Follow Tool Call Event Lifecycle](#24-follow-tool-call-event-lifecycle)
+   - 2.5 [Stream Text Incrementally](#25-stream-text-incrementally)
 3. [State Management](#3-state-management) — **HIGH**
-   - 3.1 [Emit State Snapshots at Meaningful Checkpoints](#3.1-emit-state-snapshots-at-meaningful-checkpoints)
-   - 3.2 [Handle Bidirectional State Conflicts](#3.2-handle-bidirectional-state-conflicts)
-   - 3.3 [Isolate State Per Thread](#3.3-isolate-state-per-thread)
-   - 3.4 [Keep State Snapshots Minimal and Serializable](#3.4-keep-state-snapshots-minimal-and-serializable)
+   - 3.1 [Emit State Snapshots at Meaningful Checkpoints](#31-emit-state-snapshots-at-meaningful-checkpoints)
+   - 3.2 [Handle Bidirectional State Conflicts](#32-handle-bidirectional-state-conflicts)
+   - 3.3 [Isolate State Per Thread](#33-isolate-state-per-thread)
+   - 3.4 [Keep State Snapshots Minimal and Serializable](#34-keep-state-snapshots-minimal-and-serializable)
 4. [Human-in-the-Loop](#4-human-in-the-loop) — **MEDIUM**
-   - 4.1 [Include Context for User Decisions](#4.1-include-context-for-user-decisions)
-   - 4.2 [Preserve State When Resuming After Approval](#4.2-preserve-state-when-resuming-after-approval)
-   - 4.3 [Set Timeouts with Fallback Behavior](#4.3-set-timeouts-with-fallback-behavior)
-   - 4.4 [Use Tool Calls for Approval Gates](#4.4-use-tool-calls-for-approval-gates)
+   - 4.1 [Include Context for User Decisions](#41-include-context-for-user-decisions)
+   - 4.2 [Preserve State When Resuming After Approval](#42-preserve-state-when-resuming-after-approval)
+   - 4.3 [Set Timeouts with Fallback Behavior](#43-set-timeouts-with-fallback-behavior)
+   - 4.4 [Use Tool Calls for Approval Gates](#44-use-tool-calls-for-approval-gates)
 5. [Generative UI Emission](#5-generative-ui-emission) — **MEDIUM**
-   - 5.1 [Emit Tool Calls That Map to useRenderTool](#5.1-emit-tool-calls-that-map-to-userendertool)
-   - 5.2 [Stream Tool Args for Real-Time UI](#5.2-stream-tool-args-for-real-time-ui)
-   - 5.3 [Use Activity Messages for Non-Tool Updates](#5.3-use-activity-messages-for-non-tool-updates)
+   - 5.1 [Emit Tool Calls That Map to useRenderTool](#51-emit-tool-calls-that-map-to-userendertool)
+   - 5.2 [Stream Tool Args for Real-Time UI](#52-stream-tool-args-for-real-time-ui)
+   - 5.3 [Use Text Messages for Status Updates](#53-use-text-messages-for-status-updates)
 
 ---
 
@@ -60,45 +60,46 @@ Fundamental patterns for structuring agents that integrate with CopilotKit. Corr
 
 ## Configure MCP Servers for External Tools
 
-Use MCP (Model Context Protocol) server configuration to give agents access to external tools and data sources. This avoids reimplementing tool integrations that already exist as MCP servers.
+Use MCP (Model Context Protocol) server configuration to give agents access to external tools and data sources. CopilotKit supports MCP endpoints on the runtime, avoiding the need to reimplement tool integrations that already exist as MCP servers.
 
 **Incorrect (reimplementing existing tool integrations):**
 
 ```typescript
-const agent = new BuiltInAgent({
-  name: "developer",
-  tools: [
-    defineTool({
-      name: "read_file",
-      handler: async ({ path }) => fs.readFileSync(path, "utf-8"),
-    }),
-    defineTool({
-      name: "search_code",
-      handler: async ({ query }) => { /* custom implementation */ },
-    }),
-  ],
-})
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime()
+// Manually reimplementing file read, search, etc. as custom tools
 ```
 
-**Correct (MCP servers provide standard tool integrations):**
+**Correct (MCP endpoints on the runtime):**
 
 ```typescript
-const agent = new BuiltInAgent({
-  name: "developer",
-  mcpServers: [
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
+  mcpEndpoints: [
     {
-      name: "filesystem",
-      transport: { type: "stdio", command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"] },
-    },
-    {
-      name: "github",
-      transport: { type: "stdio", command: "npx", args: ["-y", "@modelcontextprotocol/server-github"] },
+      endpoint: "https://mcp-server.example.com/sse",
+      apiKey: process.env.MCP_API_KEY,
     },
   ],
 })
 ```
 
-Reference: [MCP Integration](https://docs.copilotkit.ai/guides/mcp)
+On the frontend, MCP endpoints can also be configured via the `CopilotKit` provider:
+
+```tsx
+<CopilotKit
+  runtimeUrl="/api/copilotkit"
+  mcpEndpoints={[
+    { endpoint: "https://mcp-server.example.com/sse" },
+  ]}
+>
+  <MyApp />
+</CopilotKit>
+```
+
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
 
 ### 1.2 Set maxSteps to Prevent Infinite Loops
 
@@ -131,13 +132,13 @@ Choose a `maxSteps` value based on the expected complexity of your agent's workf
 
 Reference: [BuiltInAgent](https://docs.copilotkit.ai/reference/runtime/built-in-agent)
 
-### 1.3 Use BuiltInAgent with defineTool for Simple Agents
+### 1.3 Use BuiltInAgent for Direct-to-LLM Agents
 
 **Impact: CRITICAL (BuiltInAgent handles AG-UI protocol automatically)**
 
-## Use BuiltInAgent with defineTool for Simple Agents
+## Use BuiltInAgent for Direct-to-LLM Agents
 
-For agents that primarily need tool-calling capabilities without complex state graphs, use `BuiltInAgent` with `defineTool`. It handles AG-UI protocol event emission, message management, and streaming automatically. Only reach for custom agents or LangGraph when you need multi-step workflows or complex state.
+For agents that primarily need tool-calling capabilities without complex state graphs, use `BuiltInAgent` from `@copilotkit/runtime/v2`. It handles AG-UI protocol event emission, message management, and streaming automatically. Only reach for custom agents or LangGraph when you need multi-step workflows or complex state.
 
 **Incorrect (manual AG-UI event handling for a simple agent):**
 
@@ -155,66 +156,83 @@ class MyAgent extends Agent {
 }
 ```
 
-**Correct (BuiltInAgent with defineTool):**
+**Correct (BuiltInAgent from v2):**
 
 ```typescript
-import { BuiltInAgent, defineTool } from "@copilotkit/runtime"
+import { BuiltInAgent } from "@copilotkit/runtime/v2"
 import { z } from "zod"
 
 const agent = new BuiltInAgent({
   name: "researcher",
   description: "Researches topics and provides summaries",
+  model: "openai/gpt-4o",
   tools: [
-    defineTool({
+    {
       name: "search",
       description: "Search for information on a topic",
       parameters: z.object({ query: z.string() }),
       handler: async ({ query }) => {
         return await searchApi(query)
       },
-    }),
+    },
   ],
 })
 ```
 
-Reference: [BuiltInAgent](https://docs.copilotkit.ai/reference/runtime/built-in-agent)
+`BuiltInAgent` replaces the older adapter pattern (`OpenAIAdapter`, `AnthropicAdapter`) with a unified interface that uses the `"provider/model"` string format.
 
-### 1.4 Use resolveModel for Provider-Agnostic Models
+Reference: [BuiltInAgent](https://docs.copilotkit.ai/guides/self-hosting)
+
+### 1.4 Use Provider/Model String Format for Model Selection
 
 **Impact: HIGH (hardcoded model names break when switching providers)**
 
-## Use resolveModel for Provider-Agnostic Models
+## Use Provider/Model String Format for Model Selection
 
-Use `resolveModel` to abstract model selection from specific provider implementations. This allows swapping between OpenAI, Anthropic, or other providers without changing agent code.
+Use the `"provider/model"` string format when specifying models for `BuiltInAgent`. This allows swapping between OpenAI, Anthropic, or other providers without changing the underlying agent architecture. Use environment variables for flexibility across environments.
 
-**Incorrect (hardcoded provider-specific model):**
+**Incorrect (ambiguous model name without provider):**
 
 ```typescript
+import { BuiltInAgent } from "@copilotkit/runtime/v2"
+
 const agent = new BuiltInAgent({
   name: "writer",
   model: "gpt-4o",
 })
 ```
 
-**Correct (provider-agnostic model resolution):**
+**Correct (explicit provider/model format):**
 
 ```typescript
-import { resolveModel } from "@copilotkit/runtime"
+import { BuiltInAgent } from "@copilotkit/runtime/v2"
 
 const agent = new BuiltInAgent({
   name: "writer",
-  model: resolveModel({
-    default: "gpt-4o",
-    mapping: {
-      fast: "gpt-4o-mini",
-      powerful: "gpt-4o",
-      anthropic: "claude-sonnet-4-20250514",
-    },
-  }),
+  model: process.env.LLM_MODEL || "openai/gpt-4o",
 })
 ```
 
-Reference: [Model Configuration](https://docs.copilotkit.ai/reference/runtime/models)
+**Correct (environment-based model selection):**
+
+```typescript
+import { BuiltInAgent } from "@copilotkit/runtime/v2"
+
+const MODEL_MAP: Record<string, string> = {
+  fast: "openai/gpt-4o-mini",
+  powerful: "openai/gpt-4o",
+  anthropic: "anthropic/claude-sonnet-4-20250514",
+}
+
+const modelKey = process.env.MODEL_TIER || "powerful"
+
+const agent = new BuiltInAgent({
+  name: "writer",
+  model: MODEL_MAP[modelKey],
+})
+```
+
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)
 
 ## 2. AG-UI Protocol
 
@@ -786,13 +804,13 @@ yield { type: "TOOL_CALL_END", toolCallId: "tc_1" }
 
 Reference: [Generative UI](https://docs.copilotkit.ai/guides/generative-ui)
 
-### 5.3 Use Activity Messages for Non-Tool Updates
+### 5.3 Use Text Messages for Status Updates
 
-**Impact: LOW (status updates that aren't tool calls need a different channel)**
+**Impact: LOW (status updates that aren't tool calls should use text messages, not fake tool calls)**
 
-## Use Activity Messages for Non-Tool Updates
+## Use Text Messages for Status Updates
 
-Use activity messages for status updates that don't correspond to tool calls (e.g., "Searching...", "Analyzing results..."). These render as lightweight status indicators in the chat without creating tool call UI.
+Use lightweight text messages for status updates that don't correspond to tool calls (e.g., "Searching...", "Analyzing results..."). Don't create fake tool calls just to show status — this causes unnecessary rendering and confusing UI in the chat.
 
 **Incorrect (fake tool call for a status message):**
 
@@ -802,30 +820,34 @@ yield { type: "TOOL_CALL_ARGS", toolCallId: "tc_status", delta: '{"message":"Sea
 yield { type: "TOOL_CALL_END", toolCallId: "tc_status" }
 ```
 
-**Correct (activity message for status updates):**
+**Correct (text message for status updates):**
 
 ```typescript
-yield {
-  type: "CUSTOM_EVENT",
-  eventType: "ACTIVITY",
-  data: { message: "Searching databases...", icon: "search" },
-}
+yield { type: "TEXT_MESSAGE_START", messageId: "status_1", role: "assistant" }
+yield { type: "TEXT_MESSAGE_CONTENT", messageId: "status_1", delta: "Searching databases..." }
+yield { type: "TEXT_MESSAGE_END", messageId: "status_1" }
 
-// After work completes:
-yield {
-  type: "CUSTOM_EVENT",
-  eventType: "ACTIVITY",
-  data: { message: "Analysis complete", icon: "check" },
-}
+// For CoAgents using LangGraph, emit state updates instead:
+// await copilotkit_emit_state(config, { status: "searching" })
 ```
 
-Reference: [Generative UI](https://docs.copilotkit.ai/guides/generative-ui)
+For CoAgents, the recommended approach is to emit agent state via `copilotkit_emit_state` and render the status in the frontend using `useCoAgentStateRender`.
+
+Reference: [Generative UI](https://docs.copilotkit.ai/coagents/generative-ui/agentic)
 
 ---
 
 ## References
 
 - https://docs.copilotkit.ai
+- https://docs.copilotkit.ai/guides/self-hosting
+- https://docs.copilotkit.ai/guides/state-management
+- https://docs.copilotkit.ai/guides/human-in-the-loop
+- https://docs.copilotkit.ai/guides/generative-ui
+- https://docs.copilotkit.ai/guides/threads
+- https://docs.copilotkit.ai/coagents/generative-ui/agentic
+- https://docs.copilotkit.ai/reference/runtime/built-in-agent
+- https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime
+- https://docs.ag-ui.com/concepts/events
 - https://github.com/CopilotKit/CopilotKit
-- https://docs.ag-ui.com
 - https://github.com/ag-ui-protocol/ag-ui

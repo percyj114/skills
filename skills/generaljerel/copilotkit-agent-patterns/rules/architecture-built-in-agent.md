@@ -1,13 +1,13 @@
 ---
-title: Use BuiltInAgent with defineTool for Simple Agents
+title: Use BuiltInAgent for Direct-to-LLM Agents
 impact: CRITICAL
 impactDescription: BuiltInAgent handles AG-UI protocol automatically
-tags: architecture, BuiltInAgent, defineTool, setup
+tags: architecture, BuiltInAgent, setup
 ---
 
-## Use BuiltInAgent with defineTool for Simple Agents
+## Use BuiltInAgent for Direct-to-LLM Agents
 
-For agents that primarily need tool-calling capabilities without complex state graphs, use `BuiltInAgent` with `defineTool`. It handles AG-UI protocol event emission, message management, and streaming automatically. Only reach for custom agents or LangGraph when you need multi-step workflows or complex state.
+For agents that primarily need tool-calling capabilities without complex state graphs, use `BuiltInAgent` from `@copilotkit/runtime/v2`. It handles AG-UI protocol event emission, message management, and streaming automatically. Only reach for custom agents or LangGraph when you need multi-step workflows or complex state.
 
 **Incorrect (manual AG-UI event handling for a simple agent):**
 
@@ -25,26 +25,29 @@ class MyAgent extends Agent {
 }
 ```
 
-**Correct (BuiltInAgent with defineTool):**
+**Correct (BuiltInAgent from v2):**
 
 ```typescript
-import { BuiltInAgent, defineTool } from "@copilotkit/runtime"
+import { BuiltInAgent } from "@copilotkit/runtime/v2"
 import { z } from "zod"
 
 const agent = new BuiltInAgent({
   name: "researcher",
   description: "Researches topics and provides summaries",
+  model: "openai/gpt-4o",
   tools: [
-    defineTool({
+    {
       name: "search",
       description: "Search for information on a topic",
       parameters: z.object({ query: z.string() }),
       handler: async ({ query }) => {
         return await searchApi(query)
       },
-    }),
+    },
   ],
 })
 ```
 
-Reference: [BuiltInAgent](https://docs.copilotkit.ai/reference/runtime/built-in-agent)
+`BuiltInAgent` replaces the older adapter pattern (`OpenAIAdapter`, `AnthropicAdapter`) with a unified interface that uses the `"provider/model"` string format.
+
+Reference: [BuiltInAgent](https://docs.copilotkit.ai/guides/self-hosting)

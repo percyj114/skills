@@ -1,13 +1,13 @@
 ---
-title: Use Activity Messages for Non-Tool Updates
+title: Use Text Messages for Status Updates
 impact: LOW
-impactDescription: status updates that aren't tool calls need a different channel
+impactDescription: status updates that aren't tool calls should use text messages, not fake tool calls
 tags: genui, activity, messages, status
 ---
 
-## Use Activity Messages for Non-Tool Updates
+## Use Text Messages for Status Updates
 
-Use activity messages for status updates that don't correspond to tool calls (e.g., "Searching...", "Analyzing results..."). These render as lightweight status indicators in the chat without creating tool call UI.
+Use lightweight text messages for status updates that don't correspond to tool calls (e.g., "Searching...", "Analyzing results..."). Don't create fake tool calls just to show status — this causes unnecessary rendering and confusing UI in the chat.
 
 **Incorrect (fake tool call for a status message):**
 
@@ -17,21 +17,17 @@ yield { type: "TOOL_CALL_ARGS", toolCallId: "tc_status", delta: '{"message":"Sea
 yield { type: "TOOL_CALL_END", toolCallId: "tc_status" }
 ```
 
-**Correct (activity message for status updates):**
+**Correct (text message for status updates):**
 
 ```typescript
-yield {
-  type: "CUSTOM_EVENT",
-  eventType: "ACTIVITY",
-  data: { message: "Searching databases...", icon: "search" },
-}
+yield { type: "TEXT_MESSAGE_START", messageId: "status_1", role: "assistant" }
+yield { type: "TEXT_MESSAGE_CONTENT", messageId: "status_1", delta: "Searching databases..." }
+yield { type: "TEXT_MESSAGE_END", messageId: "status_1" }
 
-// After work completes:
-yield {
-  type: "CUSTOM_EVENT",
-  eventType: "ACTIVITY",
-  data: { message: "Analysis complete", icon: "check" },
-}
+// For CoAgents using LangGraph, emit state updates instead:
+// await copilotkit_emit_state(config, { status: "searching" })
 ```
 
-Reference: [Generative UI](https://docs.copilotkit.ai/guides/generative-ui)
+For CoAgents, the recommended approach is to emit agent state via `copilotkit_emit_state` and render the status in the frontend using `useCoAgentStateRender`.
+
+Reference: [Generative UI](https://docs.copilotkit.ai/coagents/generative-ui/agentic)

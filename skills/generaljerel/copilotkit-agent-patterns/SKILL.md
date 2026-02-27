@@ -4,7 +4,7 @@ description: Patterns for building AI agents that integrate with CopilotKit. Use
 license: MIT
 metadata:
   author: copilotkit
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # CopilotKit Agent Patterns
@@ -34,10 +34,10 @@ Reference these guidelines when:
 
 ### 1. Agent Architecture (CRITICAL)
 
-- `architecture-built-in-agent` - Use BuiltInAgent with defineTool for simple agents
-- `architecture-model-resolution` - Use resolveModel for provider-agnostic model selection
+- `architecture-built-in-agent` - Use BuiltInAgent from @copilotkit/runtime/v2 for simple agents
+- `architecture-model-resolution` - Use provider/model string format for model selection
 - `architecture-max-steps` - Set maxSteps to prevent infinite tool call loops
-- `architecture-mcp-servers` - Configure MCP servers for external tool access
+- `architecture-mcp-servers` - Configure MCP endpoints for external tool access
 
 ### 2. AG-UI Protocol (HIGH)
 
@@ -65,7 +65,7 @@ Reference these guidelines when:
 
 - `genui-tool-call-render` - Emit tool calls that map to frontend useRenderTool
 - `genui-streaming-args` - Stream tool args incrementally for real-time UI
-- `genui-activity-messages` - Use activity messages for non-tool UI updates
+- `genui-activity-messages` - Use text messages for non-tool status updates
 
 ## How to Use
 

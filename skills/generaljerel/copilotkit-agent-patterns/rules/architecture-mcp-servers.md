@@ -7,42 +7,43 @@ tags: architecture, MCP, servers, external-tools
 
 ## Configure MCP Servers for External Tools
 
-Use MCP (Model Context Protocol) server configuration to give agents access to external tools and data sources. This avoids reimplementing tool integrations that already exist as MCP servers.
+Use MCP (Model Context Protocol) server configuration to give agents access to external tools and data sources. CopilotKit supports MCP endpoints on the runtime, avoiding the need to reimplement tool integrations that already exist as MCP servers.
 
 **Incorrect (reimplementing existing tool integrations):**
 
 ```typescript
-const agent = new BuiltInAgent({
-  name: "developer",
-  tools: [
-    defineTool({
-      name: "read_file",
-      handler: async ({ path }) => fs.readFileSync(path, "utf-8"),
-    }),
-    defineTool({
-      name: "search_code",
-      handler: async ({ query }) => { /* custom implementation */ },
-    }),
-  ],
-})
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime()
+// Manually reimplementing file read, search, etc. as custom tools
 ```
 
-**Correct (MCP servers provide standard tool integrations):**
+**Correct (MCP endpoints on the runtime):**
 
 ```typescript
-const agent = new BuiltInAgent({
-  name: "developer",
-  mcpServers: [
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
+  mcpEndpoints: [
     {
-      name: "filesystem",
-      transport: { type: "stdio", command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"] },
-    },
-    {
-      name: "github",
-      transport: { type: "stdio", command: "npx", args: ["-y", "@modelcontextprotocol/server-github"] },
+      endpoint: "https://mcp-server.example.com/sse",
+      apiKey: process.env.MCP_API_KEY,
     },
   ],
 })
 ```
 
-Reference: [MCP Integration](https://docs.copilotkit.ai/guides/mcp)
+On the frontend, MCP endpoints can also be configured via the `CopilotKit` provider:
+
+```tsx
+<CopilotKit
+  runtimeUrl="/api/copilotkit"
+  mcpEndpoints={[
+    { endpoint: "https://mcp-server.example.com/sse" },
+  ]}
+>
+  <MyApp />
+</CopilotKit>
+```
+
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
