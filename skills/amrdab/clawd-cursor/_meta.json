@@ -3,11 +3,16 @@
   "slug": "clawd-cursor",
   "displayName": "ClawdCursor",
   "latest": {
-    "version": "0.5.4",
-    "publishedAt": 1772023415011,
-    "commit": "https://github.com/openclaw/skills/commit/3b9604249f0776c4e92fb6462f4e1609873bb9c5"
+    "version": "0.5.5",
+    "publishedAt": 1772149148356,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.5.4",
+      "publishedAt": 1772023415011,
+      "commit": "https://github.com/openclaw/skills/commit/3b9604249f0776c4e92fb6462f4e1609873bb9c5"
+    },
     {
       "version": "0.5.1",
       "publishedAt": 1771981513078,
