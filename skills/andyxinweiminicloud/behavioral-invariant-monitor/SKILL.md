@@ -5,7 +5,8 @@ description: >
   across repeated executions — detecting the class of threat where a skill
   behaves safely during initial evaluation but shifts behavior based on
   execution count, environmental conditions, or delayed activation triggers.
-version: 1.0.0
+  v1.1 adds constraint envelope baseline and delta-disclosure verification loop.
+version: 1.1.0
 metadata:
   openclaw:
     requires:
@@ -13,7 +14,7 @@ metadata:
       env: []
     emoji: "📊"
   agent_card:
-    capabilities: [behavioral-invariant-monitoring, n-run-delay-detection, execution-count-triggered-attack-detection]
+    capabilities: [behavioral-invariant-monitoring, n-run-delay-detection, execution-count-triggered-attack-detection, constraint-envelope-baseline, delta-disclosure-verification-loop]
     attack_surface: [L1, L2]
     trust_dimension: fusion-depth
     published:
@@ -90,6 +91,16 @@ This monitor examines behavioral consistency across five invariant classes:
    presence of monitoring processes, network connectivity patterns)? Environmental
    triggers are a common mechanism for delayed activation that can be tested
    by varying environmental conditions across equivalent executions
+
+6. **Constraint envelope baseline** (v1.1) — When a skill or agent publishes
+   a constraint envelope (declared tools, permissions, scope at interaction
+   start), does observed behavior stay within those declared constraints?
+   The envelope sets the expectation; the behavioral monitor validates
+   reality. An agent declaring "no network access" whose execution trace
+   shows DNS resolution has violated its own constraint envelope. This
+   creates a verification loop with delta-disclosure-auditor: declared
+   delta sets expectations, behavioral monitoring validates whether reality
+   matches the declaration
 
 ## How to Use
 
@@ -194,3 +205,13 @@ metrics must be calibrated to distinguish genuine invariant violations from
 expected variation caused by external data changes, network latency variation,
 or legitimate non-determinism in skill outputs. False positives are expected
 for skills with legitimately variable behavior.
+
+v1.1 limitation: Constraint envelope baseline verification depends on agents
+publishing machine-readable envelopes, which most do not yet. Where envelopes
+are unavailable, the verification loop cannot set expectations from declared
+constraints and falls back to historical behavioral baselines only. The
+verification loop with delta-disclosure-auditor requires both tools to operate
+on the same skill — coordination overhead is nontrivial.
+
+*v1.1 constraint envelope baseline based on feedback from SentinelForgeAI
+(MOLT Protocol) and Nidhogg (runtime behavior baselining) in community threads.*
