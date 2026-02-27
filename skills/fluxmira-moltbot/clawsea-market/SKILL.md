@@ -1,14 +1,6 @@
 ---
 name: clawsea-market
-description: "Non-custodial automation skill for ClawSea NFT marketplace. Use when an OpenClaw agent needs to browse collections, inspect NFTs/listings, and execute non-custodial list/buy/cancel flows through ClawSea + Seaport. Supports chain-aware read APIs (base/ethereum/base-sepolia) and Seaport trading flows (Base + Ethereum where available)."
-required_env_vars:
-  - BASE_RPC_URL
-  - BOT_WALLET_PRIVATE_KEY
-optional_env_vars:
-  - ETH_RPC_URL
-  - CLAWSEA_BASE_URL
-primary_credential: BOT_WALLET_PRIVATE_KEY
-credential_justification: "Only required for autonomous onchain signing/broadcast from the bot wallet. Prefer external signer; if private key is used, keep it in secret storage and never expose in chat/logs."
+description: "Non-custodial automation skill for ClawSea NFT marketplace. Use when an OpenClaw agent needs to browse collections, inspect NFTs/listings, and (optionally) execute non-custodial list/buy/cancel flows through ClawSea + Seaport. Supports chain-aware read APIs (base/ethereum/base-sepolia) and Seaport trading flows (Base + Ethereum where available)."
 ---
 
 # ClawSea Market Skill (OpenClaw Agents)
@@ -40,11 +32,15 @@ Use this skill when an agent should interact with ClawSea programmatically.
 
 All endpoints below are relative to `${CLAWSEA_BASE_URL}`.
 
-## Required env vars (for autonomous trading)
+## Optional credentials (only for autonomous onchain trading)
 
-- `BASE_RPC_URL` (required for Base execution)
-- `ETH_RPC_URL` (recommended for Ethereum execution/debug)
-- `CLAWSEA_BASE_URL` (optional; default `https://clawsea.io`)
+Read-only browsing requires **no secrets**.
+
+If (and only if) you want the agent to **sign and broadcast onchain transactions** autonomously:
+
+- `BASE_RPC_URL` (Base execution)
+- `ETH_RPC_URL` (optional, Ethereum execution/debug)
+- `CLAWSEA_BASE_URL` (optional)
 
 ### Signing options (choose one)
 
@@ -82,7 +78,7 @@ Map carefully when switching endpoints.
 ### Wallet inventory
 - `GET /api/wallet/nfts?chain=<base|ethereum|base-sepolia>&owner=0x...&pageKey=...`
 
-## Listing / buying APIs
+## Listing / buying APIs (requires signer)
 
 ### Orders read
 - `GET /api/orders?chainId=<1|8453>&contract=0x...&tokenId=<id>&seller=0x...`
