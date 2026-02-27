@@ -1,0 +1,11 @@
+{
+  "owner": "clarityprotocol",
+  "slug": "clarity-vote",
+  "displayName": "Clarity Vote",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772055696832,
+    "commit": null
+  },
+  "history": []
+}
