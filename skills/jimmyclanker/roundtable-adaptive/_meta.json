@@ -3,11 +3,16 @@
   "slug": "roundtable-adaptive",
   "displayName": "Roundtable Adaptive",
   "latest": {
-    "version": "2.7.0",
-    "publishedAt": 1772027732412,
-    "commit": "https://github.com/openclaw/skills/commit/3bb99c67bd72548d4b668054b55a5d84175dbd16"
+    "version": "2.9.1",
+    "publishedAt": 1772147323082,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.7.0",
+      "publishedAt": 1772027732412,
+      "commit": "https://github.com/openclaw/skills/commit/3bb99c67bd72548d4b668054b55a5d84175dbd16"
+    },
     {
       "version": "2.3.0",
       "publishedAt": 1771967483311,

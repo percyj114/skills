@@ -1,6 +1,6 @@
 ---
 name: roundtable
-description: "Adaptive multi-model AI roundtable. Runs up to 4 AI models (configurable) in 2 debate rounds with cross-critique and formal consensus scoring. Requires a configured Anthropic provider (Claude Opus recommended). Optionally adds GPT-5.3 Codex (OpenAI), Grok 4, and Gemini 3.1 Pro via Blockrun proxy. Works with Claude only if no other providers are configured. Writes results to local filesystem. All agents are one-shot and terminate after each round."
+description: "Adaptive multi-model AI roundtable. Runs up to 4 AI models (configurable) in 2 debate rounds with cross-critique and formal consensus scoring. Requires a configured Anthropic provider (Claude Opus recommended). Optionally adds GPT-5.3 Codex (OpenAI), Grok 4, and Gemini 3.1 Pro via Blockrun proxy. Works with Claude-only fallback if optional providers are unavailable. Writes results to local filesystem. Debate panel agents are persistent thread sessions; meta-panel and synthesis agents are one-shot."
 metadata:
   clawdis:
     emoji: "🎯"
@@ -9,19 +9,11 @@ metadata:
         - ANTHROPIC_API_KEY
       config:
         - providers.anthropic
-        - providers.openai-codex
-        - providers.blockrun
     config:
       requiredEnv:
-        - name: ANTHROPIC_API_KEY
-          description: "Required. Anthropic API key OR configure OAuth in openclaw.json (providers.anthropic). Provides Claude Opus/Sonnet as panel model. Skill cannot run without this."
-          required: true
-        - name: OPENAI_API_KEY
-          description: "Optional. OpenAI API key OR configure OAuth in openclaw.json (providers.openai-codex). Adds GPT-5.3 Codex as a panelist. If absent, slot falls back to Claude Sonnet."
-          required: false
-        - name: BLOCKRUN_PROXY_URL
-          description: "Optional. Set to http://localhost:8402 if Blockrun is installed. Adds Grok 4 and Gemini 3.1 Pro via x402 micropayments on Base (~$0.13/run). Install via: openclaw plugins install @blockrun/clawrouter. If absent, those slots fall back to Claude."
-          required: false
+        - "ANTHROPIC_API_KEY (required — Claude panelist; use API key or OAuth in openclaw.json)"
+        - "OPENAI_API_KEY (optional — GPT-5.3 Codex panelist; falls back to Claude if absent)"
+        - "BLOCKRUN_PROXY_URL=http://localhost:8402 (optional — adds Grok 4 + Gemini 3.1 Pro; install via openclaw plugins install @blockrun/clawrouter)"
       stateDirs:
         - "{workspace}/memory/roundtables"
     tags:
@@ -40,7 +32,7 @@ metadata:
 
 **Trigger:** `roundtable [--mode] [prompt]` from any channel your agent monitors.
 **Output:** Posted to your configured output channel (set `ROUNDTABLE_OUTPUT_CHANNEL` in your OpenClaw config, or results are posted back to the triggering channel).
-**Agents:** All spawned agents are one-shot (`mode="run"`) — they terminate after completing their round. No persistent background activity.
+**Panel agents:** Persistent sessions (`mode="session"`, `thread=true`) — stay alive in the Discord thread for follow-up questions. Meta-panel analysts and synthesis agent are one-shot (`mode="run"`).
 
 **The orchestrator = COORDINATOR ONLY.** Uses your default model unless overridden in `panels.json`. Never argues a position, never joins the panel.
 
@@ -129,6 +121,27 @@ This is entirely optional — the explicit `roundtable` command works from any c
 ## Step -1: Create a Thread (FIRST ACTION)
 
 Before anything else, create a thread in your configured channel and save the thread ID.
+
+### -1a) Dedup check (REQUIRED)
+
+Avoid double-spawn if the same topic is triggered twice.
+
+1. Normalize topic string:
+   - lowercase
+   - trim
+   - collapse multiple spaces
+   - remove trailing punctuation
+2. List recent threads in the target channel:
+```
+message(action='thread-list', channel='discord', channelId='[CHANNEL_ID]', limit=25)
+```
+3. If an existing active thread title matches normalized topic (+ same mode tag like `[[DEBATE]]`) created in last 24h:
+   - **reuse that thread** (`THREAD_ID = existing_thread_id`)
+   - post: `♻️ Duplicate topic detected — reusing existing thread.`
+   - **do NOT spawn a new orchestrator/panel**
+4. If no match: create a new thread.
+
+### -1b) Create thread (if no dedup hit)
 
 ```
 message(
@@ -253,54 +266,53 @@ Always surface this in META section of final output with **actionable guidance**
 
 ### parallel_debate (standard)
 
-**Round 1**: Spawn all agents in parallel as one-shot runs.
+**Round 1**: Spawn all panel agents in parallel as **persistent thread-bound sessions**.
 
 ```
 sessions_spawn(
   task = filled prompts/round1.md,
   model = model_id,
-  mode = "run",
-  label = "rt-r1-[role]",
-  runTimeoutSeconds = 120
+  mode = "session",        ← persistent — stays alive in the thread
+  label = "rt-[role]",
+  thread = true            ← bound to the thread from Step -1
 )
 ```
 
+- Save session keys: `{ "attacker": sessionKey, "defender": sessionKey, ... }`
 - Each agent writes their full response + SELF-DIGEST (last section)
-- Collect all responses and self-digests
-- All Round 1 agents terminate after completion
+- Collect all self-digests
+- ⚠️ Agents stay alive — users can address them directly for follow-up questions
 
-**Round 2** (if rounds ≥ 2): Spawn new one-shot agents with Round 1 context embedded in the prompt.
-- Re-spawn each role with `prompts/round2-cross-critique.md` + full Round 1 context injected
+**Round 2** (if rounds ≥ 2): Send cross-critique prompt to each existing session via `sessions_send`.
+- Do NOT re-spawn — reuse session keys from Round 1
 - `[SELF_DIGEST]` = this agent's own digest from Round 1
 - `[PEER_DIGESTS]` = other agents' digests (labeled with role)
 - Extract AGREEMENT SCORES from each response
-- All Round 2 agents terminate after completion
 
 **Round 3** (if `--validate`): See Step 4.
 
 ### sequential
 
-**Stage 1**: Spawn agents in parallel as one-shot runs (`mode="run"`).
+**Stage 1**: Spawn agents in parallel as persistent sessions (`mode="session"`, `thread=true`).
 - Use standard `prompts/round1.md`.
-- Collect full Round 1 outputs for Stage 2.
-- All Stage 1 agents terminate after completion.
+- Round 2 cross-critique via `sessions_send` to existing sessions (no re-spawn).
+- Collect full Stage 1 outputs for Stage 2.
 
-**Stage 2**: Spawn new one-shot agents with Stage 1 context embedded in prompt.
+**Stage 2**: Spawn new persistent sessions (`mode="session"`, `thread=true`).
 - Build prompt: `prompts/round1.md` base + prepend Stage 1 outputs as context
 - Label: "STAGE 1 OUTPUT from [Role]: [full output]"
-- Stage 2 agents review/validate/improve Stage 1 work
-- Stage 2 agents also write SELF-DIGESTs
+- Stage 2 agents review/validate/improve Stage 1 work and write SELF-DIGESTs
 
 ### hybrid
 
-**Stage 1**: Spawn parallel one-shot agents (`mode="run"`), each with a different sub-task.
+**Stage 1**: Parallel persistent sessions (`mode="session"`, `thread=true`), each with a different sub-task.
 - Customize Round 1 prompt to specify each agent's sub-task:
   > "Your specific task for this stage: [task from workflow design]"
-- Agents write SELF-DIGESTs and terminate
+- Agents write SELF-DIGESTs
 
-**Stage 2**: Spawn 1-2 one-shot agents with all Stage 1 outputs embedded in prompt.
+**Stage 2**: 1-2 new persistent sessions (`mode="session"`, `thread=true`) with all Stage 1 outputs embedded.
 - Build prompt: `prompts/round1.md` base + "You are integrating and synthesizing the work of multiple agents. Their outputs: [all Stage 1 outputs]"
-- Stage 2 produces the integrated output and terminates
+- Stage 2 produces the integrated output
 
 ---
 
@@ -372,7 +384,7 @@ Fill `prompts/final-synthesis.md` placeholders:
 
 ## Step 6: Persist Results
 
-Save to `~/clawd/memory/roundtables/YYYY-MM-DD-[topic-slug].json`:
+Save to `{workspace}/memory/roundtables/YYYY-MM-DD-[topic-slug].json`:
 ```json
 {
   "date": "YYYY-MM-DD",
@@ -386,9 +398,13 @@ Save to `~/clawd/memory/roundtables/YYYY-MM-DD-[topic-slug].json`:
   "consensus_pct": "XX% or N/A",
   "synthesis_model": "[model]",
   "validated": "yes|no|partial",
+  "elapsed_time_sec": 0,
   "synthesis": "[final synthesis text]"
 }
 ```
+
+Also append one JSONL line to `{workspace}/memory/roundtables/scorecard.jsonl` with:
+`ts, topic, mode, workflow_type, elapsed_time_sec, consensus_pct, validated, panel_degraded`.
 
 ---
 
@@ -410,7 +426,7 @@ Save to `~/clawd/memory/roundtables/YYYY-MM-DD-[topic-slug].json`:
 | Stage 2 agent fails | Note in META, synthesize with Stage 1 only |
 | 0 agents respond | Report failure, suggest retry |
 | 1 agent responds | Skip Round 2 (no peers), synthesize from Round 1 only, mark consensus "N/A" |
-| `--context-from SLUG` | Load `~/clawd/memory/roundtables/[slug].json`, extract `synthesis` field, prepend to `CURRENT_CONTEXT` as "PRIOR ROUNDTABLE CONTEXT: [synthesis]". If file not found: warn and continue without prior context. |
+| `--context-from SLUG` | Load `{workspace}/memory/roundtables/[slug].json`, extract `synthesis` field, prepend to `CURRENT_CONTEXT` as "PRIOR ROUNDTABLE CONTEXT: [synthesis]". If file not found: warn and continue without prior context. |
 
 ### Placeholder Contract
 
