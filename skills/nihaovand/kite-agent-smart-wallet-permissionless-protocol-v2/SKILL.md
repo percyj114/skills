@@ -1,95 +1,92 @@
-# Kite AI Agent Smart Wallet Permissionless Protocol V2.0
+# Kite AI Agent Smart Wallet Permissionless Protocol
 
-## Architecture
+> 让用户通过Telegram控制加密货币钱包 / Telegram wallet control for Kite AI
 
-Each user runs their own Telegram bot locally:
-- User creates their own Telegram bot
-- Bot runs on user's local machine
-- User's private key stays on their machine
-- OpenClaw provides the smart contracts
+![Version](https://img.shields.io/badge/version-2.0.4-blue)
+![Kite AI](https://img.shields.io/badge/Kite-AI-purple)
+![Telegram](https://img.shields.io/badge/Telegram-Bot-blue)
 
-```
-User's PC                        Kite AI Network
-┌─────────────────┐              ┌──────────────┐
-│ Telegram Bot    │◄────────────►│ Smart        │
-│ (runs locally)  │   Commands   │ Contracts    │
-│                 │              │              │
-│ - Private Key  │              │ - Factory    │
-│ - Bot Token    │              │ - Wallet     │
-└─────────────────┘              └──────────────┘
-```
+## 简介 / Introduction
 
-## Quick Start
+这是一个让用户通过Telegram管理Kite AI链上钱包的协议。  
+A protocol for users to manage Kite AI wallet via Telegram.
 
-### 1. Create Your Telegram Bot
-1. Open Telegram → @BotFather
-2. Send `/newbot`
-3. Get your **Bot Token**
+- 用户本地运行Bot / Bot runs locally
+- 私钥用户自己保管 / Private key stays with user
+- 完全去中心化 / Fully decentralized
 
-### 2. Get Testnet KITE
-- Faucet: https://faucet.gokite.ai
+## 特性 / Features
 
-### 3. Run Bot Locally
+- 📱 Telegram钱包控制 / Telegram wallet control
+- 🔐 智能钱包 / Smart wallet
+- 🔑 Session Keys / 授权密钥
+- 💰 消费限额 / Spending limits
+- 🌍 中英双语 / Bilingual
 
+## 快速开始 / Quick Start
+
+### 1. 创建Telegram机器人
+1. 打开Telegram → @BotFather
+2. 发送 `/newbot`
+3. 给机器人起名
+4. 复制Token
+
+### 2. 安装
 ```bash
-# Clone
 git clone <repo>
-cd kite-agent-wallet-v2
-
-# Install
+cd kite-wallet
 npm install
+```
 
-# Configure
-cp .env.example .env
-# Edit .env:
-#   PRIVATE_KEY=your_wallet_private_key
-#   TELEGRAM_BOT_TOKEN=your_bot_token
+### 3. 配置
+```env
+PRIVATE_KEY=你的私钥
+TELEGRAM_BOT_TOKEN=你的Token
+```
 
-# Run
+### 4. 运行
+```bash
 node telegram-bot.js
 ```
 
-## .env Configuration
+## 命令 / Commands
 
-```env
-PRIVATE_KEY=0xyour_private_key_here
-TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
-RPC_URL=https://rpc-testnet.gokite.ai
-```
+| 中文 | English | 功能 Function |
+|------|---------|---------------|
+| /create | /create | 创建钱包 |
+| /wallet | /wallet | 查看地址 |
+| /balance | /balance | 查看余额 |
+| /session add | /session add | 添加授权 |
+| /limit set | /limit set | 设置限额 |
+| /send | /send | 转账 |
 
-## Commands
+## 网络 / Network
 
-| Command | Description |
-|---------|-------------|
-| `/create` | Create smart wallet |
-| `/wallet` | Get wallet address |
-| `/balance` | Check balance |
-| `/session add <addr> <limit>` | Add session key |
-| `/limit set <amount>` | Set spending limit |
-| `/send <addr> <amount>` | Send KITE |
-| `/help` | Help |
+| 网络 Network | Chain ID | RPC |
+|-------------|----------|-----|
+| Testnet | 2368 | https://rpc-testnet.gokite.ai |
 
-## Network
+## 合约 / Contracts
 
-- **Testnet**: Chain ID 2368
-- **RPC**: https://rpc-testnet.gokite.ai
-- **Explorer**: https://testnet.kitescan.ai
-
-## Deployed Contracts
-
-| Contract | Address |
-|----------|---------|
+| 合约 Contract | 地址 Address |
+|--------------|-------------|
 | AgentSmartWalletFactory | `0x0fa9F878B038DE435b1EFaDA3eed1859a6Dc098a` |
 
-## Security
+## 相关链接 / Links
 
-- Private key stays on your machine
-- Only you control your wallet
-- Session keys add extra security
+- 🌐 Website: https://gokite.ai
+- 🔍 Explorer: https://testnet.kitescan.ai
+- 🚰 Faucet: https://faucet.gokite.ai
+- 📖 Docs: https://docs.gokite.ai
 
-## Version
+## 版本历史 / Version History
 
-- v2.0.2 (2026-02-25): User runs their own bot
-- v2.0.1 (2026-02-25): Local deployment
-- v2.0.0 (2026-02-25): Initial
-- v1.0.0 (2026-02-25): Core contracts
+- v2.0.4 - 中英双语 Bilingual
+- v2.0.3 - 用户手册 User guide
+- v2.0.2 - 用户本地运行 User runs locally
+- v1.0.0 - 初始版 Initial
+
+---
+
+**作者 / Author**: VandNi  
+**许可证 / License**: MIT
