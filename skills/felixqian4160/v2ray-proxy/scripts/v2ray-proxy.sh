@@ -49,6 +49,9 @@ start_v2ray() {
 
 # 停止v2ray
 stop_v2ray() {
+    # 停止前先清除系统代理，确保网络正常
+    disable_system_proxy
+    
     if ! is_running; then
         log_info "V2Ray 没有运行"
         return 0
