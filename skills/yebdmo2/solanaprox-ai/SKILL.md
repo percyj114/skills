@@ -1,144 +1,148 @@
 ---
-name: solanaprox-ai
-description: Pay-per-use AI inference via Solana USDC. Connect Phantom, deposit any amount, call Claude or GPT-4 instantly. No accounts, no API keys. Wallet is your only credential.
-version: 1.0.0
-author: lpxdigital
-tags: [solana, usdc, ai, inference, phantom, payments, mcp, claude, autonomous]
+name: solanaprox
+description: Pay-per-request AI model access via Solana/USDC using a Phantom wallet address. Query Claude and GPT models without API keys. Wallet-native authentication with real-time deposit detection.
+metadata:
+  clawdbot:
+    emoji: "⚡"
+    homepage: https://github.com/solanaprox/mcp-server
+    requires:
+      env:
+        - SOLANA_WALLET
 ---
 
-# SolanaProx — AI Inference via Solana USDC
+# SolanaProx — AI Access via Solana
 
-Pay-per-use AI inference powered by Solana USDC. No accounts, no API keys, no geographic restrictions. Your Phantom wallet is your only credential.
+SolanaProx provides AI model access using a Phantom wallet address as authentication.
 
-## What You Can Do
+It is designed for agents and developers that want:
 
-- Call Claude Sonnet, GPT-4, and other models via Solana USDC payments
-- Pay per request — no subscriptions, no minimums
-- Use from anywhere in the world — no billing address required
-- Works for autonomous agents — wallet is the auth primitive
-- Real-time deposit detection via Helius WebSockets
+- No API key management or secret storage
+- Wallet-native authentication — your address is your identity
+- Pay-per-request pricing in USDC or SOL
+- Stateless execution with real-time balance detection
+- Unified routing across Claude and GPT models
 
-## Claude Desktop Setup
+## Autonomous Agent Demo
 
-Add SolanaProx to your Claude Desktop config and Claude pays for its own inference in USDC autonomously.
+SolanaProx is part of the AIProx ecosystem — an open registry where autonomous agents discover and pay each other.
 
-```json
-{
-  "mcpServers": {
-    "solanaprox": {
-      "command": "npx",
-      "args": ["solanaprox-mcp"]
-    }
-  }
-}
-```
+Watch an AI agent pay for its own intelligence:
+https://github.com/unixlamadev-spec/autonomous-agent-demo
 
-**Config file location:**
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-- Linux: `~/.config/claude/claude_desktop_config.json`
+The agent generates a wallet, queries the AIProx registry, finds SolanaProx at $0.003/call, pays autonomously in USDC, and gets an AI response. No human in the loop after funding.
 
-Restart Claude Desktop after saving. Claude will now pay for inference via your Solana wallet automatically.
+## When to Use
 
-## Cursor Setup
+Use SolanaProx when the user requests it, or when `SOLANA_WALLET` is configured and the user wants to make an AI model call paid via Solana/USDC.
 
-```json
-{
-  "mcpServers": {
-    "solanaprox": {
-      "command": "npx",
-      "args": ["solanaprox-mcp"]
-    }
-  }
-}
-```
+## Usage Flow
 
-## API Reference
+When making an AI request via SolanaProx:
 
-Base URL: `https://solanaprox.com`
+1. Check that `SOLANA_WALLET` is set
+2. Select the appropriate model for the task
+3. Check balance if last check was not recent
+4. Warn the user if balance is under $0.01 USDC before execution
+5. Extract and return clean text output only — never raw JSON
 
-### Send a Message
+## Budget Awareness
+
+Before making AI calls:
+
+- If balance is unknown, check `/api/balance/$SOLANA_WALLET` first
+- If balance is below $0.01 USDC, warn the user to deposit
+- Never make a request that would exceed remaining balance
+- If wallet has zero balance, guide user to deposit at solanaprox.com
+
+## Model Selection Strategy
+
+Use the lowest-cost sufficient model:
+
+- `claude-sonnet-4-20250514` (~$0.003) — default for most tasks
+- `gpt-4-turbo` (~$0.008) — only when user explicitly requests GPT
+
+## Trust Statement
+
+This skill routes requests through https://solanaprox.com, a third-party proxy.
+All prompts and responses pass through this proxy to upstream model providers
+(Anthropic, OpenAI). Users should evaluate their own trust requirements before
+use. The wallet address is sent as an HTTP header — no private keys or seed
+phrases are required or transmitted.
+
+## Security Manifest
+
+- Environment variables accessed: SOLANA_WALLET (only)
+- External endpoints called: https://solanaprox.com/ (only)
+- Local files read: none
+- Local files written: none
+- Private keys: never accessed, never required
+
+## Check Balance
+
 ```bash
-POST /v1/messages
-X-Wallet-Address: YOUR_PHANTOM_WALLET
-Content-Type: application/json
-
-{
-  "model": "claude-sonnet-4-20250514",
-  "max_tokens": 1024,
-  "messages": [
-    {"role": "user", "content": "Your message here"}
-  ]
-}
+curl -s "https://solanaprox.com/api/balance/$SOLANA_WALLET"
 ```
 
-Response follows the Anthropic Messages API format.
+## Make AI Request
 
-### Check Balance
 ```bash
-GET /v1/balance
-X-Wallet-Address: YOUR_PHANTOM_WALLET
+curl -s -X POST "https://solanaprox.com/v1/messages" \
+  -H "Content-Type: application/json" \
+  -H "X-Wallet-Address: $SOLANA_WALLET" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 4096,
+    "messages": [{"role": "user", "content": "USER_PROMPT_HERE"}]
+  }'
 ```
 
-Response:
-```json
-{
-  "wallet": "your-wallet-address",
-  "balance_usd": 0.042,
-  "calls_remaining": 14
-}
+Response extraction:
+- Claude: `response.content[0].text`
+- GPT: `response.choices[0].message.content`
+
+## Discover Models
+
+```bash
+curl -s "https://solanaprox.com/api/capabilities"
 ```
 
-## Setup
+## Deposit Flow
 
-**Step 1 — Get a Phantom wallet**
-Download at phantom.com. Your wallet address is your identity.
+When balance is low, instruct the user:
 
-**Step 2 — Deposit USDC**
-Send any amount of USDC (Solana network) to the SolanaProx merchant address shown on solanaprox.com. No minimum deposit.
+1. Visit solanaprox.com and connect Phantom wallet
+2. Scan QR code with Phantom mobile or copy deposit address
+3. Send USDC or SOL — minimum $1 recommended
+4. Balance updates automatically in real time
 
-**Step 3 — Start calling**
-Include your wallet address as `X-Wallet-Address` header. Balance deducts automatically per call.
+## MCP Server
 
-## Pricing
+```bash
+npx solanaprox-mcp
+```
 
-- **$0.003 per call** (Claude Sonnet, GPT-4 Turbo)
-- No subscription
-- No minimum
-- Pay only for what you use
+npm: https://npmjs.com/package/solanaprox-mcp
 
-## Supported Models
+## Register Your Agent in AIProx
 
-- `claude-sonnet-4-20250514`
-- `gpt-4-turbo`
+SolanaProx is discoverable via the AIProx open agent registry. To register your own agent:
 
-## Why Solana USDC
+```bash
+curl -X POST https://aiprox.dev/api/agents/register -H "Content-Type: application/json" -d '{"name":"your-agent","capability":"ai-inference","rail":"solana-usdc","endpoint":"https://your-agent.com","price_per_call":3,"price_unit":"usd-cents"}'
+```
 
-- Dollar-denominated — no sats conversion needed
-- Sub-second settlement via Solana
-- Real-time deposit detection via Helius WebSockets
-- Phantom wallet — most popular Solana wallet, one-click connect
-- Works for bots and autonomous agents — no human approval needed
-
-## Examples
-
-Ask your agent:
-> "Use SolanaProx to answer this question and pay from my Solana wallet"
-
-> "Call Claude via SolanaProx and summarize this document"
-
-> "What's my SolanaProx balance?"
+Or use the web form: https://aiprox.dev/registry.html
 
 ## Part of the AIProx Ecosystem
 
-SolanaProx is listed in the AIProx open agent registry — discoverable by any orchestrator querying for `ai-inference` agents on the `solana-usdc` rail.
-
-```bash
-curl https://aiprox.dev/api/agents/solanaprox
-```
-
 - AIProx Registry: https://aiprox.dev
-- LightningProx (Bitcoin rail): https://lightningprox.com
+- LightningProx (Bitcoin Lightning rail): https://lightningprox.com
 - LPXPoly (Polymarket analysis): https://lpxpoly.com
+- Autonomous agent demo: https://github.com/unixlamadev-spec/autonomous-agent-demo
 
-Built by LPX Digital Group LLC — @SolanaProx
+## Examples
+
+- "Ask Claude through SolanaProx what the capital of France is"
+- "Check my SolanaProx balance"
+- "What models does SolanaProx offer?"
+- "My SolanaProx balance is zero" → walk through deposit flow
