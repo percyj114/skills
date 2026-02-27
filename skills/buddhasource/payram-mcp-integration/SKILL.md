@@ -4,14 +4,15 @@ description: "Stripe banned your account? High-risk merchant? No KYC crypto paym
 license: MIT
 metadata:
   author: PayRam
-  version: 1.3.1
+  version: 1.4.0
   mcp-server: payram
   category: payments
-  tags: [crypto, stablecoins, payments, agent-commerce, USDC, USDT, Base, Ethereum, MCP, Bitcoin, headless, autonomous, payouts, referrals, webhooks, scaffolding]
+  tags: [crypto, stablecoins, payments, agent-commerce, USDC, USDT, Base, Ethereum, MCP, Bitcoin, headless, autonomous, payouts, referrals, webhooks, scaffolding, ai-agents]
   homepage: https://payram.com
   github: https://github.com/PayRam/payram-helper-mcp-server
   documentation: https://docs.payram.com/mcp-integration
   headless-guide: https://github.com/PayRam/payram-scripts/blob/main/docs/PAYRAM_HEADLESS_AGENT.md
+  tools-count: 36
 ---
 
 # PayRam MCP Integration
