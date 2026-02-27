@@ -15,6 +15,7 @@ import os
 import re
 import secrets
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -41,6 +42,29 @@ def _continue_state_path():
 RUN_ERROR_PATTERN = "Unhandled stop reason: error"
 GATEWAY_LOG = _openclaw_home() / "logs" / "gateway.log"
 CONTINUE_COOLDOWN_SEC = 90  # Don't trigger again for the same error within this window
+WAIT_FOR_PORT_TIMEOUT_SEC = 30
+WAIT_FOR_PORT_INTERVAL_SEC = 1.0
+
+
+def _gateway_port_open(port):
+    """Probe gateway by TCP connect to port. Returns True if connection succeeds."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(2)
+            s.connect(("127.0.0.1", int(port)))
+        return True
+    except (OSError, socket.error):
+        return False
+
+
+def _wait_for_gateway_port(port, timeout_sec=WAIT_FOR_PORT_TIMEOUT_SEC, interval_sec=WAIT_FOR_PORT_INTERVAL_SEC):
+    """Wait until gateway port is open or timeout. Returns True if port became open."""
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        if _gateway_port_open(port):
+            return True
+        time.sleep(interval_sec)
+    return False
 
 
 def _secret_hash(secret):
@@ -166,14 +190,24 @@ def gateway_runtime_status(port, mode, expected_secret):
             "reason": "gateway_not_running",
         }
 
-    ps = _run(["ps", "-p", str(pid), "-o", "command="])
-    cmd = ps.stdout.strip() if ps.returncode == 0 else ""
-    runtime_secret = _extract_gateway_secret_from_cmd(cmd, mode)
+    # Try to get command line via ps, but handle permission errors gracefully
+    cmd = ""
+    runtime_secret = None
+    try:
+        ps = _run(["ps", "-p", str(pid), "-o", "command="])
+        cmd = ps.stdout.strip() if ps.returncode == 0 else ""
+        runtime_secret = _extract_gateway_secret_from_cmd(cmd, mode)
+    except (PermissionError, OSError) as e:
+        # macOS may restrict ps access - fall back to guard state check
+        cmd = None
+        runtime_secret = None
+    
     if runtime_secret:
         matches = bool(expected_secret and expected_secret == runtime_secret)
         reason = "ok" if matches else "secret_mismatch"
     else:
         # Some gateway binaries do not expose auth secrets in process args.
+        # Also fallback when ps fails due to permissions
         state = _load_guard_state()
         if (
             state
@@ -367,6 +401,7 @@ def main():
 
     p_ensure = sub.add_parser("ensure", help="Ensure gateway auth consistency")
     p_ensure.add_argument("--apply", action="store_true", help="Auto-fix by restart")
+    p_ensure.add_argument("--wait", action="store_true", help="After starting gateway, wait until port is open (default 30s)")
     p_ensure.add_argument("--json", action="store_true", help="JSON output")
 
     p_continue = sub.add_parser("continue-on-error", help="When run error (Unhandled stop reason: error) appears in gateway.log, send 'continue' to the agent")
@@ -502,6 +537,15 @@ def main():
         raise SystemExit(2)
 
     after = _restart_gateway(port, mode, secret)
+    if getattr(args, "wait", False):
+        if _wait_for_gateway_port(port):
+            after = gateway_runtime_status(port, mode, secret)
+            if not after.get("running"):
+                after["running"] = True
+                after["reason"] = "ok_after_wait"
+        else:
+            if not args.json:
+                print("Gateway started but port not open within timeout.", file=sys.stderr)
     result = build_result(cfg_path, mode, port, after, fixed=True)
     if args.json:
         print(json.dumps(result))

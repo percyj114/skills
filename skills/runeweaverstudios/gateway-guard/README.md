@@ -35,6 +35,37 @@ ln -s /path/to/gateway-guard ~/.openclaw/workspace/skills/gateway-guard
 
 **Manual:** Copy this folder into your OpenClaw workspace `skills/` directory (e.g. `~/.openclaw/workspace/skills/gateway-guard/`).
 
+## Before installing
+
+- **Metadata:** This skill uses **`always: false`** (in `_meta.json`). It is not forced into every agent run; the orchestrator invokes it when needed. Registry and repo metadata are aligned on this.
+- **Backup `openclaw.json`** — The script may add or correct `gateway.auth` when missing or wrong. Copy the file before running `ensure --apply`.
+- **Test read-only first** — Run `python3 scripts/gateway_guard.py status --json` and `python3 scripts/gateway_guard.py ensure --json` (without `--apply`) to see what would happen.
+- **Continue delivery** — The optional watcher runs `openclaw agent --message continue --deliver` when a run error appears in `gateway.log`. Confirm that automatic delivery is acceptable in your setup.
+- **LaunchAgent is optional** — Persistence is installed only when you run `install_watcher.sh`. The **plist is included** in this package: `scripts/com.openclaw.gateway-guard.watcher.plist`. The installer copies it to `~/Library/LaunchAgents` and runs `launchctl load`. Ensure `OPENCLAW_HOME` and `OPENCLAW_BIN` are correct before installing.
+- **Non-production first** — Try in a safe environment if unsure.
+
+## Auto-connect (detect and connect automatically)
+
+To avoid **connection refused** when the gateway isn't running, use the wrapper so the gateway is started (and ready) before your client connects:
+
+```bash
+# Ensure gateway is up, then start the TUI (or Control UI, etc.)
+$OPENCLAW_HOME/workspace/skills/gateway-guard/scripts/ensure_gateway_then.sh openclaw tui
+# Or just wake the gateway and wait until it's listening
+$OPENCLAW_HOME/workspace/skills/gateway-guard/scripts/ensure_gateway_then.sh
+```
+
+The script runs `gateway_guard.py ensure --apply --wait` (start if needed, wait up to 30s for the port), then runs your command if you passed one.
+
+## Package contents (file manifest)
+
+- `scripts/gateway_guard.py` — Main script (ensure supports `--wait`).
+- `scripts/ensure_gateway_then.sh` — Wrapper: ensure gateway then run optional command.
+- `scripts/install_watcher.sh` — Installs the combined LaunchAgent.
+- `scripts/install_continue_on_error.sh` — Redirects to install_watcher.sh.
+- `scripts/com.openclaw.gateway-guard.watcher.plist` — LaunchAgent plist (included; installer copies and substitutes paths).
+- `scripts/com.openclaw.gateway-guard.continue-on-error.plist` — Legacy plist (optional).
+
 ## Quick start
 
 From the skill directory or with absolute path:
