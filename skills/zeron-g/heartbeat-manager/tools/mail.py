@@ -128,7 +128,8 @@ def check_mail(since_hours: int = 1) -> dict:
     try:
         conn = imaplib.IMAP4_SSL(
             email_cfg.get("imap_host", "imap.gmail.com"),
-            email_cfg.get("imap_port", 993)
+            email_cfg.get("imap_port", 993),
+            timeout=30,
         )
         conn.login(sender, password)
         conn.select("INBOX", readonly=True)
@@ -167,9 +168,12 @@ def check_mail(since_hours: int = 1) -> dict:
 
         logger.info("邮件检查完成: 未读=%d, 标记=%d", result["unread_count"], result["flagged_count"])
 
-    except Exception as e:
+    except (imaplib.IMAP4.error, OSError, TimeoutError) as e:
         result["error"] = f"IMAP 连接失败: {e}"
         logger.error("邮件检查异常: %s", e)
+    except Exception as e:
+        result["error"] = f"邮件检查未知错误: {e}"
+        logger.error("邮件检查未知异常: %s", e)
     finally:
         if conn:
             try: conn.logout()
@@ -213,7 +217,8 @@ def send_mail(
 
         with smtplib.SMTP(
             email_cfg.get("smtp_host", "smtp.gmail.com"),
-            email_cfg.get("smtp_port", 587)
+            email_cfg.get("smtp_port", 587),
+            timeout=30,
         ) as server:
             server.starttls()
             server.login(sender, password)
@@ -222,8 +227,11 @@ def send_mail(
         logger.info("邮件发送成功: %s -> %s", subject, to_list)
         return True
 
-    except Exception as e:
+    except (smtplib.SMTPException, OSError, TimeoutError) as e:
         logger.error("邮件发送失败: %s", e)
+        return False
+    except Exception as e:
+        logger.error("邮件发送未知错误: %s", e)
         return False
 
 

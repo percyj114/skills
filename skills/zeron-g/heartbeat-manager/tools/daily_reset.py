@@ -25,6 +25,7 @@ def _load_daily_template() -> str:
         "- [ ] 工作区整理\n"
         "- [ ] 系统状态确认\n"
         "- [ ] 晚间回顾总结\n"
+        "- [ ] 📡 同步 Canvas + FSP 日程（打开浏览器后心跳自动抓取）\n"
     )
 
 
@@ -186,11 +187,27 @@ def reset_daily():
             if removed > 0:
                 tmp = ongoing_path.with_suffix(".tmp")
                 tmp.write_text(
-                    json.dumps(active_tasks, ensure_ascii=False, indent=2),
+                    json.dumps({"tasks": active_tasks}, ensure_ascii=False, indent=2),
                     encoding="utf-8",
                 )
                 tmp.rename(ongoing_path)
                 logger.info("清理了 %d 个已完成 ongoing 任务", removed)
+
+        # 5. 同步网站监控（Canvas + FSP → upcoming.md）
+        try:
+            from tools.site_monitor import run_sync
+            sync_result = run_sync()
+            result["site_sync"] = sync_result
+            logger.info(
+                "网站监控同步: +%d ~%d -%d",
+                sync_result["added"], sync_result["updated"], sync_result["removed"],
+            )
+            if sync_result["errors"]:
+                for err in sync_result["errors"]:
+                    logger.warning("  同步错误: %s", err)
+        except Exception as e:
+            logger.warning("网站监控同步失败（非致命）: %s", e)
+            result["site_sync"] = {"error": str(e)}
 
     except Exception as e:
         result["error"] = str(e)

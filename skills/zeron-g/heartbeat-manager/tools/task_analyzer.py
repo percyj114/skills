@@ -35,11 +35,11 @@ def _load_ongoing() -> list:
 
 
 def _save_ongoing(tasks: list):
-    """保存 ongoing.json（原子写入）"""
+    """保存 ongoing.json（原子写入，保持 {"tasks":[...]} 格式）"""
     path = WORKSPACE / "ongoing.json"
     tmp_path = path.with_suffix(".tmp")
     tmp_path.write_text(
-        json.dumps(tasks, ensure_ascii=False, indent=2),
+        json.dumps({"tasks": tasks}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     tmp_path.rename(path)

@@ -17,6 +17,7 @@ def render_master(
     mail_result: dict,
     health_info: dict,
     alerts: list = None,
+    upcoming_result: dict = None,
 ) -> str:
     """
     渲染 MASTER.md 内容
@@ -101,6 +102,16 @@ def render_master(
                 lines.append(f"|{tid}|{title}|{st}|{prio}|{prog}|{eta}|")
         else:
             lines.append("（无活跃任务）")
+    lines.append("")
+
+    # UPCOMING 段（最近7天内的事件）
+    lines.append("## UPCOMING 7D")
+    if upcoming_result is not None:
+        from tools.upcoming_checker import format_upcoming_for_master
+        upcoming_lines = format_upcoming_for_master(upcoming_result)
+        lines.extend(upcoming_lines)
+    else:
+        lines.append("（未启用）")
     lines.append("")
 
     # MAIL 段

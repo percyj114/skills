@@ -128,8 +128,8 @@ def calculate_score(
         score += max(0, base)
 
     # 5. git 同步 (15分)
-    if git_result is None:
-        score += 15  # git 未执行视为正常
+    if git_result is None or git_result.get("enabled") is False:
+        score += 15  # git 未启用视为正常（不惩罚禁用 git 的用户）
     elif git_result.get("error"):
         score += 5
     else:

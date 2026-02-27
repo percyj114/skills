@@ -25,6 +25,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 LOG_DIR = PROJECT_ROOT / "logs"
 LOCK_FILE = PROJECT_ROOT / ".heartbeat.lock"
 
+HEARTBEAT_INTERVAL = 1800   # 期望心跳间隔：30 分钟
+CHECK_TOLERANCE    = 90     # 容差：90 秒（防止边界跳过）
+MARKER_FILE        = PROJECT_ROOT / "workspace" / ".last_heartbeat"
+
 
 def setup_logging():
     """配置日志：控制台 + 文件轮转（保留7天）"""
@@ -83,37 +87,155 @@ def release_lock(lock_fd):
             pass
 
 
+def should_beat() -> bool:
+    """检查是否需要执行心跳（基于标记文件 mtime）"""
+    if not MARKER_FILE.exists():
+        return True
+    elapsed = time.time() - MARKER_FILE.stat().st_mtime
+    return elapsed >= (HEARTBEAT_INTERVAL - CHECK_TOLERANCE)
+
+
+def _mark_daily_task_done(keyword: str):
+    """将 daily.md 中包含 keyword 的未完成任务标记为完成"""
+    import re
+    workspace = Path(__file__).parent.parent / "workspace"
+    daily_path = workspace / "daily.md"
+    if not daily_path.exists():
+        return
+    lines = daily_path.read_text(encoding="utf-8").splitlines()
+    new_lines = []
+    for line in lines:
+        if keyword in line and re.match(r"^-\s*\[ \]", line):
+            line = line.replace("- [ ]", "- [x]", 1)
+        new_lines.append(line)
+    tmp = daily_path.with_suffix(".tmp")
+    tmp.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    tmp.rename(daily_path)
+
+
+def _notify_discord_heartbeat(score, health_info, alerts, upcoming_result, daily_result, todo_result):
+    """将心跳状态推送到 Discord #💓-心跳 频道"""
+    import subprocess, json as _json
+    from pathlib import Path as _Path
+    import yaml as _yaml
+
+    cfg_path = _Path(__file__).parent.parent / "config" / "settings.yaml"
+    try:
+        cfg = _yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        cfg = {}
+
+    discord_cfg = cfg.get("discord_notify", {})
+    if not discord_cfg.get("enabled", True):
+        return
+
+    token = discord_cfg.get("bot_token", "")
+    channel_id = discord_cfg.get("heartbeat_channel_id", "1476378850819575882")
+
+    # 从 openclaw.json 读取 token（若 settings.yaml 未配置）
+    if not token:
+        oc_cfg_path = _Path.home() / ".openclaw" / "openclaw.json"
+        try:
+            oc = _json.loads(oc_cfg_path.read_text(encoding="utf-8"))
+            token = oc.get("channels", {}).get("discord", {}).get("token", "")
+        except Exception:
+            pass
+
+    if not token or not channel_id:
+        return
+
+    # 构建状态消息
+    now = datetime.now().strftime("%m-%d %H:%M")
+    score_val = score if isinstance(score, int) else score.get("score", 0)
+    streak = health_info.get("streak", 0)
+
+    # 分数 emoji
+    if score_val >= 90:   s_emoji = "🟢"
+    elif score_val >= 70: s_emoji = "🟡"
+    elif score_val >= 50: s_emoji = "🟠"
+    else:                 s_emoji = "🔴"
+
+    # daily 完成情况
+    daily_done  = daily_result.get("done", 0) if isinstance(daily_result, dict) else 0
+    daily_total = daily_result.get("total", 0) if isinstance(daily_result, dict) else 0
+
+    # todo 情况
+    todo_pending  = todo_result.get("pending", 0) if isinstance(todo_result, dict) else 0
+    todo_overdue  = todo_result.get("overdue", 0) if isinstance(todo_result, dict) else 0
+
+    # upcoming 紧急事件
+    upcoming_urgent = []
+    if upcoming_result and isinstance(upcoming_result, dict):
+        for ev in upcoming_result.get("events", []):
+            if ev.get("urgency") in ("🔴", "🟡"):
+                upcoming_urgent.append(f"{ev.get('urgency')} {ev.get('date','')} {ev.get('title','')[:30]}")
+
+    lines = [
+        f"**{s_emoji} Eva 心跳** `{now} EST`",
+        f"健康度 **{score_val}** 分 · 连续 {streak} 次 ✅",
+        f"📋 今日任务 {daily_done}/{daily_total} · 待办 {todo_pending} 条" + (f" ⚠️ 超期 {todo_overdue}" if todo_overdue else ""),
+    ]
+    if upcoming_urgent:
+        lines.append("📅 近期事项: " + " | ".join(upcoming_urgent[:3]))
+    if alerts:
+        lines.append("⚠️ 告警: " + " | ".join(alerts[:2]))
+
+    content = "\n".join(lines)
+
+    # 发送
+    _log = logging.getLogger("heartbeat")
+    try:
+        subprocess.run([
+            "curl", "-s", "-X", "POST",
+            f"https://discord.com/api/v10/channels/{channel_id}/messages",
+            "-H", f"Authorization: Bot {token}",
+            "-H", "Content-Type: application/json",
+            "-H", "User-Agent: DiscordBot (https://github.com/discord/discord-api-docs, 10)",
+            "-d", _json.dumps({"content": content}),
+        ], capture_output=True, timeout=10)
+        _log.info("  Discord 心跳已推送 → #💓-心跳")
+    except Exception as e:
+        _log.warning("  Discord 推送失败: %s", e)
+
+
 def cmd_beat():
     """
     执行一次心跳
 
     流程:
-    1. 读取 MASTER.md
-    2. 检查 daily.md
-    3. 检查 todo.md（含超期告警）
-    4. 检查 ongoing.json（含智能超时分析）
+    0. 检查 .last_heartbeat 标记文件，距上次 < 30 分钟则静默退出（v1.2.0 watchdog）
+    1. 检查 daily.md
+    2. 检查 todo.md（含超期告警）
+    3. 检查 ongoing.json（含智能超时分析）
+    4. 智能超时分析
     5. 检查邮件
-    6. 计算健康度
-    7. 更新 MASTER.md
-    8. git commit + push
-    9. 全绿 → HEARTBEAT_OK；有问题 → 告警
+    6. 清理已完成 todo
+    7. Git 同步
+    8. 计算健康度（含 git 结果）
+    9. 更新 MASTER.md
+    10. 全绿 → HEARTBEAT_OK；有问题 → 告警
     """
     logger = logging.getLogger("heartbeat.beat")
+
+    if not should_beat():
+        logger.debug("距上次心跳未到30分钟，跳过本次触发")
+        return True  # 静默成功退出
     logger.info("===== 心跳开始 =====")
     start_time = time.time()
 
     alerts = []
     all_ok = True
+    upcoming_result = None  # 初始化，防止后续引用报错
 
     # 1. 检查 daily.md
-    logger.info("[1/7] 检查 daily.md")
+    logger.info("[1/8] 检查 daily.md")
     from tools.checker import check_daily
     daily_result = check_daily()
     if daily_result.get("error"):
         alerts.append(f"daily: {daily_result['error']}")
 
     # 2. 检查 todo.md（含超期告警）
-    logger.info("[2/7] 检查 todo.md")
+    logger.info("[2/8] 检查 todo.md")
     from tools.checker import check_todo
     todo_result = check_todo()
     if todo_result.get("error"):
@@ -131,14 +253,14 @@ def cmd_beat():
         send_alert("TODO 超期告警", f"以下任务已超期:\n{overdue_texts}")
 
     # 3. 检查 ongoing.json
-    logger.info("[3/7] 检查 ongoing.json")
+    logger.info("[3/8] 检查 ongoing.json")
     from tools.checker import check_ongoing
     ongoing_result = check_ongoing()
     if ongoing_result.get("error"):
         alerts.append(f"ongoing: {ongoing_result['error']}")
 
     # 4. 智能超时分析
-    logger.info("[4/7] 智能超时分析")
+    logger.info("[4/8] 智能超时分析")
     from tools.task_analyzer import analyze_all
     analysis = analyze_all()
     if analysis["stuck"]:
@@ -148,19 +270,78 @@ def cmd_beat():
     for action in analysis.get("actions_taken", []):
         logger.info("  动作: %s", action)
 
+    # 5a. 检查未来事件（最近7天）
+    logger.info("[4.5/8] 检查即将发生事件")
+    from tools.upcoming_checker import check_upcoming
+    upcoming_result = check_upcoming(lookahead_days=7)
+    if upcoming_result.get("error"):
+        alerts.append(f"upcoming: {upcoming_result['error']}")
+    if upcoming_result.get("has_urgent"):
+        all_ok = False
+        for ev in upcoming_result.get("urgent", []) + upcoming_result.get("overdue", []):
+            alerts.append(
+                f"⚠️ 紧急事件: {ev['date_str']} {ev['description']}"
+                + (f" @{ev['time']}" if ev.get("time") else "")
+            )
+
+    # 4.7. 浏览器同步（若 Chrome 扩展在线，自动抓取 Canvas + FSP → upcoming.md）
+    logger.info("[4.7/8] 检测浏览器在线状态")
+    browser_available = False
+    try:
+        import urllib.request
+        urllib.request.urlopen("http://127.0.0.1:18792/", timeout=2)
+        browser_available = True
+    except Exception:
+        pass
+
+    if browser_available:
+        logger.info("  浏览器在线，尝试同步 Canvas + FSP")
+        try:
+            from tools.site_monitor import run_sync
+            sync_result = run_sync()
+            added = sync_result.get("added", 0)
+            updated = sync_result.get("updated", 0)
+            removed = sync_result.get("removed", 0)
+            sync_errors = sync_result.get("errors", [])
+            logger.info("  同步完成: +%d ~%d -%d", added, updated, removed)
+            if sync_errors:
+                for e in sync_errors:
+                    logger.warning("  同步错误: %s", e)
+            else:
+                # 标记 daily.md 中的 📡 同步任务为完成
+                _mark_daily_task_done("📡")
+                logger.info("  已标记 Canvas+FSP 同步任务完成")
+        except Exception as e:
+            logger.warning("  浏览器同步失败（非致命）: %s", e)
+    else:
+        logger.info("  浏览器未在线，跳过同步（打开 Chrome 并 attach 扩展后自动执行）")
+
     # 5. 检查邮件
-    logger.info("[5/7] 检查邮件")
+    logger.info("[5/8] 检查邮件")
     from tools.mail import check_mail
     mail_result = check_mail()
     if mail_result.get("error"):
         alerts.append(f"mail: {mail_result['error']}")
         # 邮件失败不算致命错误，降级继续
 
-    # 6. 计算健康度
-    logger.info("[6/7] 计算健康度")
+    # 6. 清理已完成 todo
+    logger.info("[6/8] 清理已完成 todo")
+    from tools.checker import clean_done_todos
+    cleaned = clean_done_todos()
+    if cleaned:
+        logger.info("清理了 %d 条已完成 todo", cleaned)
+
+    # 7. Git 同步（在计算健康度前执行，以获取真实 git 结果）
+    logger.info("[7/8] Git 同步")
+    from tools.git_ops import git_sync
+    git_result = git_sync()
+    if git_result.get("error"):
+        alerts.append(f"git: {git_result['error']}")
+
+    # 8. 计算健康度（使用真实的 git_result）
+    logger.info("[8/8] 计算健康度")
     from tools.health_score import calculate_score, record_score
-    # git_result 稍后获取，先传 None
-    score = calculate_score(daily_result, todo_result, ongoing_result, mail_result, None)
+    score = calculate_score(daily_result, todo_result, ongoing_result, mail_result, git_result)
 
     health_info = record_score(score)
     logger.info("  健康度: %d 分 (streak:%d)", score, health_info["streak"])
@@ -178,27 +359,21 @@ def cmd_beat():
             f"当前分数: {score}",
         )
 
-    # 7. 更新 MASTER.md
-    logger.info("[7/7] 更新 MASTER.md")
+    # 9. 更新 MASTER.md
+    logger.info("[+] 更新 MASTER.md")
     from tools.renderer import render_master, write_master
     master_content = render_master(
         daily_result, todo_result, ongoing_result,
         mail_result, health_info, alerts,
+        upcoming_result=upcoming_result,
     )
     write_master(master_content)
 
-    # 8. 清理已完成 todo
-    from tools.checker import clean_done_todos
-    cleaned = clean_done_todos()
-    if cleaned:
-        logger.info("清理了 %d 条已完成 todo", cleaned)
+    # 10. Discord 心跳状态推送
+    _notify_discord_heartbeat(score, health_info, alerts, upcoming_result, daily_result, todo_result)
 
-    # 9. git 同步
-    logger.info("[+] Git 同步")
-    from tools.git_ops import sync
-    git_result = sync()
-    if git_result.get("error"):
-        alerts.append(f"git: {git_result['error']}")
+    # 更新标记文件
+    MARKER_FILE.touch()
 
     # 最终状态
     elapsed = time.time() - start_time
