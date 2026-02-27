@@ -6,7 +6,7 @@ Usage:
     1. Set API key: export WISEDIAG_API_KEY=your_api_key
     2. Run: python wiseocr.py -i input.pdf
 
-Get API key: https://console.wisediag.com/apiKeyManage
+Get API key: https://console.wisediag.com/apiKeyManage (or https://s.wisediag.com/xsu9x0jq)
 """
 
 import argparse
@@ -34,7 +34,7 @@ def get_api_key():
 
 To use this tool, you need a WiseOCR API key (from WiseDiag):
 
-1. Visit: https://console.wisediag.com/apiKeyManage
+1. Visit: https://s.wisediag.com/xsu9x0jq
 2. Sign up/Login and create an API key
 3. Set the environment variable:
    
@@ -92,7 +92,7 @@ def _upload_with_retry(endpoint, input_path, headers, params, max_retries=MAX_RE
             # Auth error — no point retrying
             if resp.status_code == 401:
                 print(f"\n[!] Authentication failed. Please check your API key.")
-                print(f"    Get a valid key at: https://console.wisediag.com/apiKeyManage")
+                print(f"    Get a valid key at: https://s.wisediag.com/xsu9x0jq")
                 return None
 
             # Success

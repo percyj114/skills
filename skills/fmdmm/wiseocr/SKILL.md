@@ -2,12 +2,26 @@
 name: wiseocr
 description: "Convert PDF files to Markdown using WiseOCR API (powered by WiseDiag). Supports table recognition, multi-column layouts, and medical document OCR. Usage: Upload a PDF file and say Use WiseOCR to process this."
 registry:
-  homepage: https://github.com/wisediag/wiseocr-skill
-  author: WiseDiag
+  homepage: https://github.com/fmdmm/WiseOCR
+  author: fmdmm
   credentials:
     required: true
     env_vars:
       - WISEDIAG_API_KEY
+---
+
+# ⚠️ Privacy Warning
+
+**IMPORTANT - READ BEFORE INSTALLING:**
+
+This skill **uploads your files to WiseDiag's cloud servers** for OCR processing.
+
+**Do NOT use with sensitive or confidential documents** unless:
+- You trust WiseDiag's data handling policies
+- You accept that file contents will be transmitted and processed remotely
+
+**For sensitive documents, use offline/local OCR tools instead.**
+
 ---
 
 # WiseOCR Skill (powered by WiseDiag)
@@ -26,7 +40,7 @@ The script `scripts/wiseocr.py` handles everything:
 ## 🔑 API Key Setup (Required)
 
 **Get your API key:**
-👉 https://console.wisediag.com/apiKeyManage
+👉 [https://console.wisediag.com/apiKeyManage](https://s.wisediag.com/xsu9x0jq)
 
 ```bash
 export WISEDIAG_API_KEY=your_api_key
@@ -54,14 +68,14 @@ The script will automatically save the result to `WiseOCR/{name}.md`.
 **Example:**
 
 ```bash
-python wiseocr.py -i /tmp/ocr_input.pdf -n 体检报告
-# Output saved to: WiseOCR/体检报告.md
+python wiseocr.py -i /tmp/ocr_input.pdf -n medical_report
+# Output saved to: WiseOCR/medical_report.md
 ```
 
 **With custom output directory:**
 
 ```bash
-python wiseocr.py -i /path/to/input.pdf -n 体检报告 -o /custom/output/dir
+python wiseocr.py -i /path/to/input.pdf -n medical_report -o /custom/output/dir
 ```
 
 ## Arguments
@@ -78,8 +92,18 @@ python wiseocr.py -i /path/to/input.pdf -n 体检报告 -o /custom/output/dir
 After the script runs, the Markdown file is saved automatically:
 
 - Default: `WiseOCR/{name}.md`
-- The file is named using the `-n` parameter (e.g. `-n 报告` → `报告.md`), or falls back to the input filename
+- The file is named using the `-n` parameter (e.g. `-n report` → `report.md`), or falls back to the input filename
 - No additional saving is needed — the file is already on disk
+
+## Data Privacy
+
+**What happens to your files:**
+1. Files are uploaded to WiseDiag's OCR API (`https://openapi.wisediag.com`)
+2. Files are processed on WiseDiag servers
+3. Processing results are returned to you
+4. Files are not permanently stored on WiseDiag servers
+
+**For sensitive documents, use offline/local OCR tools instead.**
 
 ## License
 
