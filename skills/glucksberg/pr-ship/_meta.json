@@ -1,13 +1,18 @@
 {
   "owner": "glucksberg",
   "slug": "pr-ship",
-  "displayName": "pr-ship",
+  "displayName": "Pr Ship",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772021393514,
-    "commit": "https://github.com/openclaw/skills/commit/c40acad65a9a35796136da0fc82c182bfb3d5be0"
+    "version": "1.0.4",
+    "publishedAt": 1772189086835,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772021393514,
+      "commit": "https://github.com/openclaw/skills/commit/c40acad65a9a35796136da0fc82c182bfb3d5be0"
+    },
     {
       "version": "1.0.9",
       "publishedAt": 1771756364947,

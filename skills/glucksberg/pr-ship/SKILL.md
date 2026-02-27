@@ -29,7 +29,9 @@ Load these files from the `references/` directory. Each serves a distinct purpos
 
 4. **`EXPLORATION-PLAYBOOK.md`** -- Dynamic investigation procedures. Read-only commands (grep, find, ls, git) that discover the current state of the OpenClaw codebase.
 
-STABLE-PRINCIPLES, ARCHITECTURE-MAP, and EXPLORATION-PLAYBOOK should always be present. CURRENT-CONTEXT is optional -- if missing, the skill still works but without version-specific gotcha awareness.
+5. **`VISION-GUIDELINES.md`** -- Project vision, contribution policy, and merge guardrails derived from OpenClaw's VISION.md. Covers PR scope rules, security philosophy, plugin/core boundary, skills policy, MCP strategy, and the explicit "will not merge" list. Use this to catch policy and architectural misalignment.
+
+STABLE-PRINCIPLES, ARCHITECTURE-MAP, EXPLORATION-PLAYBOOK, and VISION-GUIDELINES should always be present. CURRENT-CONTEXT is optional -- if missing, the skill still works but without version-specific gotcha awareness.
 
 ## Workflow
 
@@ -57,6 +59,10 @@ STABLE-PRINCIPLES, ARCHITECTURE-MAP, and EXPLORATION-PLAYBOOK should always be p
   - Safety invariants and common pitfalls from STABLE-PRINCIPLES.md
   - Version-specific gotchas from CURRENT-CONTEXT.md (if loaded)
   - Architecture coupling patterns from ARCHITECTURE-MAP.md
+  - Contribution policy, merge guardrails, and architectural direction from VISION-GUIDELINES.md
+- Check PR scope against Vision contribution rules (one PR = one topic, size limits, bundling policy).
+- Check for "will not merge" category matches from VISION-GUIDELINES.md section 7.
+- Evaluate whether new capabilities respect the plugin/core boundary and security philosophy.
 - Every finding must include:
   - **Evidence** from the diff (file + snippet)
   - **Exploration evidence** (command output showing blast radius, consumers, or pattern match)
