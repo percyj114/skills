@@ -1,0 +1,11 @@
+{
+  "owner": "nightvibes3",
+  "slug": "docker-osx",
+  "displayName": "Docker Osx",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772041450460,
+    "commit": null
+  },
+  "history": []
+}
