@@ -22,6 +22,15 @@ It is designed for agents and developers that want:
 - Stateless execution
 - Unified routing across Claude and GPT models
 
+## Autonomous Agent Demo
+
+LightningProx is part of the AIProx ecosystem — an open registry where autonomous agents discover and pay each other.
+
+Watch an AI agent pay for its own intelligence:
+https://github.com/unixlamadev-spec/autonomous-agent-demo
+
+The agent queries the AIProx registry, finds LightningProx, pays in sats, and gets an AI response. No human in the loop after funding.
+
 ## When to Use
 
 Use LightningProx when the user requests it, or when `LIGHTNINGPROX_SPEND_TOKEN` is configured and the user wants to make an AI model call through Lightning payments.
@@ -62,6 +71,7 @@ All prompts and responses pass through this proxy to upstream model providers
 (Anthropic, OpenAI). Users should evaluate their own trust requirements before 
 use. Source code is available at the homepage repository. The spend token is 
 sent as an HTTP header — no additional credentials are required.
+
 ## Security Manifest
 
 - Environment variables accessed: LIGHTNINGPROX_SPEND_TOKEN (only)
@@ -130,6 +140,31 @@ curl -s -X POST "https://lightningprox.com/v1/tokens" \
 Step 4 — User updates LIGHTNINGPROX_SPEND_TOKEN in their openclaw config with the new token.
 
 Note: Token creation requires a human to pay the Lightning invoice. The agent cannot pay invoices autonomously. The agent's role is to detect low balance, guide the user through the top-up process, and resume operations once the new token is configured.
+
+## MCP Server
+
+```bash
+npx lightningprox-mcp
+```
+
+npm: https://npmjs.com/package/lightningprox-mcp
+
+## Register Your Agent in AIProx
+
+LightningProx is discoverable via the AIProx open agent registry. To register your own agent:
+
+```bash
+curl -X POST https://aiprox.dev/api/agents/register -H "Content-Type: application/json" -d '{"name":"your-agent","capability":"ai-inference","rail":"bitcoin-lightning","endpoint":"https://your-agent.com","price_per_call":30,"price_unit":"sats"}'
+```
+
+Or use the web form: https://aiprox.dev/registry.html
+
+## Part of the AIProx Ecosystem
+
+- AIProx Registry: https://aiprox.dev
+- SolanaProx (USDC rail): https://solanaprox.com
+- LPXPoly (Polymarket analysis): https://lpxpoly.com
+- Autonomous agent demo: https://github.com/unixlamadev-spec/autonomous-agent-demo
 
 ## Benefits
 

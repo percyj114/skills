@@ -1,13 +1,18 @@
 {
   "owner": "unixlamadev-spec",
   "slug": "lightningprox",
-  "displayName": "LightningProx",
+  "displayName": "Lightningprox",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771604541244,
-    "commit": "https://github.com/openclaw/skills/commit/d41a6d559ab104ba57715c4c6392d02ec92c7289"
+    "version": "4.0.1",
+    "publishedAt": 1772130673536,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771604541244,
+      "commit": "https://github.com/openclaw/skills/commit/d41a6d559ab104ba57715c4c6392d02ec92c7289"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771548314819,
