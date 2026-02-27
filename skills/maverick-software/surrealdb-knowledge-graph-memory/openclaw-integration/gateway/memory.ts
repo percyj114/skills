@@ -15,7 +15,7 @@ const DB_FILE = path.join(DATA_DIR, "knowledge.db");
 // Find skill directory (search common locations)
 function findSkillDir(): string | null {
   const candidates = [
-    path.join(os.homedir(), "openclaw", "skills", "surrealdb-memory"),
+    path.join(os.homedir(), ".openclaw", "workspace", "skills", "surrealdb-memory"),
     path.join(os.homedir(), "openclaw", "skills", "surrealdb-memory"),
     path.join(os.homedir(), "openclaw-workspace", "skills", "surrealdb-memory"),
     path.join(os.homedir(), ".openclaw", "skills", "surrealdb-memory"),
@@ -175,13 +175,15 @@ async function getStats() {
       return { error: "surreal not found" };
     }
 
+    // NOTE: Use `archived != true` not `archived = false`.
+    // Facts with no explicit archived field have archived = NONE, which != false in SurrealDB.
     const queries = [
-      "SELECT count() FROM fact WHERE archived = false GROUP ALL;",
+      "SELECT count() FROM fact WHERE archived != true GROUP ALL;",
       "SELECT count() FROM entity GROUP ALL;",
       "SELECT count() FROM relates_to GROUP ALL;",
       "SELECT count() FROM episode GROUP ALL;",
       "SELECT count() FROM fact WHERE archived = true GROUP ALL;",
-      "SELECT math::mean(confidence) AS avg FROM fact WHERE archived = false GROUP ALL;",
+      "SELECT math::mean(confidence) AS avg FROM fact WHERE archived != true GROUP ALL;",
     ].join("\n");
 
     const { stdout } = await execAsync(
@@ -189,33 +191,13 @@ async function getStats() {
       { timeout: 15000 }
     );
 
-    // Parse the results (very basic parsing)
-    const lines = stdout.split("\n").filter((l) => l.includes("count") || l.includes("avg"));
+    // Parse all count values by position (not by checking if current value === 0,
+    // which breaks when a table legitimately has 0 rows).
+    const countValues = [...stdout.matchAll(/count:\s*(\d+)/g)].map((m) => parseInt(m[1], 10));
+    const avgMatch = stdout.match(/avg:\s*([\d.]+)/);
 
-    // Default values
-    let facts = 0,
-      entities = 0,
-      relationships = 0,
-      episodes = 0,
-      archived = 0,
-      avg_confidence = 0;
-
-    for (const line of lines) {
-      const countMatch = line.match(/count:\s*(\d+)/);
-      const avgMatch = line.match(/avg:\s*([\d.]+)/);
-
-      if (countMatch) {
-        const val = parseInt(countMatch[1], 10);
-        if (facts === 0) facts = val;
-        else if (entities === 0) entities = val;
-        else if (relationships === 0) relationships = val;
-        else if (episodes === 0) episodes = val;
-        else if (archived === 0) archived = val;
-      }
-      if (avgMatch) {
-        avg_confidence = parseFloat(avgMatch[1]);
-      }
-    }
+    const [facts = 0, entities = 0, relationships = 0, episodes = 0, archived = 0] = countValues;
+    const avg_confidence = avgMatch ? parseFloat(avgMatch[1]) : 0;
 
     return {
       facts,

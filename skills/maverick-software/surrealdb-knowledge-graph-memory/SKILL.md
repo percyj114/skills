@@ -1,3 +1,23 @@
+---
+name: surrealdb-memory
+description: "A comprehensive knowledge graph memory system with semantic search, episodic memory, working memory, automatic context injection, and per-agent isolation."
+version: 2.2.2
+metadata:
+  openclaw:
+    requires:
+      env:
+        - OPENAI_API_KEY
+        - SURREAL_USER
+        - SURREAL_PASS
+        - SURREAL_URL
+      bins:
+        - surreal
+        - python3
+    primaryEnv: OPENAI_API_KEY
+    emoji: "🧠"
+    homepage: "https://clawhub.com/skills/surrealdb-knowledge-graph-memory"
+---
+
 # SurrealDB Knowledge Graph Memory v2.2
 
 A comprehensive knowledge graph memory system with semantic search, episodic memory, working memory, automatic context injection, and **per-agent isolation** — enabling every agent to become a continuously self-improving AI.
@@ -88,7 +108,7 @@ These jobs are registered in OpenClaw and run automatically:
 | Memory Knowledge Extraction | `b9936b69-c652-4683-9eae-876cd02128c7` | Every 6 hours (`0 */6 * * *`) | `python3 scripts/extract-knowledge.py extract` |
 | Memory Relation Discovery | `2a3dd973-5d4d-46cf-848d-0cf31ab53fa1` | Daily at 3 AM (`0 3 * * *`) | `python3 scripts/extract-knowledge.py discover-relations` |
 
-Both jobs use `sessionTarget: "main"` and deliver via `systemEvent`, so the main agent session receives the command and executes it inline.
+> **Updated 2026-02-26:** Both jobs now use `sessionTarget: "isolated"` with `agentTurn` payload and `delivery: none`. They run in fully isolated background sessions and **never fire into the main agent session** — no main-session context is consumed and your active chat is not affected. A bottom-right corner toast notification appears in the Control UI when each job starts and completes (auto-dismisses after 4 seconds).
 
 To check job status at any time:
 ```bash

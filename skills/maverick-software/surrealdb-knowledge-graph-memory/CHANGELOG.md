@@ -2,6 +2,56 @@
 
 All notable changes to the SurrealDB Memory skill will be documented in this file.
 
+## [2.2.2] - 2026-02-26
+
+Security hardening pass — eliminates all scanner-flagged suspicious behaviors. Cron jobs migrated to isolated background sessions. All high-risk script paths now require explicit opt-in. No changes to MCP server behavior or knowledge graph logic.
+
+### Changed
+
+- **Cron jobs → isolated background sessions** — Both `Memory Knowledge Extraction` (every 6h) and `Memory Relation Discovery` (daily 3 AM) now run as `sessionTarget: "isolated"` with `agentTurn` payload and `delivery: none`. They **no longer fire into the main agent session**, consume zero main-session context, and do not appear in your active chat. A bottom-right corner toast notification in the Control UI indicates when each job starts and completes (auto-dismisses after 4 seconds).
+- **`skill.json` cron block** — Updated both jobs to reflect `sessionTarget: "isolated"`, `payload.kind: "agentTurn"`, `delivery.mode: "none"`, and `optIn: true`. Added `note` field clarifying they never touch the main session.
+- **`skill.json` security descriptions** — `cronPersistence` updated to say "isolated background sessions, no main session impact"; `systemPromptOverride` now explicitly states "DISABLED BY DEFAULT — must be enabled via Mode UI toggle"; `defaultCredentials` strengthened to "MUST change" and "NEVER expose on network interface".
+- **`skill.json` setup steps** — Step 2 clarified as "localhost ONLY"; step 3 changed from soft "Change before production" to mandatory "⚠️ CHANGE immediately".
+
+### Security (scripts hardened)
+
+- **`scripts/install.sh`** — Inverted default: `SKIP_SURREAL=true` is now the safe default. The `curl | sh` network installer is **opt-in only** via new `--install-surreal` flag. Running `./install.sh` with no flags skips the network installer entirely and guides the user to manual installation. Legacy `--skip-surreal` alias preserved.
+- **`scripts/integrate-openclaw.sh`** — Added hard gate at the top: running with **no arguments now exits with a usage error** instead of silently defaulting to dry-run. Must explicitly pass `--dry-run` (preview) or `--apply` (make changes). Added security notice banner. All `cp` and `sed -i` calls routed through `run_cmd()` dry-run wrapper.
+
+### Documentation
+
+- **`SKILL.md` cron table** — Updated to note isolated session behavior and UI toast notifications.
+
+## [2.2.1] - 2026-02-20
+
+Security hardening, metadata transparency, and documentation pass. No changes to MCP server behavior, knowledge graph, or agent isolation logic.
+
+### Added
+- **`SECURITY.md`** — New dedicated security document with a full risk table (behavior / expected? / opt-out), per-feature breakdown (what gets sent to OpenAI, how cron jobs work, what source patching touches), credential requirements, and a pre-install checklist
+- **`skill.json` security disclosure block** — Named entries for each scanner-flagged behavior: `systemPromptOverride`, `localFileToLLM`, `cronPersistence`, `sourcePatching`, `networkInstaller`, `defaultCredentials` — each with severity and mitigation
+- **`skill.json` permissions array** — Explicit list of everything the skill touches at runtime
+- **`skill.json` cron block** — Documents both scheduled jobs with schedules, descriptions, and `disableToOptOut: true`
+- **`package.json` `requires.binaries`** — Added `["surreal", "python3"]`; scanners were reporting "Required binaries: none" because this field was absent from the `requires` block
+- **`package.json` `requires.env`** — Moved `OPENAI_API_KEY`, `SURREAL_USER`, `SURREAL_PASS`, `SURREAL_URL` into `openclaw.requires.env` (was orphaned in `openclaw.env` where registry scanners couldn't read it — root cause of "Required env vars: none" in scanner reports)
+- **`package.json` `memory_inject` tool** — Added missing 11th tool to the MCP tools list (was present in `skill.json` but not `package.json`)
+- **`SKILL.md` security callout** — Visible notice at the top declaring required env vars and linking to `SECURITY.md`
+- **`SKILL.md` self-improving agent loop section** — Full cycle diagram, per-job breakdown (what extraction and relation discovery actually do), and explanation of how the compound loop improves agents over time
+- **`SKILL.md` cron job table** — Documents both OpenClaw cron job IDs, schedules, and commands with disable instructions
+- **`references/enhanced-loop-hook-agent-isolation.md`** — Converted from `.patch` to `.md` (diff wrapped in a `\`\`\`diff\`\`\`` block); `.patch` files are rejected by ClawHub file type validation
+
+### Changed
+- **`skill.json`** — Integration file paths corrected (`clawdbot-integration/` → `openclaw-integration/`); version bumped to 2.2.0 → 2.2.1; `setup.recommended` set to `"manual"`; setup steps rewritten to lead with manual SurrealDB install
+- **`skill.json` `requirements`** — Added explicit `env` and `binaries` blocks at top level (matching `package.json`)
+- **`package.json` `scripts.install`** — Renamed to `scripts.setup` (runs `--skip-surreal` by default) + `scripts.setup:with-surreal` for explicit curl installer opt-in; prevents accidental `npm install` triggering the network installer as a lifecycle script
+- **`SKILL.md`** — Updated all references from `enhanced-loop-hook-agent-isolation.patch` → `.md`
+
+### Security (scripts hardened)
+- **`scripts/install.sh`** — Added `⚠️ SECURITY NOTICE` banner explaining the curl|sh risk; added `--skip-surreal` flag to bypass network installer entirely; added explicit `y/N` confirmation gate with abort path before any `curl | sh` runs
+- **`scripts/integrate-openclaw.sh`** — Now defaults to **dry-run mode** (no files modified without `--apply`); added `run_cmd()` wrapper that prints `[DRY-RUN] ...` instead of executing; added security banner warning that source patching is high-impact; all `cp` and `sed` calls routed through `run_cmd`
+
+### Removed
+- **`references/enhanced-loop-hook-agent-isolation.patch`** — Replaced by `.md` equivalent (see Added)
+
 ## [2.2.0] - 2026-02-19
 
 ### Added

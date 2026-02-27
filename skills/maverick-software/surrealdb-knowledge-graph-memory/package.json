@@ -1,6 +1,6 @@
 {
   "name": "surrealdb-memory",
-  "version": "2.2.0",
+  "version": "2.2.2",
   "description": "Knowledge graph memory system with SurrealDB, working memory, episodic memory, outcome calibration, context-aware search, MCP tools, confidence scoring, and LLM-powered extraction",
   "keywords": [
     "memory",
@@ -28,7 +28,32 @@
     ],
     "requires": {
       "python": ">=3.10",
-      "surrealdb": ">=2.0.0"
+      "surrealdb": ">=2.0.0",
+      "binaries": [
+        "surreal",
+        "python3"
+      ],
+      "env": {
+        "OPENAI_API_KEY": {
+          "required": true,
+          "description": "OpenAI API key for text-embedding-3-small embeddings and GPT-4o-mini extraction. Recommend using a scoped key with limited permissions."
+        },
+        "SURREAL_USER": {
+          "required": false,
+          "default": "root",
+          "description": "SurrealDB username. Change from default root for production use."
+        },
+        "SURREAL_PASS": {
+          "required": false,
+          "default": "root",
+          "description": "SurrealDB password. Change from default root for production use."
+        },
+        "SURREAL_URL": {
+          "required": false,
+          "default": "http://localhost:8000",
+          "description": "SurrealDB connection URL. Should be bound to localhost only."
+        }
+      }
     },
     "env": {
       "OPENAI_API_KEY": {
@@ -99,7 +124,8 @@
         "episode_learnings",
         "episode_store",
         "working_memory_status",
-        "context_aware_search"
+        "context_aware_search",
+        "memory_inject"
       ]
     },
     "gateway": {
@@ -107,7 +133,8 @@
     }
   },
   "scripts": {
-    "install": "./scripts/install.sh",
+    "setup": "./scripts/install.sh --skip-surreal",
+    "setup:with-surreal": "./scripts/install.sh",
     "init": "./scripts/init-db.sh",
     "migrate:v2": "python3 scripts/migrate-v2.py",
     "extract": "python3 scripts/extract-knowledge.py extract",
