@@ -1,0 +1,11 @@
+{
+  "owner": "jim-counter",
+  "slug": "auto-memory",
+  "displayName": "Auto Memory",
+  "latest": {
+    "version": "0.2.2",
+    "publishedAt": 1772209569665,
+    "commit": null
+  },
+  "history": []
+}
