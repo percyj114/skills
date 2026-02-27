@@ -1,0 +1,11 @@
+{
+  "owner": "nissan",
+  "slug": "observability-lgtm",
+  "displayName": "Observability Lgtm",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1772145101507,
+    "commit": null
+  },
+  "history": []
+}
