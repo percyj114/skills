@@ -1,0 +1,11 @@
+{
+  "owner": "rollhub-dev",
+  "slug": "rollhub-tournament",
+  "displayName": "Casino Tournament",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771947260007,
+    "commit": null
+  },
+  "history": []
+}
