@@ -4,7 +4,7 @@
 `https://x402.asrai.me`
 
 ## Payment
-x402 automatic — $0.05 USDC per endpoint on Base mainnet ($0.10 for `/ai`)
+x402 automatic — $0.001 USDC per endpoint on Base mainnet ($0.002 for `/ai`)
 
 ## Endpoint Catalog
 
@@ -73,7 +73,7 @@ x402 automatic — $0.05 USDC per endpoint on Base mainnet ($0.10 for `/ai`)
 - `GET /api/portfolio/<symbol>` — portfolio for specific coin
 
 ### AI
-- `POST /ai` body: `{"message": "<question>"}` — AI analyst ($0.10)
+- `POST /ai` body: `{"message": "<question>"}` — AI analyst ($0.002)
 
 ## Macro signals
 - `GET /api/signal/btc.d/1D` — BTC dominance
