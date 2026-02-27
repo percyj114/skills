@@ -1,0 +1,70 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Swaps Intelligence Agent API",
+    "version": "1.0.0",
+    "description": "Cryptocurrency address risk assessment and intelligence data for AI agents."
+  },
+  "servers": [
+    {
+      "url": "https://system.swaps.app/functions/v1/agent-api"
+    }
+  ],
+  "paths": {
+    "/check_address_risk": {
+      "post": {
+        "operationId": "checkAddressRisk",
+        "summary": "Check Cryptocurrency Address Risk",
+        "description": "Fetches risk score, sanctions, labels, and the public intelligence report link for a given cryptocurrency address.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "description": "The cryptocurrency address to assess (e.g., EVM or Bitcoin address)."
+                  }
+                },
+                "required": ["address"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "markdown_summary": {
+                      "type": "string",
+                      "description": "Pre-formatted Markdown response intended for direct use by the agent."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
