@@ -1,13 +1,18 @@
 {
   "owner": "p697",
   "slug": "youmind",
-  "displayName": "YouMind Board Assistant",
+  "displayName": "Youmind",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772027830413,
-    "commit": "https://github.com/openclaw/skills/commit/a0dbdddcfed3065baf36228322af1d6ede7b0835"
+    "version": "1.2.0",
+    "publishedAt": 1772077167675,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772027830413,
+      "commit": "https://github.com/openclaw/skills/commit/a0dbdddcfed3065baf36228322af1d6ede7b0835"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771931569302,
