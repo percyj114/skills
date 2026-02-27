@@ -1,7 +1,8 @@
 ---
 name: org-memory
+version: 0.3.0
 description: "Structured knowledge base and task management using org-mode files. Query, mutate, link, and search org files and org-roam databases with the `org` CLI."
-metadata: {"openclaw":{"emoji":"🦄","requires":{"bins":["org"]},"install":[{"id":"github-release","kind":"manual","label":"Download from GitHub releases: https://github.com/dcprevere/org-cli/releases"}]}}
+metadata: {"openclaw":{"emoji":"🦄","homepage":"https://github.com/dcprevere/org-cli","requires":{"bins":["org"],"env":["ORG_MEMORY_AGENT_DIR","ORG_MEMORY_HUMAN_DIR","ORG_MEMORY_AGENT_DATABASE_LOCATION","ORG_MEMORY_HUMAN_DATABASE_LOCATION"]},"install":[{"kind":"download","label":"Download from GitHub releases: https://github.com/dcprevere/org-cli/releases"}]}}
 ---
 
 # org-memory
@@ -10,20 +11,75 @@ Use the `org` CLI to maintain structured, linked, human-readable knowledge in or
 
 ## Shortcuts
 
-When your human uses these patterns, act immediately:
+When your human uses these patterns, act on them directly.
 
-| Pattern | Action |
-|---------|--------|
-| `Remember: <info>` | Save to your knowledge base (`$ORG_MEMORY_AGENT_DIR`). Create or update a node. This is for *your* future recall. |
-| `Note: <task or info>` | Add to the human's org files (`$ORG_MEMORY_HUMAN_DIR/inbox.org`). This is for *them* to act on. |
+| Keyword | Meaning | Target |
+|---|---|---|
+| `Todo:` | Create a task with a date | `$ORG_MEMORY_HUMAN_DIR` |
+| `Note:` | Write this down for me | `$ORG_MEMORY_HUMAN_DIR` |
+| `Done:` / `Finished:` | Mark a task complete | `$ORG_MEMORY_HUMAN_DIR` |
+| `Know:` | Store this for agent recall | `$ORG_MEMORY_AGENT_DIR` |
+
+### Todo — create a task
+
+`Todo: <text>` means "create a task." Extract any date or timeframe from the text and schedule it. If the text contains a relative date ("in 3 weeks", "by Friday", "next month"), compute the actual date and add `--scheduled <date>` or `--deadline <date>`.
+
+Action: `org add "$ORG_MEMORY_HUMAN_DIR/inbox.org" '<title>' --todo TODO --scheduled <date> --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json`
+
+Use `--deadline` instead of `--scheduled` when the text implies a hard due date ("by Friday", "due March 1st"). Use `--scheduled` for softer timing ("in 3 weeks", "next month", "tomorrow").
 
 Examples:
-- "Remember: Sarah prefers morning meetings" → Create/update a node for Sarah in your repo
-- "Note: Buy groceries" → Add a TODO to the human's inbox
-- "Remember: The API uses OAuth2, not API keys" → Create/update a node for the API in your repo
-- "Note: Review PR #42 by Friday" → Add a TODO with deadline to the human's inbox
+- "Todo: submit taxes in 3 weeks" → `org add .../inbox.org 'Submit taxes' --todo TODO --scheduled 2026-03-18`
+- "Todo: renew passport by June" → `org add .../inbox.org 'Renew passport' --todo TODO --deadline 2026-06-01`
+- "Todo: call dentist tomorrow" → `org add .../inbox.org 'Call dentist' --todo TODO --scheduled 2026-02-26`
+- "Todo: book flights" → `org add .../inbox.org 'Book flights' --todo TODO` (no date mentioned)
 
-Don't ask for confirmation on shortcuts — just do it. After every write, print a line in this exact format:
+### Note — for the human
+
+`Note: <text>` means "add this to MY org files." It is always a task or reminder for the *human*, not for the agent.
+
+Action: `org add "$ORG_MEMORY_HUMAN_DIR/inbox.org" '<text>' --todo TODO -f json`
+
+If the note includes a date or deadline, add `--scheduled <date>` or `--deadline <date>`. If there's no date, add it without one (the human will schedule it themselves, or ask you to).
+
+Examples:
+- "Note: Buy groceries" → `org add .../inbox.org 'Buy groceries' --todo TODO`
+- "Note: Review PR #42 by Friday" → `org add .../inbox.org 'Review PR #42' --todo TODO --deadline 2026-02-28`
+- "Note: we could add feature X to the app" → `org add .../inbox.org 'Add feature X to the app' --todo TODO`
+- "Note: send email to Donna about safeguarding" → `org add .../inbox.org 'Send email to Donna about safeguarding' --todo TODO`
+
+**Note vs Todo:** Both create TODO headings. The difference is intent — `Todo:` signals a concrete task (always try to extract a date), while `Note:` is broader (ideas, reminders, observations). When there's no date, add it without one.
+
+**Edge case — ideas and observations:** If the human says "Note: we could do X" or "Note: idea for Y", it's still a Note. They're telling you to write it down for them. Add it as a TODO. Don't create a roam node, don't put it in the agent's knowledge base.
+
+### Done — mark complete
+
+`Done: <text>` or `Finished: <text>` means "mark this task as DONE." Search for the matching TODO and set its state.
+
+Action:
+1. Search: `org todos --state TODO --search '<text>' -d "$ORG_MEMORY_HUMAN_DIR" -f json`
+2. If exactly one match: `org todo <file> '<title>' DONE -f json`
+3. If multiple matches: show them to the human and ask which one
+4. If no match: tell the human you couldn't find it
+
+Examples:
+- "Done: pay Nigel Kerry" → find and mark DONE
+- "Finished: the PR review" → find and mark DONE
+- "Done: groceries" → search for "groceries", mark DONE
+
+### Know — for the agent
+
+`Know: <info>` means "store this in YOUR knowledge base for future recall." This is information the agent should retain across sessions.
+
+Action: Search for an existing node first (`org roam node find`), then create or update.
+
+Examples:
+- "Know: Sarah prefers morning meetings" → Create/update a node for Sarah in `$ORG_MEMORY_AGENT_DIR`
+- "Know: The API uses OAuth2, not API keys" → Create/update a node for the API in `$ORG_MEMORY_AGENT_DIR`
+
+### After every write — confirm
+
+After every mutation to either directory, print a line in this exact format:
 
 ```
 org-memory: <action> <file-path>
@@ -31,9 +87,37 @@ org-memory: <action> <file-path>
 
 Examples: `org-memory: added TODO to ~/org/human/inbox.org`, `org-memory: created node ~/org/agent/sarah.org`, `org-memory: updated ~/org/agent/sarah.org`.
 
+**This is mandatory.** Never silently write to either directory. The human should always see what you did and where.
+
 ## Output format
 
 All commands accept `-f json` for structured output with `{"ok":true,"data":...}` envelopes. Errors return `{"ok":false,"error":{"type":"...","message":"..."}}`. Always use `-f json`.
+
+## Command safety
+
+User-provided text (task titles, note content, search terms) must be single-quoted to prevent shell expansion. Double quotes allow `$(…)`, backticks, and variable interpolation — single quotes do not.
+
+```bash
+# Correct
+org add "$ORG_MEMORY_HUMAN_DIR/inbox.org" 'User provided text' --todo TODO -f json
+
+# Wrong — double quotes allow shell injection
+org add "$ORG_MEMORY_HUMAN_DIR/inbox.org" "User provided text" --todo TODO -f json
+```
+
+If the text contains a literal single quote, escape it with `'\''`:
+
+```bash
+org add "$ORG_MEMORY_HUMAN_DIR/inbox.org" 'Don'\''t forget' --todo TODO -f json
+```
+
+For multi-line content, pipe via stdin instead of interpolating:
+
+```bash
+printf '%s' 'Long text here' | org append k4t --stdin -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
+```
+
+Environment variable paths (`$ORG_MEMORY_HUMAN_DIR`, etc.) must always be double-quoted to handle spaces, but never place user text inside double quotes.
 
 ## Discovery
 
@@ -56,178 +140,22 @@ If `ORG_MEMORY_USE_FOR_AGENT` is not `true`, skip the Knowledge management secti
 
 Always pass `--db` to point at the correct database. The CLI auto-syncs the roam database after every mutation using the `--db` value. Without `--db`, the CLI defaults to the emacs org-roam database (`~/.emacs.d/org-roam.db`), which is not what you want.
 
-Initialize each enabled directory by creating a first node and building the headline index:
+Initialize each enabled directory. If the directories already contain org files, sync them first:
 
 ```bash
-org roam node create "Index" -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
+# Sync existing files into the roam database (skip if starting fresh)
+org roam sync -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION"
+org roam sync -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION"
+
+# Create a seed node for the agent's knowledge base (skip if files already exist)
+org roam node create 'Index' -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
+
+# Build the headline index (enables CUSTOM_ID auto-assignment and file-less commands)
 org index -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION"
 org index -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION"
 ```
 
-The roam response includes the node's ID, file path, title, and tags. The index enables CUSTOM_ID auto-assignment and file-less commands.
-
-## Knowledge management
-
-This section applies when `ORG_MEMORY_USE_FOR_AGENT` is `true`.
-
-### ⚠️ Always search before creating
-
-Before creating a node or link, check if the entity already exists:
-
-```bash
-org roam node find "Sarah" -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-```
-
-- If found: use the existing node's ID and file path
-- If not found (`headline_not_found` error): create a new node
-
-**Never create a node without searching first.** Duplicates fragment your knowledge graph.
-
-### Record an entity
-
-Only after confirming no existing node:
-
-```bash
-org roam node create "Sarah" -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -t person -t work -f json
-```
-
-### Add structure to a node
-
-Use the file path returned by create/find commands:
-
-```bash
-# Add a headline to the node (response includes auto-assigned custom_id)
-org add <file> "Unavailable March 2026" --tag scheduling --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-# → {"ok":true,"data":{"custom_id":"k4t","title":"Unavailable March 2026",...}}
-
-# Use the custom_id for follow-up commands
-org note k4t "Out all of March per human." -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-
-# Append body text to an existing headline
-org append k4t "Confirmed by email on 2026-02-20." -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-
-# Append multi-line text via stdin
-echo "First paragraph.\n\nSecond paragraph." | org append k4t --stdin -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-```
-
-**`org note` vs `org append`:** `note` adds a timestamped entry to the LOGBOOK drawer (metadata). `append` adds text to the headline body (visible content). Use `note` for audit trail, `append` for building up content.
-
-**Note:** Both commands attach to *headlines*, not file-level nodes. If a roam node is file-level (no headlines yet), first add a headline with `org add`, then use `note` or `append` on it.
-
-### Link two nodes
-
-**Always search for both nodes first** to get their IDs:
-
-```bash
-# Find source node
-org roam node find "Bob" -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-# → Returns {"ok":true,"data":{"id":"e5f6a7b8-...","file":"/path/to/bob.org",...}}
-
-# Find target node  
-org roam node find "Alice" -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-# → Returns {"ok":true,"data":{"id":"a1b2c3d4-...",...}}
-```
-
-If either node doesn't exist, create it first. Then link using the IDs from the responses:
-
-```bash
-org roam link add <source-file> "<source-id>" "<target-id>" -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" --description "manages" -f json
-```
-
-The `--description` is optional metadata about the relationship.
-
-### Query your knowledge
-
-```bash
-org roam node find "Sarah" -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-org roam backlinks "a1b2c3d4-..." -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-org roam tag find person -d "$ORG_MEMORY_AGENT_DIR" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION" -f json
-org search "Sarah.*March" -d "$ORG_MEMORY_AGENT_DIR" -f json
-```
-
-### Add aliases and refs
-
-Aliases let a node be found by multiple names. Refs associate URLs or external identifiers.
-
-```bash
-org roam alias add <file> "a1b2c3d4-..." "Sarah Chen" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION"
-org roam ref add <file> "a1b2c3d4-..." "https://github.com/sarahchen" --db "$ORG_MEMORY_AGENT_DATABASE_LOCATION"
-```
-
-## Task management
-
-This section applies when `ORG_MEMORY_USE_FOR_HUMAN` is `true`.
-
-### Read the human's state
-
-**Start here.** `org today` is the most useful query — it returns all non-done TODOs that are scheduled for today or overdue:
-
-```bash
-org today -d "$ORG_MEMORY_HUMAN_DIR" -f json
-```
-
-For broader views:
-
-```bash
-org agenda today -d "$ORG_MEMORY_HUMAN_DIR" -f json   # all scheduled + deadlines for today
-org agenda week -d "$ORG_MEMORY_HUMAN_DIR" -f json    # next 7 days
-org agenda todo -d "$ORG_MEMORY_HUMAN_DIR" -f json    # all TODOs
-org agenda todo --tag work -d "$ORG_MEMORY_HUMAN_DIR" -f json
-```
-
-### Make changes
-
-```bash
-# Add a headline (response includes the auto-assigned custom_id)
-org add $ORG_MEMORY_HUMAN_DIR/inbox.org "Review PR #42" --todo TODO --tag work --deadline 2026-02-10 --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-
-# Subsequent commands use the custom_id — no file path needed
-org todo k4t DONE -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-org schedule a1b 2026-03-15 -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-org note a1b "Pushed back per manager request" -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION"
-org append a1b "Meeting notes from standup." -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-
-# Refile still requires explicit file paths
-org refile $ORG_MEMORY_HUMAN_DIR/inbox.org "Review PR #42" $ORG_MEMORY_HUMAN_DIR/work.org "Code reviews" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-```
-
-### Preview before writing
-
-Use `--dry-run` to see what a mutation would produce without modifying the file:
-
-```bash
-org todo tasks.org "Buy groceries" DONE --dry-run -f json
-```
-
-## Batch operations
-
-This section applies when `ORG_MEMORY_USE_FOR_HUMAN` is `true`.
-
-Apply multiple mutations atomically. Commands execute sequentially against in-memory state. Files are written only if all succeed.
-
-```bash
-echo '{"commands":[
-  {"command":"todo","file":"tasks.org","identifier":"Buy groceries","args":{"state":"DONE"}},
-  {"command":"tag-add","file":"tasks.org","identifier":"Write report","args":{"tag":"urgent"}},
-  {"command":"schedule","file":"tasks.org","identifier":"Write report","args":{"date":"2026-03-01"}},
-  {"command":"append","file":"tasks.org","identifier":"Write report","args":{"text":"Include Q1 metrics."}}
-]}' | org batch -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-```
-
-## When to record knowledge
-
-When both features are enabled and the human tells you something, distinguish between requests and ambient information. Fulfill requests in `$ORG_MEMORY_HUMAN_DIR`. Record what you learned in `$ORG_MEMORY_AGENT_DIR`.
-
-Example: "Cancel my Thursday meeting with Sarah and reschedule the API migration review to next week. Sarah is going to be out all of March."
-
-- Cancel and reschedule: explicit requests, execute in `$ORG_MEMORY_HUMAN_DIR`
-- Sarah out all of March: ambient information, record in `$ORG_MEMORY_AGENT_DIR`
-
-If only agent memory is enabled, record everything relevant in `$ORG_MEMORY_AGENT_DIR`. If only human file management is enabled, only act on explicit requests.
-
-Check whether a node already exists before creating it. Use the returned data from mutations rather than making follow-up queries.
-
-**Always report writes.** After every mutation to either directory, print `org-memory: <action> <file-path>`. Never silently write to either directory.
+The roam response includes the node's ID, file path, title, and tags.
 
 ## Stable identifiers (CUSTOM_ID)
 
@@ -238,8 +166,8 @@ Use CUSTOM_IDs to refer to headlines in subsequent commands — they are stable 
 ```bash
 org todo k4t DONE -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
 org schedule k4t 2026-03-15 -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-org note k4t "Pushed back per manager request" -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
-org append k4t "Updated scope per review." -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
+org note k4t 'Pushed back per manager request' -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
+org append k4t 'Updated scope per review.' -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION" -f json
 ```
 
 To backfill CUSTOM_IDs on existing headlines that don't have them:
@@ -248,7 +176,17 @@ To backfill CUSTOM_IDs on existing headlines that don't have them:
 org custom-id assign -d "$ORG_MEMORY_HUMAN_DIR" --db "$ORG_MEMORY_HUMAN_DATABASE_LOCATION"
 ```
 
-Never address headlines by position number. Positions change when files are edited. Use CUSTOM_ID, org-id, or exact title.
+**Never address headlines by position number (`pos`).** Positions change when files are edited — a mutation on one headline shifts the byte positions of everything after it.
+
+Safe identifiers (in order of preference):
+1. **CUSTOM_ID** (e.g. `k4t`) — stable, short, unique
+2. **org-id** (UUID) — stable, unique
+3. **Exact title** — stable as long as the title doesn't change
+
+If you need to mutate multiple headlines in the same file, either:
+- Use `org batch` for atomic multi-step operations (recommended)
+- Use CUSTOM_IDs or titles, never `pos`
+- If you must use `pos`, re-query after each mutation to get fresh positions
 
 ## Error handling
 
@@ -259,16 +197,10 @@ Branch on the `ok` field. Handle errors by `type`:
 - `parse_error`: file has syntax the parser can't handle; don't retry
 - `invalid_args`: check `org schema` or `org <command> --help`
 
-## Troubleshooting
+## References
 
-### Duplicate nodes created
-You didn't search before creating. Always run `node find` first. If duplicates exist, manually delete the newer file and run `org roam sync`.
+Read these on demand when the conversation requires them:
 
-### "headline_not_found" when using org note
-You tried to add a note to a file-level node (level 0). Use `org add` to create a headline first, then `org note` on that headline.
-
-### Links show wrong display text
-The `--description` parameter sets relationship metadata, not display text. The link displays the target node's title. This is correct org-roam behavior.
-
-### Database out of sync
-Run `org roam sync -d <dir> --db <db-path>` to rebuild the database from files.
+- **Knowledge management** (`{baseDir}/references/knowledge-management.md`): Read when `ORG_MEMORY_USE_FOR_AGENT=true` and you need to create/query/link roam nodes in the agent's knowledge base.
+- **Task management** (`{baseDir}/references/task-management.md`): Read when `ORG_MEMORY_USE_FOR_HUMAN=true` and you need to query or mutate the human's tasks, use batch operations, or map natural-language queries to commands.
+- **Memory architecture** (`{baseDir}/references/memory-architecture.md`): Read on first use (memory migration) and at session start (file structure, session routine, ambient capture guidelines).
