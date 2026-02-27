@@ -1,0 +1,11 @@
+{
+  "owner": "largetool",
+  "slug": "skill-dashboard",
+  "displayName": "Skill Dashboard",
+  "latest": {
+    "version": "2.0.4",
+    "publishedAt": 1772084742683,
+    "commit": null
+  },
+  "history": []
+}
