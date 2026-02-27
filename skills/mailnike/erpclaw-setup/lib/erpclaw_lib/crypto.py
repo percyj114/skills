@@ -1,11 +1,13 @@
 """Encryption utilities for ERPClaw — backup encryption + field-level protection.
 
-Uses AES-256-CBC via Python stdlib (no external dependencies).
-Key derivation: PBKDF2-HMAC-SHA256 with 480,000 iterations.
+Uses AES-256-GCM via the `cryptography` package (authenticated encryption).
+Key derivation: PBKDF2-HMAC-SHA256 with 480,000 iterations (OWASP 2024).
+
+Install: pip install cryptography
 
 Functions:
 - derive_key: PBKDF2 key derivation from passphrase + salt
-- encrypt_file: Encrypt a file with AES-256-CBC
+- encrypt_file: Encrypt a file with AES-256-GCM + PBKDF2
 - decrypt_file: Decrypt a file encrypted with encrypt_file
 - encrypt_field: Encrypt a short string (tax_id, bank acct, etc.)
 - decrypt_field: Decrypt a field encrypted with encrypt_field
@@ -13,16 +15,14 @@ Functions:
 """
 import base64
 import hashlib
-import hmac
 import os
-import struct
 
-# AES block size
-BLOCK_SIZE = 16
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 # PBKDF2 iterations (OWASP 2024 recommendation for HMAC-SHA256)
 PBKDF2_ITERATIONS = 480_000
-# Magic bytes to identify encrypted ERPClaw backups
-MAGIC = b"ERPCLAW_ENC\x01"
+# Magic bytes to identify encrypted ERPClaw backups (v2 = AES-256-GCM)
+MAGIC = b"ERPCLAW_ENC\x02"
 # Field encryption prefix
 FIELD_PREFIX = "enc:"
 
@@ -41,62 +41,12 @@ def derive_key(passphrase: str, salt: bytes, iterations: int = PBKDF2_ITERATIONS
     return hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), salt, iterations)
 
 
-# ---------------------------------------------------------------------------
-# AES-256-CBC implementation (pure Python stdlib)
-# Uses the built-in hashlib + hmac only. No PyCrypto/cryptography needed.
-# We implement AES via the OpenSSL EVP interface exposed by hashlib.
-# ---------------------------------------------------------------------------
-
-def _aes_encrypt_block(key: bytes, data: bytes) -> bytes:
-    """Encrypt data with AES-256-CBC using OpenSSL via hashlib.
-
-    This uses Python's _hashlib which links to OpenSSL. However, Python
-    doesn't expose raw AES. Instead, we use a streaming XOR cipher
-    derived from HMAC-SHA256 in CTR mode — this gives us
-    semantic security equivalent to AES-256-CTR.
-    """
-    # Use HMAC-SHA256 in counter mode as a PRF-based stream cipher
-    # This provides IND-CPA security under the PRF assumption
-    iv = data[:BLOCK_SIZE]
-    plaintext = data[BLOCK_SIZE:]
-    output = bytearray()
-    counter = 0
-    offset = 0
-    while offset < len(plaintext):
-        # Generate keystream block
-        counter_bytes = struct.pack("<Q", counter) + iv[:8]
-        keystream = hmac.new(key, counter_bytes, hashlib.sha256).digest()
-        # XOR with plaintext
-        chunk = plaintext[offset:offset + 32]
-        for i, b in enumerate(chunk):
-            output.append(b ^ keystream[i])
-        counter += 1
-        offset += 32
-    return bytes(output[:len(plaintext)])
-
-
-def _aes_decrypt_block(key: bytes, iv: bytes, ciphertext: bytes) -> bytes:
-    """Decrypt data — symmetric to _aes_encrypt_block (CTR mode is symmetric)."""
-    output = bytearray()
-    counter = 0
-    offset = 0
-    while offset < len(ciphertext):
-        counter_bytes = struct.pack("<Q", counter) + iv[:8]
-        keystream = hmac.new(key, counter_bytes, hashlib.sha256).digest()
-        chunk = ciphertext[offset:offset + 32]
-        for i, b in enumerate(chunk):
-            output.append(b ^ keystream[i])
-        counter += 1
-        offset += 32
-    return bytes(output[:len(ciphertext)])
-
-
 def encrypt_file(input_path: str, output_path: str, passphrase: str) -> dict:
-    """Encrypt a file with AES-256 + HMAC-SHA256 authentication.
+    """Encrypt a file with AES-256-GCM + PBKDF2 key derivation.
 
     File format:
-        MAGIC (12 bytes) | salt (16 bytes) | iv (16 bytes) |
-        ciphertext (variable) | hmac (32 bytes)
+        MAGIC (12 bytes) | salt (16 bytes) | nonce (12 bytes) |
+        ciphertext + GCM tag (variable)
 
     Args:
         input_path: Path to plaintext file
@@ -107,28 +57,21 @@ def encrypt_file(input_path: str, output_path: str, passphrase: str) -> dict:
         Dict with original_size, encrypted_size
     """
     salt = os.urandom(16)
-    iv = os.urandom(16)
+    nonce = os.urandom(12)
     key = derive_key(passphrase, salt)
 
     with open(input_path, "rb") as f:
         plaintext = f.read()
 
     original_size = len(plaintext)
-
-    # Encrypt
-    data = iv + plaintext
-    ciphertext = _aes_encrypt_block(key, data)
-
-    # HMAC for authentication (encrypt-then-MAC)
-    mac_key = derive_key(passphrase, salt + b"mac", iterations=1000)
-    mac = hmac.new(mac_key, salt + iv + ciphertext, hashlib.sha256).digest()
+    aesgcm = AESGCM(key)
+    ciphertext = aesgcm.encrypt(nonce, plaintext, None)
 
     with open(output_path, "wb") as f:
         f.write(MAGIC)
         f.write(salt)
-        f.write(iv)
+        f.write(nonce)
         f.write(ciphertext)
-        f.write(mac)
 
     encrypted_size = os.path.getsize(output_path)
     return {"original_size": original_size, "encrypted_size": encrypted_size}
@@ -146,32 +89,28 @@ def decrypt_file(input_path: str, output_path: str, passphrase: str) -> dict:
         Dict with decrypted_size
 
     Raises:
-        ValueError: If file is not an encrypted ERPClaw backup or HMAC fails
+        ValueError: If file is not an encrypted ERPClaw backup or decryption fails
     """
     with open(input_path, "rb") as f:
         data = f.read()
 
-    # Parse header
     if not data.startswith(MAGIC):
         raise ValueError("Not an encrypted ERPClaw backup")
 
     offset = len(MAGIC)
     salt = data[offset:offset + 16]
     offset += 16
-    iv = data[offset:offset + 16]
-    offset += 16
-    mac = data[-32:]
-    ciphertext = data[offset:-32]
+    nonce = data[offset:offset + 12]
+    offset += 12
+    ciphertext = data[offset:]
 
-    # Verify HMAC before decryption (authenticate-then-decrypt)
     key = derive_key(passphrase, salt)
-    mac_key = derive_key(passphrase, salt + b"mac", iterations=1000)
-    expected_mac = hmac.new(mac_key, salt + iv + ciphertext, hashlib.sha256).digest()
-    if not hmac.compare_digest(mac, expected_mac):
-        raise ValueError("Invalid passphrase or corrupted backup")
+    aesgcm = AESGCM(key)
 
-    # Decrypt
-    plaintext = _aes_decrypt_block(key, iv, ciphertext)
+    try:
+        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+    except Exception:
+        raise ValueError("Invalid passphrase or corrupted backup")
 
     with open(output_path, "wb") as f:
         f.write(plaintext)
@@ -196,13 +135,6 @@ def is_encrypted_backup(file_path: str) -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
-# Field-level encryption (for sensitive data like tax_id, bank accounts)
-# ---------------------------------------------------------------------------
-
-# Field encryption uses a fixed key derived from DB-level passphrase.
-# In production, this key would come from environment variable or key vault.
-
 def encrypt_field(value: str, key: bytes) -> str:
     """Encrypt a short string field for at-rest protection.
 
@@ -216,15 +148,10 @@ def encrypt_field(value: str, key: bytes) -> str:
     if not value or value.startswith(FIELD_PREFIX):
         return value  # Already encrypted or empty
 
-    iv = os.urandom(16)
-    plaintext = value.encode("utf-8")
-
-    # Encrypt using CTR mode
-    data = iv + plaintext
-    ciphertext = _aes_encrypt_block(key, data)
-
-    # Encode: iv + ciphertext
-    encoded = base64.b64encode(iv + ciphertext).decode("ascii")
+    nonce = os.urandom(12)
+    aesgcm = AESGCM(key)
+    ciphertext = aesgcm.encrypt(nonce, value.encode("utf-8"), None)
+    encoded = base64.b64encode(nonce + ciphertext).decode("ascii")
     return FIELD_PREFIX + encoded
 
 
@@ -241,10 +168,14 @@ def decrypt_field(value: str, key: bytes) -> str:
     if not value or not value.startswith(FIELD_PREFIX):
         return value  # Not encrypted
 
-    encoded = value[len(FIELD_PREFIX):]
-    raw = base64.b64decode(encoded)
-    iv = raw[:16]
-    ciphertext = raw[16:]
+    raw = base64.b64decode(value[len(FIELD_PREFIX):])
+    nonce = raw[:12]
+    ciphertext = raw[12:]
 
-    plaintext = _aes_decrypt_block(key, iv, ciphertext)
+    aesgcm = AESGCM(key)
+    try:
+        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+    except Exception:
+        return value  # Return as-is if decryption fails
+
     return plaintext.decode("utf-8")

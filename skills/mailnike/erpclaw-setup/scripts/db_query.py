@@ -496,7 +496,8 @@ def get_audit_log(conn, args):
         params.append(args.to_date)
     query += " ORDER BY timestamp DESC"
     limit = args.limit or 50
-    query += f" LIMIT {int(limit)}"
+    query += " LIMIT ?"
+    params.append(int(limit))
 
     rows = conn.execute(query, params).fetchall()
     entries = []

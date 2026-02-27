@@ -3355,13 +3355,13 @@ CREATE INDEX IF NOT EXISTS idx_audit_conv_timestamp ON audit_conversation(timest
 
 
 # ---------------------------------------------------------------------------
-# SKILL: erpclaw-plaid
+# SKILL: erpclaw-integrations (plaid)
 # Tables: plaid_config, plaid_linked_account, plaid_transaction
 # ---------------------------------------------------------------------------
 
 PLAID_TABLES = """
 -- =========================================================================
--- SKILL: erpclaw-plaid (Bank Integration)
+-- SKILL: erpclaw-integrations (Bank Integration)
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS plaid_config (
@@ -3418,13 +3418,13 @@ CREATE INDEX IF NOT EXISTS idx_plaid_txn_status ON plaid_transaction(match_statu
 
 
 # ---------------------------------------------------------------------------
-# SKILL: erpclaw-stripe
+# SKILL: erpclaw-integrations (stripe)
 # Tables: stripe_config, stripe_payment_intent, stripe_webhook_event
 # ---------------------------------------------------------------------------
 
 STRIPE_TABLES = """
 -- =========================================================================
--- SKILL: erpclaw-stripe (Payment Gateway)
+-- SKILL: erpclaw-integrations (Payment Gateway)
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS stripe_config (
@@ -3478,13 +3478,13 @@ CREATE INDEX IF NOT EXISTS idx_stripe_webhook_type ON stripe_webhook_event(event
 
 
 # ---------------------------------------------------------------------------
-# SKILL: erpclaw-s3
+# SKILL: erpclaw-integrations (s3)
 # Tables: s3_config, s3_backup_record
 # ---------------------------------------------------------------------------
 
 S3_TABLES = """
 -- =========================================================================
--- SKILL: erpclaw-s3 (Cloud Backup)
+-- SKILL: erpclaw-integrations (Cloud Backup)
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS s3_config (
@@ -3545,9 +3545,9 @@ ALL_DDL_BLOCKS = [
     ("erpclaw-quality",        QUALITY_TABLES),
     ("erpclaw-support",        SUPPORT_TABLES),
     ("erpclaw-ai-engine",      AI_ENGINE_TABLES),
-    ("erpclaw-plaid",          PLAID_TABLES),
-    ("erpclaw-stripe",         STRIPE_TABLES),
-    ("erpclaw-s3",             S3_TABLES),
+    ("erpclaw-integrations",   PLAID_TABLES),
+    ("erpclaw-integrations",   STRIPE_TABLES),
+    ("erpclaw-integrations",   S3_TABLES),
 ]
 
 
