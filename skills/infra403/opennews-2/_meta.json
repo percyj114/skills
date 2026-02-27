@@ -1,0 +1,11 @@
+{
+  "owner": "infra403",
+  "slug": "opennews-2",
+  "displayName": "Opennews",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772090317881,
+    "commit": null
+  },
+  "history": []
+}
