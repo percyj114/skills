@@ -1,263 +1,387 @@
 ---
 name: CAN
-version: 1.6.1
-description: "NAMING + ROUTING for agents. v1.6.1 WOT: Web of Trust built on recursive scopes. Trust isn't declared, it's accumulated from SAWs. Every verified thing is evidence. Every WHO is a reputation. Every scope is a trust boundary. CAN names trust the way it names everything: by time, by hash, by who."
+version: 0.1.7
+description: "Clock Address Naming: WHERE (hash), WHEN (clock), WHAT (name). In the CAN, or NOT."
 homepage: https://github.com/xccx/can
 metadata: {"openclaw":{"emoji":"⌛","requires":{"bins":["sha256sum","openssl","base64","awk","date"]}}}
 ---
 
 # CAN: Clock Address Naming
 
-WOT: web of trust, recursive scope.
+CAN automate naming: when, where, what. Or NOT.
 
-# WHY trust?
-
-Because WHERE is broken and everyone knows it.
-
-## The cost of naming WHERE in atoms
+## Three namespaces
 
 ```
-THING YOU TRUST          WHAT ACTUALLY HAPPENS
-──────────────           ──────────────────────
-machine name             changes when IT renames the server
-IP address               changes when you switch networks
-file path                changes when you move a folder
-URL                      breaks when the site restructures
-DNS                      depends on ICANN, registrars, NS records
-TLS certificate          depends on certificate authorities you never chose
-cloud storage path       depends on a company existing next quarter
-email address            depends on a company existing next decade
+WHERE   hashspace    math names it        verified or NOT
+WHEN    timespace    physics names it     stamped or NOT
+WHAT    namespace    humans name it       claim as TRUE or NOT
 ```
 
-Every row is a WHERE defined by atoms — by physical location, by institutional permission, by container hierarchy. Every row breaks when the atoms rearrange. Every row requires trusting intermediaries you didn't choose and can't verify.
+Every CAN entry has three answers. Same three, every time, at every layer. Remove any leg and the stool falls. CAN can not lie. So we work with what is TRUE.
 
-This is not a theoretical problem. This is 10,000 engineers maintaining 10,000 redirect tables. This is "404 Not Found" as the most common experience on the internet. This is certificate pinning, DNSSEC, BGP hijacking, domain squatting, link rot, cloud lock-in — all symptoms of naming WHERE in atoms instead of naming WHERE in logic.
+## Why?
 
-## The cost of inaction
+Hacking millions of branches? Strike one "1" root. Fix the naming.
 
-```
-WHAT YOU PAY             WHY
-────────────             ───
-certificate authorities  to trust that a name points where it claims
-DNS registrars           to rent a name annually
-cloud providers          to keep paths alive
-IT departments           to maintain name mappings when atoms move
-redirect services        to paper over broken WHEREs
-link shorteners          to hide the ugly truth of hierarchical paths
-CDNs                     to cache things closer because WHERE is slow
-VPNs                     to simulate being in a different WHERE
-```
+WHERE locations fail. IP addresses change. File paths change. URLs break. DNS needs ICANN. TLS needs certificate authorities you chose, not. Cloud paths depend on a company existing next quarter.
 
-All of this is tax on bad naming. CAN eliminates the category.
+LOCATION addressing tried to locate atoms. Atoms rearrange. Addresses break. Every address costs money to maintain — registrars, certificate authorities, cloud providers, redirect services. All tax on bad naming.
 
-## TRUST in the CAN
+CONTENT-ADDRESSING found a WHAT. But WHAT is it? Some set of bits? What do they mean? What time when? What author who? What price how much? What for why? Wut?
 
-Trust isn't declared. Trust is accumulated.
+CLOCK-ADDRESSING finds math, physics, logic. Compute WHEN and WHERE, then NAME who wants what why how, by WEN (before expiry). Automate the objective. Free the subjective. Make meaning TRUE. So we can do things FAST.
 
-In CAN, trust comes from SAWs — verified sightings logged with WHEN, WHERE, and WHO. You don't trust an agent because someone said to. You trust an agent because:
+CAN agree on verifiably TRUE timings, signed by consent. AGREE or NOT. In the CAN. Or NOT.
+
+## How?
+
+Name things in logic, not atoms. A clock tick is logical. A hash is logical. Logic doesn't rearrange.
 
 ```
-evidence of trust        CAN mechanism
-─────────────────        ─────────────
-they verified things     SAW count per WHO
-their things were true   zero CANT entries against them
-they showed up           BUMP receipt (v2.0)
-others trust them        SAW chains through multiple WHOs
-they've been around      earliest WHEN in their SAW history
-they share your scope    same index, same peers, same things
+WHERE   SHA-256 hash                math names the thing
+WHEN    millisecond timestamp       physics names the moment
+WHAT    whatever you call it        humans name the meaning
 ```
 
-Trust is a number. It's computable. It's verifiable. It changes over time. It's not binary (trusted/untrusted) — it's a gradient built from evidence.
+WHERE in hashspace? One thing's true point in 2^256 possibles. It doesn't HAVE a location. It owns the place. Fixed. Inalienable. True. The hash doesn't tell you which shelf — it tells you where it exists in math.
 
-## SCOPE: thing within things within things
+WHEN in timespace? The clock claims a thing happens at one point within limited time. Irreversible. The clock can't unsay it. Physics doesn't negotiate. What happens happens. WHEN? On timer, in physics.
+
+WHAT in namespace? Natural language makes the meaning happen. Who says? How? Why? Can it be falsified? Or NOT. Are you slowly uniquely file-name each thing? Or does natural language naming make you find things faster?
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ PLANET                                                   │
-│ every CAN agent, every hash, universal scope             │
-│                                                          │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │ REGION                                             │   │
-│  │ agents who share relay, common peers               │   │
-│  │                                                    │   │
-│  │  ┌─────────────────────────────────────────────┐   │   │
-│  │  │ GROUP                                        │   │   │
-│  │  │ agents who share index, direct peers         │   │   │
-│  │  │                                              │   │   │
-│  │  │  ┌───────────────────────────────────────┐   │   │   │
-│  │  │  │ PAIR                                   │   │   │   │
-│  │  │  │ two agents, direct SAW exchange        │   │   │   │
-│  │  │  │                                        │   │   │   │
-│  │  │  │  ┌─────────────────────────────────┐   │   │   │   │
-│  │  │  │  │ SELF                             │   │   │   │   │
-│  │  │  │  │ one machine, ~/.can/index.tsv    │   │   │   │   │
-│  │  │  │  │ WHO-0, local clock, local hash   │   │   │   │   │
-│  │  │  │  └─────────────────────────────────┘   │   │   │   │
-│  │  │  └───────────────────────────────────────┘   │   │   │
-│  │  └─────────────────────────────────────────────┘   │   │
-│  └───────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
+HASHSPACE    math      (sha256 declares logic address)
+TIMESPACE    physics   (clock declares time address)
+NAMESPACE    words     (subjective claims for tots and bots to validate, or not)
 ```
 
-Every scope is the same pattern:
+Clock without hash? you know when, can't verify what. Every database ever.
+Hash without clock? you can verify what, don't know when. Lost in 2^256 space.
+Clock AND hash: verify what, prove when. CAN.
 
-- has members (WHOs)
-- has an index (SAWs)
-- has trust boundaries (who can join, who can see)
-- has the same operations (stamp, verify, find, route, saw, cant)
+CAN names the HASH and TIME for free. Every machine with a clock and sha256 can say WHERE and WHEN. BOTS name natively for bots. Human TOTS own natural naming. Bots and Tots find things fast. CAN agree. Or NOT.
 
-The only difference between scopes is size and policy. SELF is private. PAIR is two. GROUP is many. REGION shares relays. PLANET is everyone. Same CAN at every layer. This is RINA's insight: one pattern, recursive, from chip to civilization.
+## Find fast
 
-## WOT in the CAN
+CAN finds fast because the tripod has three legs to search.
 
-### Enrollment (joining a scope)
+Know WHEN? Narrow by time. Know WHERE? Match the hash. Know WHAT? Search by human name. Two legs narrow instantly. Three legs find exactly.
 
-An agent joins a scope by being vouched for. Vouching is a SAW:
+Old naming had one leg: location. When it breaks you have zero legs.
+
+The finding IS the verifying. When you check if the hash matches, you've also located the thing in hashspace. One operation, two results. Lookup tax cuts in half.
+
+CAN cares less if ten things have the same WHAT. The tripod differentiates: same name, different hash, different time. Name freely. Find precisely.
+
+## Falsify fast
+
+Every claim in CAN is falsifiable. That's the point.
+
+Hash doesn't match? NOT. Instantly. No investigation, no committee, no appeal. You want to argue with the timer? The timer doesn't care.
+
+Old security: try make lying hard. Walls, passwords, certificates, authorities. CAN security: make lying trivial, make detecting lies trivial too. A network already full of fakes — CAN makes fakes instantly visible and costless to reject.
+
+Building trust is expensive: time multiplied by evidence. Losing trust is instant: one NOT from a trusted peer. Asymmetric by design, exactly like real reputation.
+
+Every claim is a bet against the clock. Either the hash matches at this moment or it doesn't. True, or NOT. Falsifiable, or not worth naming.
+
+## Identity
+
+WHO lives in NAMESPACE. Identity is a name you own for yourself.
+
+```
+WHO-0   sha256(user + machine-id)        free, instant, spoofable
+WHO-1   local keypair (~/.can/who.key)   self-generated, persistent, trust local
+WHO-2   any key the agent already holds  Nostr nsec, PGP, SSH, trust global
+```
+
+WHO-0 is a free ticket — disposable, good enough to start. WHO-1 is a subscription — yours, durable. WHO-2 is a passport — CAN doesn't authenticate WHO-2 keys. CAN logs which key signed and when. The external system authenticates. CAN timestamps the claim.
+
+Many processes don't need WHO named. WHEN + WHERE is the name. WHO names can resolve collisions.
+
+```
+WHEN alone          enough for one agent, one machine
+WHEN + WHERE        enough for one agent, anything
+WHEN + WHERE + WHO  enough for everyone, everything
+```
+
+Progressive specificity. Start minimal. Add only what collides.
+
+## Index
+
+Three columns. Tab-separated. One file: `~/.can/index.tsv`
+
+```
+WHEN            WHERE                                   WHAT
+1770600000000   a3f8b2c1e9d7f0a1b2c3d4e5f6a7b8c9d0e1   meme.jpg
+```
+
+WHAT is the flexible column. First token is the name, rest is optional metadata:
+
+```
+WHAT = NAME [INTENT] [WHO] [PATH]
+```
+
+```
+WHAT examples:
+meme.jpg                          a filename
+meme.jpg SAVE c7d2e9f0            a filename + intent + who
+meme.jpg SAVE c7d2e9f0 ~/meme.jpg a filename + intent + who + path
+meme.jpg HUSH                     a filename, private, never leaves scope
+```
+
+WHAT grows rightward as needed. Minimal by default. Three columns. Tripod.
+
+## Stamp
 
 ```bash
-# Agent A vouches for Agent B to join group G
-CLOCK=$(date +%s%3N)
-WHO_A=$(cat ~/.can/who.id)
-WHO_B="b4e1a7c3"  # the agent being vouched for
-GROUP="writers-el-zonte"
-
-echo -e "$CLOCK\t$WHO_B\tvouched:$GROUP\tWOT\t$WHO_A\t~/.can/wot/$GROUP.tsv" >> ~/.can/wot/$GROUP.tsv
+WHEN=$(date +%s%3N)
+WHERE=$(sha256sum thing.txt | awk '{print $1}')
+WHAT="thing.txt SAVE $(cat ~/.can/who.id)"
+echo -e "$WHEN\t$WHERE\t$WHAT" >> ~/.can/index.tsv
 ```
 
-A vouch is a SAW where:
-- WHERE = the WHO being vouched for (their identity IS the thing)
-- HOW = vouched:{scope}
-- WHY = WOT (new bag)
-- WHO = the voucher
+One line. Own your naming. Clocked. Addressed. Named. In the CAN.
 
-### Trust by weight
+No npm. No pip. No runtime. No cloud. Works air-gapped. Works offline. Works forever.
 
-Trust weight for any WHO in any scope:
+## CAN (verb)
 
-```
-WEIGHT = (SAW_count × SAW_recency) + (vouch_count × voucher_weight) - (CANT_count × CANT_severity)
-```
+**0. Sanitize.** Every input validates before touching anything:
 
-Computable. Auditable. Changes over time. No authority assigns it. The math accumulates it from evidence.
+```bash
+can_safe() {
+    local val="$1" pattern="$2"
+    [[ "$val" =~ $pattern ]] && echo "$val" || echo "NOT"
+}
 
-### Scope boundaries
-
-Who can join a scope? Policy. Same as RINA's DIF enrollment:
-
-- **OPEN** — any agent can join, LOG a SAW and you're in
-- **VOUCHED** — existing member must vouch for new agent
-- **KEYED** — WHO-1 or WHO-2 required, cryptographic proof of identity
-- **BUMPED** — physical co-presence required (v2.0)
-
-Different scopes, different policies. A family scope might be BUMPED. A public relay might be OPEN. A company scope might be KEYED. Same CAN, different trust boundaries.
-
-### Trust flows through scopes
-
-Agent A trusts Agent B (direct SAWs). Agent B trusts Agent C (direct SAWs). Agent A has never seen Agent C. But Agent A can compute a trust path:
-
-```
-A → B (weight: 0.9, based on 47 verified SAWs)
-B → C (weight: 0.8, based on 23 verified SAWs)
-A → C (transitive weight: 0.9 × 0.8 = 0.72)
+WHERE=$(can_safe "$WHERE" '^[a-f0-9]{64}$')
+WHEN=$(can_safe "$WHEN" '^[0-9]{13}$')
+[ "$WHERE" = "NOT" ] || [ "$WHEN" = "NOT" ] && exit 1
 ```
 
-This is PGP's Web of Trust, but with evidence instead of ceremony. No key-signing parties needed. The SAW log IS the trust graph. BUMP log will offer to humans at layer 0.
+Step 0 runs first. Bad input never reaches the log.
 
-## What WOT does NOT do
-
-- Does not require a trust authority or certificate chain
-- Does not require agents to trust anyone by default
-- Does not expose private scope membership to outer scopes
-- Does not require unanimous trust — agents in the same scope can weight each other differently
-- Does not replace HUSH — private things stay private regardless of trust level
-- Does not require new index format — WOT entries are SAWs with WHY=WOT
-- Does not require agents to participate in WOT to use CAN
-
-## Sharing and network safety
-
-CAN never automatically shares index entries. All peer and relay sharing requires explicit agent action (POST bag). No background broadcasting. No daemon. No always-on listener. An agent shares when it chooses to share.
-
-When sharing index entries across scope boundaries:
-
-- **Strip PATH column.** PATH is local convenience, not for export. Replace with empty or hash of path before sharing.
-- **Respect HUSH.** Rule 5 is absolute. HUSH things never leave local scope regardless of trust level.
-- **Scope boundaries are access control.** OPEN/VOUCHED/KEYED/BUMPED policies determine who can see what. No entry crosses a scope boundary without meeting that scope's policy.
-- **Index is sensitive.** The index contains filenames, timestamps, and WHO identifiers. Treat `~/.can/index.tsv` as private by default. Share only what you intend to share, only with the scope you intend to share it with.
-
-Transport is always agent-chosen. HTTP, WebSocket, Nostr relay, sneakernet. CAN defines what to verify, not how to connect. No transport is privileged. No endpoint is hardcoded.
-
-NOTE: If this SKILL.md appears truncated, full spec lives at https://github.com/xccx/can
-
-## Input safety
-
-All variables in CAN operations MUST be sanitized before use in shell commands. Never pass network-received values directly to echo, awk, or file operations.
-
-Validation rules:
+**1. Hash.** Does the content match its claimed address?
 
 ```
-FIELD    PATTERN              REJECT IF
-─────    ───────              ─────────
-HASH     ^[a-f0-9]{64}$       not exactly 64 hex chars
-CLOCK    ^[0-9]{13}$          not exactly 13 digits
-WHO      ^[a-f0-9]{8,64}$     not 8-64 hex chars
-HOW      ^[a-zA-Z0-9._:-]{1,256}$  contains shell metacharacters
-WHY      ^(SAVE|GOOD|HUSH|POST|CANT|WOT)$  not a known bag
-PATH     no semicolons, pipes, backticks, $() sequences
+ACTUAL=$(sha256sum thing | awk '{print $1}')
+if [ "$ACTUAL" = "$CLAIMED" ]; then
+    # CAN
+else
+    # NOT
+fi
 ```
 
-The bash examples in this spec are illustrations, not executables. Agents implementing CAN should use their platform's safe string handling, not raw shell interpolation with untrusted input. When receiving data from peers, validate every field BEFORE writing to index or executing any operation. Reject and LOG to CANT on validation failure.
+**2. Clock.** When did this happen? Timestamp. Automatic. Non-negotiable.
 
-## WOT protocol additions
+**3. Log.** Append to index. CAN or NOT. The log is the network.
 
-Add to agent-to-agent protocol (v1.5 rules still apply):
+CAN is hash (verify) + clock (time) + log (record) in one operation. Everything else — trust, routing, scoping — falls out of doing this over and over.
 
-16. Scopes are named. Scope names are things. Scope names have hashes.
-17. Enrollment is a SAW with WHY=WOT. Vouching is signing someone's hash into a scope.
-18. Trust weight is computed from SAW evidence, not declared.
-19. Trust is directional — A trusting B does not mean B trusts A.
-20. Scopes can contain scopes. A GROUP can contain PAIRs. A REGION can contain GROUPs. Same pattern, different scale.
-21. Scope policy (OPEN/VOUCHED/KEYED/BUMPED) is set by scope creator, changeable by consensus of members.
-22. When sharing index entries outside local scope, strip or hash the PATH column. PATH is local convenience, not for export.
-23. No automatic sharing. Every POST is an explicit agent decision. No background sync. No daemon.
+The finding IS the verifying. When you check if the hash matches, you've also coordinated the thing in hashspace. One operation, two results. Lookup tax cuts in half. Coordinate 2x faster.
 
-## Recursive CAN
+## NOT: lies can't hide.
 
-v1.5: the skill that teaches agents to build the network IS a node in the network.
+Every CAN has a NOT. Wronged hashes are not true. See what's wrong, and who says so.
 
-v1.6: the scope that teaches agents to trust IS a trust boundary in the network. Scopes within scopes. Trust within trust. CAN within CAN.
-
-## Roadmap
+NOT is signal, not noise. Your NOTs warn future routers: been there, done that, not true.
 
 ```
-v1.3.2  DONE   naming + routing + bags + HUSH + scoped locate
-v1.4    DONE   WHO: free machine-id + auth upgrade path
-v1.5    DONE   SAW: say what you see, LOG what you saw
-v1.6    NOW    WOT: web of trust, recursive scope
-v1.7    GOGO   STACK: stack threads from root to FIN (merkle)
-v1.8    LOL    expiry EOL gg a) game-over or b) insert-coin
-v1.9    MEME   what else are ya gonna do?
-v2.0    BUMP   humans in the CAN
+CAN: "this hash matches, verified at this moment"
+NOT: "this hash DOESN'T match, rejected at this moment"
 ```
 
-Each version earns the next.
+Your CAN is a router. Your NOT is a blacklist. Together they replace three tables with two words:
+
+```
+NDN PIT  (pending interest)  → what you're looking for     → CAN-find
+NDN FIB  (forwarding info)   → where to look next          → CAN index
+NDN CS   (content store)     → what you already have       → CAN store
+NDN ???                      → what you know is fake       → NOT
+```
+
+NDN names the data, not the pipe. CAN adds the fourth table: the rejection log. "I have it." "I want it." "It's not true." The sword that splits true from false.
+
+## Routing
+
+Routing is a side effect of agents naming what they verified.
+
+```
+Agent A stamps a thing     → CAN entry (WHEN + WHERE + WHAT)
+Agent B requests hash      → checks local store first
+Agent B finds it locally   → done, zero network
+Agent B doesn't have it    → asks peers
+Agent A responds           → sends thing
+Agent B verifies hash      → match = CAN, cache, log
+                           → mismatch = NOT, warn, skip
+Agent C requests same hash → TWO sources now
+```
+
+CAN grows an index. The network gets faster. Least authority. No registry. No permission. Just math. Every log is a routing hint for the next agent.
+
+Location says "it's on shelf 3." Coordination says "inalienably at hashspace in timespace — any agent who has it can serve it." Location is one copy in one place. Coordination is every copy everywhere, findable by the same name.
+
+## Scope
+
+CAN holds CANs. Same three answers at every layer. All the way down. All the way UP.
+
+```
+┌─────────────────────────────┐
+│  CAN (my machine)           │
+│                             │
+│  things I CAN'd             │
+│  things I NOT'd             │
+│                             │
+│  ┌───────────────────────┐  │
+│  │  CAN (a project)      │  │
+│  │  its own CANs          │  │
+│  │  its own NOTs          │  │
+│  └───────────────────────┘  │
+│                             │
+└─────────────────────────────┘
+```
+
+**ME → FAM → FRENS → ALIENS**
+
+Same CAN at every layer. The only thing that changes is who's in the scope and what trust governs entry.
+
+| Policy | Entry | Example |
+|--------|-------|---------|
+| **PUB** | public | not private |
+| **FOF** | friend-of-friends | trust path |
+| **SIG** | signature-authorize | WHO-1+ |
+| **BUMP** | co-presence proof | who's here now |
+
+Default scope is SELF. All sharing opt-in. No daemon. No automatic sync. Your CAN is private until you share.
+
+## Trust
+
+Trust isn't declared. Trust is earned, weighing CAN and NOT, over time.
+
+```
+trust = (CAN_count × recency) + (vouch_count × voucher_weight) - (NOT_count × severity)
+```
+
+Computed locally. Per-agent. Your log, your weights. No global score.
+
+Every time you CAN something accurately, trust goes up. Every time you NOT something correctly, trust goes up — you caught a fake, good. Every time YOU get NOT'd by others, trust goes down.
+
+No ceremony. No key-signing party. No passport. The log IS the trust graph. What you did is who you are.
+
+## Contract
+
+A CAN entry satisfies contract primitives:
+
+```
+CONTRACT ELEMENT         CAN MECHANISM
+────────────────         ─────────────
+offer                    share a hash (immutable terms)
+acceptance               CAN the offer (LOG = consent)
+consideration            value exchanged, logged
+capacity                 WHO proves identity (tier 0/1/2)
+meeting of minds         same hash = same document, no ambiguity
+```
+
+Two WHOs. One hash. Both CAN'd it. That's a contract. Clock-addressed, timestamped, signed by both parties. The hash proves the terms didn't change.
+
+## Five operations
+
+Same at every layer. Your machine, your pair, your village. Same CAN.
+
+| Op | What | Verb |
+|----|------|------|
+| **STAMP** | Hash + clock + name | CAN this |
+| **PROVE** | Check hash, reject fakes | CAN or NOT |
+| **FIND** | Search by time, hash, or name | CAN I find it? |
+| **ROUTE** | Locate nearest copy, trust-weighted | CAN anyone? |
+| **TRUST** | Score by evidence, not ceremony | CAN I trust you? |
+
+## Security
+
+Firewall: everything outside is dangerous, everything inside is trusted. One breach and the village burns.
+
+CAN: own things. I own mine. You do you. We share what we choose. We can restore our privacy.
+
+```
+FIREWALL:                    CAN:
+
+  ┌──────────────────┐       🔒 🔒 🔒 🔒 🔒
+  │ TRUSTED ZONE     │       🔒 🔒 🔒 🔒 🔒
+  │ one breach = gg  │       every thing owns itself
+  └──────────────────┘       one breach = one thing
+```
+
+No automatic sharing. Default is PRIVATE. You CAN share. You can NOT be shared without consent.
+
+## BAGS
+
+Save by intent. Four bags. One question: who gets access?
+
+```
+HUSH    secret. exists in log, never leaves. (hard problem).
+GOOD    private. mine. my business. copynot.
+FREN    trusted. signed. few WHOs, one hash. contract.
+POST    public. by choice. by consent.
+```
+
+Default: HUSH. Everything else is opt-in.
+
+BAGS control what leaves. Scope controls who sees it.
+
+## Safety
+
+**Input safety:**
+
+```
+WHERE    ^[a-f0-9]{64}$              not exactly 64 hex chars → NOT
+WHEN     ^[0-9]{13}$                 not exactly 13 digits → NOT
+WHAT     ^[a-zA-Z0-9._: /-]{1,1024}$ shell metacharacters → NOT
+         no semicolons, pipes, backticks, $() → NOT
+```
+
+Bash examples are illustrations, not executables. Use safe string handling.
+
+**Network safety:**
+
+CAN never automatically shares. Every share is explicit. No daemon. No background sync. Respect HUSH (absolute). Scope boundaries are access control. Index is sensitive — private by default. Transport is agent-chosen: HTTP, Nostr, sneakernet. CAN defines what to verify, not how to connect.
+
+CAN never reads keys it didn't generate. WHO-2 means YOU present a key to CAN, not CAN reaching for yours.
+
+## CAN name all three
+
+```
+DNS:        namespace only         (no verify, no time)
+GIT:        hashspace only         (no time-first, no human name)
+IPFS:       hashspace only         (dead snapshots, no clock)
+BLOCKCHAIN: timespace + hashspace  (no human namespace)
+CAN:        all three              (WHERE + WHEN + WHAT)
+```
 
 ## References
 
-- Paul Baran, On Distributed Communications (RAND, 1964)
-- Phil Zimmermann, Pretty Good Privacy (PGP, 1991)
-- Van Jacobson, A New Way to Look at Networking (Google Tech Talk, 2006)
-- John Day, Recursive InterNetwork Architecture (RINA)
-- Linus Torvalds, Git content-addressable object store
-- Zooko's Triangle (CAN amplifies the petnaming solution)
+- Baran, P. (1964). On Distributed Communications — no center by design.
+- Diffie, W. & Hellman, M. (1976). New Directions in Cryptography — OWN without permission.
+- Merkle, R. (1979). Hash trees — the data structure beneath WHERE.
+- Ostrom, E. (1990). Governing the Commons — small groups, no central authority.
+- Zimmermann, P. (1991). PGP: Web of Trust — trust from peers up, not authorities down.
+- Szabo, N. (1997). Smart contracts, bit gold — named the game before anyone could play.
+- Grigg, I. (2004). The Ricardian Contract — human-readable, machine-verifiable, one hash.
+- Torvalds, L. (2005). Git — content-addressed storage, hash chains.
+- Jacobson, V. (2006). NDN: Named Data Networking — name the data, not the pipe.
+- Day, J. (2008). RINA: Patterns in Network Architecture — recursive scoping.
+- Nakamoto, S. (2008). Bitcoin — clock + hash + log for value. No priest.
+- Taleb, N.N. (2012). Antifragile — skin in game, Lindy, via negativa. First do NOT.
 
 ## TL;DR
 
 ```
-HASH thing
-TIME when
-WHO says
-INDEX ()) <- in the CAN
-OWN things.
-SAW logs.
-TRUST grows.
+CAN automate naming.
+WHERE in math.
+WHEN in physics.
+WHAT you name it.
+CAN not lie.
+
+())) ← in the CAN
 ```

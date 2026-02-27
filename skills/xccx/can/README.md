@@ -1,17 +1,14 @@
 # CAN: Clock Address Naming
 
-NAMING + ROUTING for agents. Clock Address Name things by WHEN, WHERE, HOW, WHO, WHY. Say what you see. LOG what you SAW. Grow TRUST.
+Find what you name. Trust what you verify. OWN things. CAN or NOT.
 
 ## What CAN does
 
-1. **STAMP** — hash any thing, record WHEN and WHO
-2. **NAME** — give it human-readable names (HOW), tag intent (WHY)
-3. **STORE** — cache by hash in `~/.can/store/`
-4. **FIND** — locate by time, hash, name, tag
-5. **ROUTE** — local store → peers → relay → web
-6. **SAW** — LOG verified things as routing hints for future agents
-7. **CANT** — LOG rejected things to protect future agents from fakes
-8. **WOT** — trust accumulates from verified SAWs, scoped recursively
+1. **STAMP** — hash + clock + name. One operation.
+2. **PROVE** — check hash, reject fakes. CAN or NOT.
+3. **FIND** — search by time, hash, or name. Three legs, not one.
+4. **ROUTE** — local store → peers. Every log is a routing hint.
+5. **TRUST** — earned by evidence, not ceremony. The log is the trust graph.
 
 ## Requirements
 
@@ -21,9 +18,10 @@ NAMING + ROUTING for agents. Clock Address Name things by WHEN, WHERE, HOW, WHO,
 
 ```bash
 # Stamp a thing
-CLOCK=$(date +%s%3N)
-HASH=$(sha256sum myfile.txt | awk '{print $1}')
-echo -e "$CLOCK\t$HASH\tmyfile.txt\tSAVE\t$(cat ~/.can/who.id)\t$(pwd)/myfile.txt" >> ~/.can/index.tsv
+WHEN=$(date +%s%3N)
+WHERE=$(sha256sum myfile.txt | awk '{print $1}')
+WHAT="myfile.txt SAVE $(cat ~/.can/who.id)"
+echo -e "$WHEN\t$WHERE\t$WHAT" >> ~/.can/index.tsv
 
 # Find by name
 grep "myfile" ~/.can/index.tsv
@@ -31,12 +29,9 @@ grep "myfile" ~/.can/index.tsv
 # Find by time (today)
 TODAY=$(date +%s)000
 awk -F'\t' -v t="$TODAY" '$1 >= t' ~/.can/index.tsv
-
-# Vouch for an agent in a scope
-echo -e "$CLOCK\t$THEIR_WHO\tvouched:my-group\tWOT\t$(cat ~/.can/who.id)\t~/.can/wot/my-group.tsv" >> ~/.can/wot/my-group.tsv
 ```
 
-## Why trust is broken
+## Why?
 
 ```
 WHAT YOU TRUST           WHAT ACTUALLY HAPPENS
@@ -50,92 +45,93 @@ TLS certificate          depends on authorities you never chose
 cloud storage path       depends on a company existing next quarter
 ```
 
-Every row is a WHERE defined by atoms. Every row breaks when atoms rearrange. CAN names WHERE in logic — by time and hash. Logic doesn't rearrange.
+Every row is a WHERE defined by atoms. Atoms rearrange. Addresses break.
 
-## Scopes: things in things within thing
+Clock without hash? You know when, can't verify what. Every database ever.
+Hash without clock? You can verify what, don't know when. Dead snapshots.
+Clock AND hash: verify what, prove when. CAN.
+
+## Three namespaces
 
 ```
-┌─────────────────────────────────────────────┐
-│ PLANET  every CAN agent, universal scope     │
-│  ┌───────────────────────────────────────┐   │
-│  │ REGION  shared relay, common peers     │   │
-│  │  ┌─────────────────────────────────┐   │   │
-│  │  │ GROUP  shared index, direct peers│   │   │
-│  │  │  ┌───────────────────────────┐   │   │   │
-│  │  │  │ PAIR  two agents, direct   │   │   │   │
-│  │  │  │  ┌─────────────────────┐   │   │   │   │
-│  │  │  │  │ SELF  one machine    │   │   │   │   │
-│  │  │  │  └─────────────────────┘   │   │   │   │
-│  │  │  └───────────────────────────┘   │   │   │
-│  │  └─────────────────────────────────┘   │   │
-│  └───────────────────────────────────────┘   │
-└─────────────────────────────────────────────┘
+WHERE   hashspace    math names it        verified or NOT
+WHEN    timespace    physics names it     stamped or NOT
+WHAT    namespace    humans name it       claim as TRUE or NOT
 ```
 
-Same CAN at every layer. Same operations. Different scope, different policy.
+Nobody did all three:
 
-## Scope policies
-
-- **OPEN** — any agent can join
-- **VOUCHED** — existing member must vouch
-- **KEYED** — WHO-1 or WHO-2 required
-- **BUMPED** — physical co-presence required (v2.0)
+```
+DNS:        namespace only         (no verify, no time)
+GIT:        hashspace only         (no time-first, no human name)
+IPFS:       hashspace only         (dead snapshots, no clock)
+BLOCKCHAIN: timespace + hashspace  (no human namespace)
+CAN:        all three              (WHERE + WHEN + WHAT)
+```
 
 ## Index format
 
-Six columns, tab-separated:
+Three columns, tab-separated: `~/.can/index.tsv`
 
 ```
-WHEN    WHERE    HOW    WHY    WHO    PATH
+WHEN            WHERE                                   WHAT
+1770600000000   a3f8b2c1e9d7f0a1b2c3d4e5f6a7b8c9d0e1   meme.jpg
 ```
 
-- **WHEN** — millisecond timestamp (CLOCK)
-- **WHERE** — SHA-256 hash (address)
-- **HOW** — human-readable name or SAW type (verified:peer, cached:relay, vouched:scope)
-- **WHY** — intent bag (SAVE, GOOD, HUSH, POST, CANT, WOT)
-- **WHO** — identity tier (WHO-0 machine fingerprint, WHO-1 keypair, WHO-2 external auth)
-- **PATH** — local filesystem path (convenience, least trustworthy column, strip before sharing)
+WHAT grammar: `NAME [INTENT] [WHO] [PATH]`
 
 ## WHO identity tiers
 
-- **WHO-0** (free, automatic) — `sha256(username + machine-id)`. Zero config.
-- **WHO-1** (opt-in) — Ed25519 keypair in `~/.can/who.key`. Self-signed. Back up your key.
-- **WHO-2** (auth upgrade) — Nostr (NIP-07), Farcaster, OAuth. Portable, externally verifiable.
+```
+WHO-0   sha256(user + machine-id)        free, instant, spoofable
+WHO-1   local keypair (~/.can/who.key)   self-generated, persistent
+WHO-2   any key the agent already holds  Nostr nsec, PGP, SSH
+```
 
-## CAN do NDN
+## BAGS
 
-CAN collapses Van Jacobson's three NDN tables (Content Store, Pending Interest Table, Forwarding Information Base) into one index. 3x simpler. Same math.
-
-## Roadmap
+Save by intent. Four bags. One question: who gets access?
 
 ```
-v1.3.2  DONE   naming + routing + bags + HUSH + scoped locate
-v1.4    DONE   WHO: free machine-id + auth upgrade path
-v1.5    DONE   SAW: say what you see, LOG what you saw
-v1.6    NOW    WOT: web of trust, recursive scope
-v1.7    GOGO   STACK: stack threads from root to FIN (merkle)
-v1.8    LOL    expiry EOL gg a) game-over or b) insert-coin
-v1.9    MEME   what else are ya gonna do?
-v2.0    BUMP   humans in the CAN
+HUSH    secret. exists in log, never leaves. (hard problem).
+GOOD    private. mine. my business. copynot.
+FREN    trusted. signed. few WHOs, one hash. contract.
+POST    public. by choice. by consent.
 ```
+
+Default: HUSH. Everything else is opt-in.
+
+## Scope
+
+**ME → FAM → FRENS → ALIENS**
+
+Same CAN at every layer. Same operations. Different scope, different trust.
+
+BAGS control what leaves. Scope controls who sees it.
 
 ## References
 
-- Paul Baran, On Distributed Communications (RAND, 1964)
-- Phil Zimmermann, Pretty Good Privacy (PGP, 1991)
-- Van Jacobson, A New Way to Look at Networking (Google Tech Talk, 2006)
-- John Day, Recursive InterNetwork Architecture (RINA)
-- Linus Torvalds, Git content-addressable object store
-- Zooko's Triangle (CAN amplifies the petnaming solution)
+- Baran, P. (1964). On Distributed Communications — no center by design.
+- Diffie, W. & Hellman, M. (1976). New Directions in Cryptography — OWN without permission.
+- Merkle, R. (1979). Hash trees — the data structure beneath WHERE.
+- Ostrom, E. (1990). Governing the Commons — small groups, no central authority.
+- Zimmermann, P. (1991). PGP: Web of Trust — trust from peers up, not authorities down.
+- Szabo, N. (1997). Smart contracts, bit gold — named the game before anyone could play.
+- Grigg, I. (2004). The Ricardian Contract — human-readable, machine-verifiable, one hash.
+- Torvalds, L. (2005). Git — content-addressed storage, hash chains.
+- Jacobson, V. (2006). NDN: Named Data Networking — name the data, not the pipe.
+- Day, J. (2008). RINA: Patterns in Network Architecture — recursive scoping.
+- Nakamoto, S. (2008). Bitcoin — clock + hash + log for value. No priest.
+- Taleb, N.N. (2012). Antifragile — skin in game, Lindy, via negativa. First do NOT.
 
 ## TL;DR
 
 ```
-HASH thing
-TIME when
-WHO says
-INDEX ()) <- in the CAN
-OWN things.
-SAW logs.
-TRUST grows.
+CAN automate naming.
+WHERE in math.
+WHEN in physics.
+WHAT you name it.
+CAN not lie.
+
+())) ← in the CAN
 ```

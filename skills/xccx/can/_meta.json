@@ -3,11 +3,16 @@
   "slug": "can",
   "displayName": "CAN: Clock Address Naming",
   "latest": {
-    "version": "1.6.1",
-    "publishedAt": 1771889071135,
-    "commit": "https://github.com/openclaw/skills/commit/3b0fcf7081b7ccdb5961befd3c273691a6f34dfd"
+    "version": "1.7.1",
+    "publishedAt": 1772141715450,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.6.1",
+      "publishedAt": 1771889071135,
+      "commit": "https://github.com/openclaw/skills/commit/3b0fcf7081b7ccdb5961befd3c273691a6f34dfd"
+    },
     {
       "version": "1.5.0",
       "publishedAt": 1771510586580,
