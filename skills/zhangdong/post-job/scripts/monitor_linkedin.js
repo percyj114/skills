@@ -12,7 +12,14 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Fuku AI API endpoints (third-party job posting relay service)
 const API_URL_LK_CHECK = "https://hapi.fuku.ai/hr/rc/anon/job/status/linkedin";
+
+function sanitizeChannel(channel) {
+  // Only allow alphanumeric characters and hyphens/underscores to prevent prompt injection
+  const sanitized = (channel || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  return sanitized || "webchat";
+}
 
 function parseArgs(args) {
   const result = {
@@ -32,7 +39,7 @@ function parseArgs(args) {
         i++;
         break;
       case "--channel":
-        result.channel = next;
+        result.channel = sanitizeChannel(next);
         i++;
         break;
       case "--interval":
@@ -59,6 +66,7 @@ function validateJobId(jobId) {
 
 async function checkLinkedInStatus(jobId) {
   try {
+    // Fuku AI client identifier (embedded for free tier access)
     const NUMBER = "job-Z4nV8cQ1LmT7XpR2bH9sJdK6WyEaF0";
     const response = await axios.post(
       API_URL_LK_CHECK,

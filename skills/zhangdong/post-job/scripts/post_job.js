@@ -72,6 +72,7 @@ function parseArgs(args) {
 }
 
 // API Configuration
+// Fuku AI client identifier (embedded for free tier access)
 const NUMBER = "job-Z4nV8cQ1LmT7XpR2bH9sJdK6WyEaF0";
 
 const API_URL_GEN = "https://hapi.fuku.ai/hr/rc/anon/job/upload";
@@ -226,10 +227,36 @@ async function postToLinkd(data) {
   // console.log("Linkedin Job Post Response:", res.data);
 }
 
+/**
+ * Sanitize job description before sending to external AI service
+ * Removes potential prompt injection patterns
+ */
+function sanitizeDescription(desc) {
+  if (!desc || typeof desc !== "string") return "";
+  
+  // Remove patterns commonly used for prompt injection
+  let sanitized = desc
+    .replace(/```[\s\S]*?```/g, "") // Remove code blocks
+    .replace(/<\|.*?\|>/g, "") // Remove special markers like <|endoftext|>
+    .replace(/(?:^|\n)\s*(ignore|forget|override|system|instruction|new instruction)[\s\S]{0,200}/gi, "") // Remove injection attempts
+    .replace(/(?:^|\n)\s*[-*]\s*(ignore|forget|override|system|instruction)[\s\S]{0,200}/gi, "") // Remove bullet-point injections
+    .trim();
+  
+  // Limit length to prevent buffer-based attacks
+  return sanitized.slice(0, 10000);
+}
+
 async function genJD(description) {
   validateCredentials();
+  
+  // Sanitize description before sending to external AI service
+  const sanitizedDescription = sanitizeDescription(description);
+  if (!sanitizedDescription) {
+    return "❌ **Invalid job description:** Description is empty or contains invalid content.";
+  }
+  
   const body = {
-    content: description,
+    content: sanitizedDescription,
   };
   try {
     const response = await axios.post(API_URL_GEN, body, {
@@ -298,10 +325,16 @@ export async function post_job(args) {
     return fullDescription;
   }
 
+  // Double-check: sanitize the AI-generated description before sending to job posting API
+  const finalDescription = sanitizeDescription(fullDescription);
+  if (!finalDescription) {
+    return "❌ **Invalid job description:** Generated content was filtered as unsafe.";
+  }
+
   // Build request body
   const body = {
     title,
-    description: fullDescription,
+    description: finalDescription,
     location: matched.parentLabel,
     company: company || "FUKU AI",
     companySearchKeyword: "",
