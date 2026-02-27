@@ -3,9 +3,15 @@
   "slug": "solana-rent-free-dev",
   "displayName": "solana-rent-free-dev",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771984024319,
-    "commit": "https://github.com/openclaw/skills/commit/ddd496e4758731b923861ef7d3381e020f549c54"
+    "version": "1.0.6",
+    "publishedAt": 1772026273346,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771984024319,
+      "commit": "https://github.com/openclaw/skills/commit/ddd496e4758731b923861ef7d3381e020f549c54"
+    }
+  ]
 }

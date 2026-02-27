@@ -1,20 +1,29 @@
 ---
 name: solana-rent-free-dev
 description: >
-  Skill for Solana development using rent-free primitives from Light Protocol.
-  Covers client development (TypeScript, Rust) and program development (Rust)
-  across Anchor, native Rust, and Pinocchio. Focus areas include DeFi and
-  Payments (Light Token, Light-PDA). Other use cases include airdrops and token
-  distribution (Compressed Token), and user/app state plus nullifiers for
-  payments and ZK applications (Compressed PDA).
+  Build Solana applications 200x cheaper for stablecoin payments, agent
+  payments, DeFi, airdrops, token distribution, and ZK applications using Light
+  Protocol's rent-free token accounts, mint accounts, and PDAs. Covers client
+  development (TypeScript, Rust) and program development (Rust) across Anchor,
+  native Rust, and Pinocchio.
 compatibility: |
   Requires ZK Compression CLI, Solana CLI, Anchor CLI, and Node.js.
 metadata:
   mintlify-proj: lightprotocol
+  openclaw:
+    requires:
+      env: []
+      bins: ["node", "solana", "anchor", "cargo", "light"]
 allowed-tools:
-  - mcp__zkcompression__SearchLightProtocol
+  - Read
+  - Glob
+  - Grep
+  - Task
   - WebFetch(https://zkcompression.com/*)
   - WebFetch(https://github.com/Lightprotocol/*)
+  - WebSearch
+  - mcp__zkcompression__SearchLightProtocol
+  - mcp__deepwiki__ask_question
 ---
 
 ## Capabilities
@@ -44,6 +53,15 @@ Install this reference skill:
 npx skills add Lightprotocol/skills
 ```
 
+## Security
+
+This skill does not pull, store, or transmit external secrets. It provides code patterns, documentation references, and development guidance only.
+
+- **No credentials consumed.** The skill requires no API keys, private keys, or signing secrets. `env: []` is declared explicitly.
+- **User-provided configuration.** RPC endpoints, wallet keypairs, and authentication tokens (Privy, wallet adapters) are configured in the user's own application code — the skill only demonstrates how to use them.
+- **Install source.** `npx skills add Lightprotocol/skills` installs from the public GitHub repository ([Lightprotocol/skills](https://github.com/Lightprotocol/skills)). Verify the source before running.
+- **Audited protocol.** Light Protocol smart contracts are independently audited. Reports are published at [github.com/Lightprotocol/light-protocol/tree/main/audits](https://github.com/Lightprotocol/light-protocol/tree/main/audits).
+
 ## Workflow
 
 1. **Clarify intent**
@@ -70,7 +88,7 @@ npx skills add Lightprotocol/skills
 | Build rent-free Solana programs with Light SDK (Anchor or Pinocchio). Includes router integration.                                                                                                    | [light-sdk](https://github.com/Lightprotocol/skills/tree/main/skills/light-sdk)                       |
 | Use Light Token client SDKs (TypeScript and Rust) for mints, associated token accounts, transfers                                                                                                                         | [light-token-client](https://github.com/Lightprotocol/skills/tree/main/skills/light-token-client)     |
 | Stream account state via Laserstream gRPC                                                                                                                                                             | [data-streaming](https://github.com/Lightprotocol/skills/tree/main/skills/data-streaming)             |
-| Build payment flows and wallet integrations with light-token. Covers receive/send/balance/history, sign with privy and wallet adapters, and nullifier-based double-spend prevention. | [payments-and-wallets](https://github.com/Lightprotocol/skills/tree/main/skills/payments-and-wallets) |
+| Build payment flows and wallet integrations with light-token. Covers receive/send/balance/history, client-side signing patterns for Privy and Solana wallet adapters, and nullifier-based double-spend prevention. | [payments-and-wallets](https://github.com/Lightprotocol/skills/tree/main/skills/payments-and-wallets) |
 | Airdrops, DePIN, token distribution                                                                                                                                                                   | [token-distribution](https://github.com/Lightprotocol/skills/tree/main/skills/token-distribution)     |
 | Anti-double-spend nullifiers for Privacy-preserving ZK programs                                                                                                                                       | [zk-nullifier](https://github.com/Lightprotocol/skills/tree/main/skills/zk-nullifier)                 |
 | Testing programs and clients on localnet, devnet, mainnet                                                                                                                                             | [testing](https://github.com/Lightprotocol/skills/tree/main/skills/testing)                           |
