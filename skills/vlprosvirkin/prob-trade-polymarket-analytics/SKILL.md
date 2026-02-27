@@ -1,6 +1,6 @@
 ---
 name: probtrade
-version: 2.0.3
+version: 2.0.4
 description: "Polymarket prediction markets: analytics, trading, hot markets, price movements, top traders, and market search. Powered by prob.trade."
 homepage: https://app.prob.trade
 user-invocable: true
