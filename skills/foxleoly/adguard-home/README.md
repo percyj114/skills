@@ -35,7 +35,7 @@ cp -r skills/adguard-home ~/.openclaw/workspace/skills/
 
 ### 🔒 Security Best Practices
 
-**⚠️ Important:** Never store plaintext credentials in files. Always use secure credential injection.
+**⚠️ Important:** Do not store plaintext credentials in configuration files. Use environment variables or a secrets manager.
 
 #### Option 1: Environment Variables (Recommended)
 
@@ -45,19 +45,29 @@ export ADGUARD_USERNAME="admin"
 export ADGUARD_PASSWORD="your-secure-password"
 ```
 
-Add to your shell profile (`~/.bashrc`, `~/.zshrc`) for persistence.
-
-#### Option 2: 1Password CLI (Most Secure)
+#### Option 2: 1Password CLI
 
 ```bash
-export ADGUARD_URL=$(op read "op://vault/AdGuard/url")
-export ADGUARD_USERNAME=$(op read "op://vault/AdGuard/username")
-export ADGUARD_PASSWORD=$(op read "op://vault/AdGuard/password")
+export ADGUARD_PASSWORD=$(op read "op://vault/AdGuard/credential")
 ```
 
-**❌ Deprecated: File-based Config**
+#### Option 3: Workspace Config (Local Development Only)
 
-Previous versions allowed creating `adguard-instances.json` with credentials. **This is no longer recommended** due to the risk of accidental commits and plaintext storage. Migrate to environment variables or 1Password.
+For local development, create `adguard-instances.json` in the skill directory:
+
+```json
+{
+  "instances": {
+    "dns1": {
+      "url": "http://192.168.145.249:1080",
+      "username": "admin",
+      "password": "your-secure-password"
+    }
+  }
+}
+```
+
+**⚠️ Never commit this file to version control. Add it to `.gitignore`.**
 
 ## Usage
 
@@ -102,7 +112,17 @@ Previous versions allowed creating `adguard-instances.json` with credentials. **
 
 ## Version
 
-**v1.2.2** - Removed file-based credential storage, env vars and 1Password only
+**v1.2.7** - 📝 Registry Metadata Fix (correct env var names in clawhub.json)
+
+**v1.2.6** - 📄 Documentation Consistency (docs match code)
+
+**v1.2.5** - 📝 Registry Metadata Fix (declared required env vars)
+
+**v1.2.1** - 🔐 Credential Security (env vars, 1Password support, no multi-path search)
+
+**v1.2.0** - 🔒 Security Hardening (Fixed command injection, native HTTP client, input validation)
+
+**v1.1.1** - Support default and custom workspace paths
 
 ## Author
 

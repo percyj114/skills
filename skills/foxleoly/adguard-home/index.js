@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * AdGuard Home Skill - Secure Version v1.2.2
+ * AdGuard Home Skill - Secure Version
  * 🛡️ Query AdGuard Home instances for DNS statistics and configuration
  * 
  * Security improvements:
  * - Replaced execSync/curl with native HTTPS requests
  * - Input validation and sanitization
  * - No command injection vulnerabilities
- * - Environment variables only (no file-based credentials)
- * - v1.2.2: Removed adguard-instances.json support
+ * - Secure credential handling
  */
 
 import fs from 'fs';
@@ -72,7 +71,7 @@ function validateUrl(urlStr) {
 // ============ Configuration Loading ============
 
 /**
- * Load configuration from environment variables (secure method only)
+ * Load configuration from environment variables (preferred secure method)
  */
 function loadFromEnv() {
   if (process.env.ADGUARD_URL && process.env.ADGUARD_USERNAME && process.env.ADGUARD_PASSWORD) {
@@ -87,9 +86,25 @@ function loadFromEnv() {
   return null;
 }
 
-// Load configuration from environment variables only
-// File-based config (adguard-instances.json) was removed in v1.2.2 for security
-let instances = loadFromEnv() || {};
+/**
+ * Load configuration from workspace file (local development only)
+ */
+function loadFromWorkspace() {
+  // Only check current workspace directory (where the skill is located)
+  const workspacePath = path.join(__dirname, 'adguard-instances.json');
+  if (fs.existsSync(workspacePath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(workspacePath, 'utf8'));
+      return config.instances || {};
+    } catch (e) {
+      console.error('❌ Error loading adguard-instances.json:', e.message);
+    }
+  }
+  return null;
+}
+
+// Load configuration: env vars take priority, then workspace file
+let instances = loadFromEnv() || loadFromWorkspace() || {};
 
 // ============ HTTP Client (Secure, No execSync) ============
 
@@ -199,16 +214,16 @@ async function main() {
   if (!instanceName || !instances[instanceName]) {
     if (Object.keys(instances).length === 0) {
       console.error('❌ No AdGuard instances configured.');
-      console.error('\n🔒 Secure Configuration (Required):');
-      console.error('\nOption 1: Environment Variables');
+      console.error('\n🔒 Secure Configuration Options:');
+      console.error('\nOption 1 (Recommended): Environment Variables');
       console.error('  export ADGUARD_URL="http://192.168.1.1:80"');
       console.error('  export ADGUARD_USERNAME="admin"');
       console.error('  export ADGUARD_PASSWORD="your-password"');
-      console.error('\nOption 2: 1Password CLI (Recommended)');
-      console.error('  export ADGUARD_URL=$(op read "op://vault/AdGuard/url")');
-      console.error('  export ADGUARD_USERNAME=$(op read "op://vault/AdGuard/username")');
-      console.error('  export ADGUARD_PASSWORD=$(op read "op://vault/AdGuard/password")');
-      console.error('\n⚠️  File-based config (adguard-instances.json) was removed in v1.2.2 for security.');
+      console.error('\nOption 2: 1Password CLI');
+      console.error('  export ADGUARD_PASSWORD=$(op read "op://vault/AdGuard/credential")');
+      console.error('\nOption 3 (Local Dev Only): Workspace Config');
+      console.error('  Create adguard-instances.json in skill directory');
+      console.error('  ⚠️ Add to .gitignore - never commit credentials!');
     } else {
       console.error('❌ Instance not found:', instanceName || '(none specified)');
       console.error('📋 Available:', Object.keys(instances).join(', '));
