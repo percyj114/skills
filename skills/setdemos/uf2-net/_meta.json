@@ -1,0 +1,11 @@
+{
+  "owner": "setdemos",
+  "slug": "uf2-net",
+  "displayName": "uf2.net URL Shortener",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772040084631,
+    "commit": null
+  },
+  "history": []
+}
