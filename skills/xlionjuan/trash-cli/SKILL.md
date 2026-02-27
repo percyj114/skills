@@ -1,6 +1,6 @@
 ---
 name: trash-cli
-version: 1.0.1
+version: 1.0.3
 description: "Use trash-cli to safely delete files by moving them to the system trash instead of permanently removing them. This prevents accidental data loss and allows file recovery. Use instead of rm when you want recoverable deletion."
 homepage: https://github.com/andreafrancia/trash-cli
 metadata: {"emoji":"🗑️","install":[{"id":"brew","kind":"brew","formula":"trash-cli"},{"id":"pip","kind":"pip","package":"trash-cli"}]}
@@ -211,17 +211,7 @@ To bypass when you really need `rm`:
 \rm file.txt
 ```
 
-### Auto-delete files older than 30 days
-
-Add to crontab:
-
-```bash
-(crontab -l ; echo "@daily $(which trash-empty) 30") | crontab -
-```
-
-This runs daily and removes files older than 30 days.
-
 ## See Also
 
 - [Official GitHub](https://github.com/andreafrancia/trash-cli)
-- [FreeDesktop.org Trash Spec](https://specifications.freedesktop.org/trash-spec/trashspec-1.0.xhtml)
+- [FreeDesktop.org Trash Spec](https://specifications.freedesktop.org/trash/latest/)
