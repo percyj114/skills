@@ -9,6 +9,12 @@ metadata:
 
 Control a VS Code or Cursor IDE remotely through the OpenClaw Node protocol.
 
+## Related
+
+- **[OpenClaw Node for VS Code](https://marketplace.visualstudio.com/items?itemName=xiaoyaner.openclaw-node-vscode)** — The VS Code/Cursor extension you need to install (required)
+- **[cursor-ide-agent](https://clawhub.ai/xiaoyaner0201/cursor-ide-agent)** — Combined skill with both CLI and Node paths (install this instead if you also use Cursor CLI)
+- **Source**: [github.com/xiaoyaner-home/openclaw-vscode](https://github.com/xiaoyaner-home/openclaw-vscode)
+
 ## Prerequisites
 
 - Extension `openclaw-node-vscode` installed and connected (status bar 🟢)

@@ -3,11 +3,16 @@
   "slug": "vscode-node",
   "displayName": "VS Code Node",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772087295605,
-    "commit": "https://github.com/openclaw/skills/commit/e36af3eb3fc7cb2af16c6aa5ed78c7523c3fca5b"
+    "version": "1.0.2",
+    "publishedAt": 1772089531945,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772087295605,
+      "commit": "https://github.com/openclaw/skills/commit/e36af3eb3fc7cb2af16c6aa5ed78c7523c3fca5b"
+    },
     {
       "version": "0.2.0",
       "publishedAt": 1771129688343,
