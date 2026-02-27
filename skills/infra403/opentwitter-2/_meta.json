@@ -1,0 +1,11 @@
+{
+  "owner": "infra403",
+  "slug": "opentwitter-2",
+  "displayName": "Opentwitter",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772091150094,
+    "commit": null
+  },
+  "history": []
+}
