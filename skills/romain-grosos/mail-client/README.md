@@ -56,6 +56,9 @@ to enable what the agent is allowed to do:
   "allow_read": false,
   "allow_search": false,
   "allow_delete": false,
+  "smtp_port": 587,
+  "imap_port": 993,
+  "mail_from": "",
   "default_folder": "INBOX",
   "max_results": 20
 }

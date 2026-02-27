@@ -12,9 +12,10 @@ import smtplib
 import ssl
 import sys
 
-SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
-CONFIG_PATH = SKILL_DIR / "config.json"
-CREDS_PATH = pathlib.Path.home() / ".openclaw" / "secrets" / "mail_creds"
+SKILL_DIR   = pathlib.Path(__file__).resolve().parent.parent
+_CONFIG_DIR = pathlib.Path.home() / ".openclaw" / "config" / "mail-client"
+CONFIG_PATH = _CONFIG_DIR / "config.json"
+CREDS_PATH  = pathlib.Path.home() / ".openclaw" / "secrets" / "mail_creds"
 
 # ---------------------------------------------------------------------------
 # Results reporter
@@ -58,20 +59,25 @@ class Results:
 
 
 def load_creds() -> dict:
-    if not CREDS_PATH.exists():
-        print(f"[error] Credentials file not found: {CREDS_PATH}")
-        print("        Run  python3 scripts/setup.py  first.")
-        sys.exit(1)
+    """Load credentials from file then override with environment variables."""
     creds: dict = {}
-    with open(CREDS_PATH, "r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            creds[key.strip()] = value.strip()
+    if CREDS_PATH.exists():
+        with open(CREDS_PATH, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                creds[key.strip()] = value.strip()
+    # Environment variables override file values
+    for key in ("MAIL_USER", "MAIL_APP_KEY", "MAIL_SMTP_HOST", "MAIL_IMAP_HOST"):
+        if key in os.environ:
+            creds[key] = os.environ[key]
+    if not creds.get("MAIL_USER") or not creds.get("MAIL_APP_KEY"):
+        print(f"[error] Credentials missing. Provide env vars or run scripts/setup.py.")
+        sys.exit(1)
     return creds
 
 
@@ -117,14 +123,17 @@ def check_config_file(results: Results) -> None:
         results.skip("config-file", "not found (run setup.py to create)")
 
 
-def check_imap_login(creds: dict, results: Results) -> bool:
+def check_imap_login(creds: dict, config: dict, results: Results) -> bool:
+    if not config.get("allow_read", False) and not config.get("allow_search", False):
+        results.skip("imap-login", "allow_read and allow_search are false")
+        return False
     host = creds.get("MAIL_IMAP_HOST", "")
-    port = int(creds.get("MAIL_IMAP_PORT", 993))
+    port = int(config.get("imap_port", 993))
     user = creds.get("MAIL_USER", "")
     app_key = creds.get("MAIL_APP_KEY", "")
     try:
         ctx = ssl.create_default_context()
-        imap = imaplib.IMAP4_SSL(host, port, ssl_context=ctx)
+        imap = imaplib.IMAP4_SSL(host, port, ssl_context=ctx, timeout=10)
         imap.login(user, app_key)
         imap.logout()
         results.ok("imap-login", f"{user}@{host}:{port}")
@@ -142,7 +151,7 @@ def check_imap_list(creds: dict, config: dict, results: Results) -> None:
         results.skip("imap-list-folder", "allow_read is false")
         return
     host = creds.get("MAIL_IMAP_HOST", "")
-    port = int(creds.get("MAIL_IMAP_PORT", 993))
+    port = int(config.get("imap_port", 993))
     user = creds.get("MAIL_USER", "")
     app_key = creds.get("MAIL_APP_KEY", "")
     folder = config.get("default_folder", "INBOX")
@@ -166,7 +175,7 @@ def check_imap_search(creds: dict, config: dict, results: Results) -> None:
         results.skip("imap-search", "allow_search is false")
         return
     host = creds.get("MAIL_IMAP_HOST", "")
-    port = int(creds.get("MAIL_IMAP_PORT", 993))
+    port = int(config.get("imap_port", 993))
     user = creds.get("MAIL_USER", "")
     app_key = creds.get("MAIL_APP_KEY", "")
     folder = config.get("default_folder", "INBOX")
@@ -191,7 +200,7 @@ def check_smtp(creds: dict, config: dict, results: Results) -> None:
         results.skip("smtp-login", "allow_send is false")
         return
     host = creds.get("MAIL_SMTP_HOST", "")
-    port = int(creds.get("MAIL_SMTP_PORT", 587))
+    port = int(config.get("smtp_port", 587))
     user = creds.get("MAIL_USER", "")
     app_key = creds.get("MAIL_APP_KEY", "")
     try:
@@ -210,9 +219,9 @@ def check_smtp(creds: dict, config: dict, results: Results) -> None:
 
 def check_required_cred_keys(creds: dict, results: Results) -> None:
     required = [
-        "MAIL_SMTP_HOST", "MAIL_SMTP_PORT",
-        "MAIL_IMAP_HOST", "MAIL_IMAP_PORT",
-        "MAIL_USER", "MAIL_APP_KEY", "MAIL_FROM",
+        "MAIL_SMTP_HOST",
+        "MAIL_IMAP_HOST",
+        "MAIL_USER", "MAIL_APP_KEY",
     ]
     missing = [k for k in required if not creds.get(k)]
     if missing:
@@ -242,7 +251,7 @@ def main() -> None:
     check_required_cred_keys(creds, results)
     check_config_file(results)
 
-    imap_ok = check_imap_login(creds, results)
+    imap_ok = check_imap_login(creds, config, results)
     if imap_ok:
         check_imap_list(creds, config, results)
         check_imap_search(creds, config, results)

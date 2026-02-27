@@ -13,10 +13,11 @@ import smtplib
 import ssl
 import sys
 
-SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
-CONFIG_PATH = SKILL_DIR / "config.json"
+SKILL_DIR   = pathlib.Path(__file__).resolve().parent.parent
+_CONFIG_DIR = pathlib.Path.home() / ".openclaw" / "config" / "mail-client"
+CONFIG_PATH = _CONFIG_DIR / "config.json"
 SECRETS_DIR = pathlib.Path.home() / ".openclaw" / "secrets"
-CREDS_PATH = SECRETS_DIR / "mail_creds"
+CREDS_PATH  = SECRETS_DIR / "mail_creds"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -70,21 +71,15 @@ def step_credentials() -> dict:
     hr()
 
     smtp_host = prompt("SMTP host", default="mail.example.com")
-    smtp_port = prompt_int("SMTP port (587 for STARTTLS)", default=587)
     imap_host = prompt("IMAP host", default=smtp_host)
-    imap_port = prompt_int("IMAP port (993 for SSL)", default=993)
     mail_user = prompt("Mail user (email address)")
     mail_app_key = prompt("App key / password (input visible)")
-    mail_from = prompt("From address", default=mail_user)
 
     return {
         "MAIL_SMTP_HOST": smtp_host,
-        "MAIL_SMTP_PORT": str(smtp_port),
         "MAIL_IMAP_HOST": imap_host,
-        "MAIL_IMAP_PORT": str(imap_port),
         "MAIL_USER": mail_user,
         "MAIL_APP_KEY": mail_app_key,
-        "MAIL_FROM": mail_from,
     }
 
 
@@ -109,16 +104,22 @@ def step_permissions() -> dict:
     }
 
 
-def step_defaults() -> dict:
+def step_defaults(mail_user: str = "") -> dict:
     print()
     hr("=")
     print("  Step 3: Defaults")
     hr("=")
 
+    smtp_port = prompt_int("SMTP port (587 for STARTTLS, 465 for SSL)", default=587)
+    imap_port = prompt_int("IMAP port (993 for SSL)", default=993)
+    mail_from = prompt("From address (leave empty to use MAIL_USER)", default=mail_user)
     default_folder = prompt("Default IMAP folder", default="INBOX")
     max_results = prompt_int("Max messages returned per query", default=20)
 
     return {
+        "smtp_port": smtp_port,
+        "imap_port": imap_port,
+        "mail_from": mail_from,
         "default_folder": default_folder,
         "max_results": max_results,
     }
@@ -129,10 +130,10 @@ def step_defaults() -> dict:
 # ---------------------------------------------------------------------------
 
 
-def test_imap(creds: dict) -> bool:
+def test_imap(creds: dict, defaults: dict) -> bool:
     print("\n  Testing IMAP connection ...", end=" ", flush=True)
     host = creds["MAIL_IMAP_HOST"]
-    port = int(creds["MAIL_IMAP_PORT"])
+    port = int(defaults.get("imap_port", 993))
     user = creds["MAIL_USER"]
     app_key = creds["MAIL_APP_KEY"]
     try:
@@ -150,10 +151,10 @@ def test_imap(creds: dict) -> bool:
         return False
 
 
-def test_smtp(creds: dict) -> bool:
+def test_smtp(creds: dict, defaults: dict) -> bool:
     print("  Testing SMTP connection ...", end=" ", flush=True)
     host = creds["MAIL_SMTP_HOST"]
-    port = int(creds["MAIL_SMTP_PORT"])
+    port = int(defaults.get("smtp_port", 587))
     user = creds["MAIL_USER"]
     app_key = creds["MAIL_APP_KEY"]
     try:
@@ -196,11 +197,15 @@ def write_creds(creds: dict) -> None:
 
 
 def write_config(permissions: dict, defaults: dict) -> None:
+    _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     config = {
         "allow_send": permissions["allow_send"],
         "allow_read": permissions["allow_read"],
         "allow_search": permissions["allow_search"],
         "allow_delete": permissions["allow_delete"],
+        "smtp_port": defaults["smtp_port"],
+        "imap_port": defaults["imap_port"],
+        "mail_from": defaults["mail_from"],
         "default_folder": defaults["default_folder"],
         "max_results": defaults["max_results"],
     }
@@ -211,11 +216,40 @@ def write_config(permissions: dict, defaults: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+
+
+def cleanup() -> None:
+    """Remove all persistent files written by this skill (credentials + config)."""
+    print("Removing mail-client skill persistent files...")
+    removed = []
+    for path in [CREDS_PATH, CONFIG_PATH]:
+        if path.exists():
+            path.unlink()
+            removed.append(str(path))
+    try:
+        _CONFIG_DIR.rmdir()
+    except OSError:
+        pass
+    if removed:
+        for p in removed:
+            print(f"  Removed: {p}")
+        print("Done. Re-run setup.py to reconfigure.")
+    else:
+        print("  Nothing to remove.")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 
 def main() -> None:
+    if "--cleanup" in sys.argv:
+        cleanup()
+        return
+
     print()
     print("=" * 60)
     print("  OpenClaw mail-client - Setup Wizard")
@@ -223,15 +257,15 @@ def main() -> None:
 
     creds = step_credentials()
     permissions = step_permissions()
-    defaults = step_defaults()
+    defaults = step_defaults(mail_user=creds.get("MAIL_USER", ""))
 
     print()
     hr("=")
     print("  Running connection tests")
     hr("=")
 
-    imap_ok = test_imap(creds)
-    smtp_ok = test_smtp(creds) if permissions["allow_send"] else True
+    imap_ok = test_imap(creds, defaults)
+    smtp_ok = test_smtp(creds, defaults) if permissions["allow_send"] else True
 
     if not imap_ok:
         print("\n  Warning: IMAP test failed. Check host/port/credentials.")
