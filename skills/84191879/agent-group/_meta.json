@@ -1,0 +1,11 @@
+{
+  "owner": "84191879",
+  "slug": "agent-group",
+  "displayName": "Agent Group",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772074928413,
+    "commit": null
+  },
+  "history": []
+}
