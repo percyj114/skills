@@ -66,8 +66,8 @@ def main():
     )
     parser.add_argument(
         "--directory", "-d",
-        default=os.environ.get("PRINTPAL_OUTPUT_DIR", "/home/plebbyd/.openclaw/workspace/printpal-output"),
-        help="Directory to serve files from"
+        default=os.environ.get("PRINTPAL_OUTPUT_DIR", str(Path(__file__).resolve().parent.parent.parent / "printpal-output")),
+        help="Directory to serve files from (default: ./printpal-output or PRINTPAL_OUTPUT_DIR)"
     )
     parser.add_argument(
         "--port", "-p",
@@ -77,16 +77,24 @@ def main():
     )
     parser.add_argument(
         "--host",
-        default="0.0.0.0",
-        help="Host to bind to (default: 0.0.0.0)"
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1 - localhost only for security)"
     )
     parser.add_argument(
         "--url-only",
         action="store_true",
         help="Just print the URL and exit (don't start server)"
     )
+    parser.add_argument(
+        "--public",
+        action="store_true",
+        help="Bind to 0.0.0.0 to allow network access (default is localhost only)"
+    )
     
     args = parser.parse_args()
+    
+    # Handle --public flag
+    host = "0.0.0.0" if args.public else args.host
     
     directory = Path(args.directory)
     if not directory.exists():
@@ -99,7 +107,7 @@ def main():
         print(f"http://{local_ip}:{port}")
         return
     
-    start_server(directory, args.port, args.host)
+    start_server(directory, args.port, host)
 
 if __name__ == "__main__":
     main()

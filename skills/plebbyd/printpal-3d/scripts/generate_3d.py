@@ -15,7 +15,9 @@ from datetime import datetime
 from pathlib import Path
 
 # Output directory for generated files
-OUTPUT_DIR = Path(os.environ.get("PRINTPAL_OUTPUT_DIR", "/home/plebbyd/.openclaw/workspace/printpal-output"))
+# Default is "printpal-output" in workspace, can be overridden with PRINTPAL_OUTPUT_DIR env var
+WORKSPACE_DIR = Path(__file__).resolve().parent.parent.parent
+OUTPUT_DIR = Path(os.environ.get("PRINTPAL_OUTPUT_DIR", WORKSPACE_DIR / "printpal-output"))
 
 
 def ensure_output_dir():
