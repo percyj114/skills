@@ -1,0 +1,11 @@
+{
+  "owner": "oscraters",
+  "slug": "opend",
+  "displayName": "OpenD CLI for MooMoo",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772211314796,
+    "commit": null
+  },
+  "history": []
+}
