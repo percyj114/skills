@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "enable_bat_generation": true,
+  "enable_txt_report": true,
+  "similarity_threshold": 0.85,
+  "max_records": 100,
+  "auto_archive": true,
+  "created_at": "",
+  "last_updated": "",
+  "watchdog": {
+    "enabled": true,
+    "check_interval": 1,
+    "crash_threshold": 5,
+    "max_backoff": 300
+  },
+  "alert": {
+    "enabled": false,
+    "dingtalk_webhook": "",
+    "lark_webhook": "",
+    "discord_webhook": ""
+  },
+  "iflow_memory": {
+    "enabled": true,
+    "save_repair_records": true,
+    "memory_path": "~/.openclaw/skills/openclaw-iflow-doctor"
+  }
+}

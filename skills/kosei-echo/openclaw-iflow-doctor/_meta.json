@@ -1,0 +1,11 @@
+{
+  "owner": "kosei-echo",
+  "slug": "openclaw-iflow-doctor",
+  "displayName": "OpenClaw iFlow Doctor",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772224850096,
+    "commit": null
+  },
+  "history": []
+}
