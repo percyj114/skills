@@ -3,11 +3,16 @@
   "slug": "stocks",
   "displayName": "Stocks and Financial Data Pull",
   "latest": {
-    "version": "4.1.6",
-    "publishedAt": 1771246921836,
-    "commit": "https://github.com/openclaw/skills/commit/895b62ad5a458376a36375b54912015819e7f6b4"
+    "version": "4.1.8",
+    "publishedAt": 1772230817169,
+    "commit": null
   },
   "history": [
+    {
+      "version": "4.1.6",
+      "publishedAt": 1771246921836,
+      "commit": "https://github.com/openclaw/skills/commit/895b62ad5a458376a36375b54912015819e7f6b4"
+    },
     {
       "version": "4.1.5",
       "publishedAt": 1771246785474,

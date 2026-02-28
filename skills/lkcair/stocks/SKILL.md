@@ -7,6 +7,12 @@ description: 56+ financial data tools via Yahoo Finance. Auto-routes stock price
 
 56+ financial tools via Yahoo Finance. Prices, fundamentals, earnings, options, crypto, forex, commodities, news.
 
+## Github Open-Souce
+Please star Github if you like the skill. 
+Also available for OpenWebUI.
+https://github.com/lkcair/yfinance-ai
+
+
 ## Setup
 
 Run from the skill directory:
