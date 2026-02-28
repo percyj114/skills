@@ -1,0 +1,11 @@
+{
+  "owner": "zfdang",
+  "slug": "nova-platform-builder",
+  "displayName": "Nova Platform Builder",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1772251317921,
+    "commit": null
+  },
+  "history": []
+}
