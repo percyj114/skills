@@ -1,0 +1,11 @@
+{
+  "owner": "oscraters",
+  "slug": "ibkr",
+  "displayName": "IBKR CLI",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772204292313,
+    "commit": null
+  },
+  "history": []
+}
