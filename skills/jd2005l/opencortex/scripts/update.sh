@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-OPENCORTEX_VERSION="3.4.4"
+OPENCORTEX_VERSION="3.5.12"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Flags
@@ -20,6 +20,66 @@ if [ "$DRY_RUN" = "true" ]; then
   echo "⚠️  DRY RUN MODE — nothing will be changed."
   echo ""
 fi
+
+# Detect interactive terminal
+INTERACTIVE=false
+if [ -t 0 ]; then
+  INTERACTIVE=true
+fi
+
+# Helper: ask y/n question, loop until valid answer
+# Usage: ask_yn "prompt (y/N): " [default]
+# default: y or n (what empty input means). No default = must answer.
+# In non-interactive mode: always uses default. If no default, returns 1 (no).
+ask_yn() {
+  local prompt="$1"
+  local default="${2:-}"
+  local answer
+
+  if [ "$INTERACTIVE" != "true" ]; then
+    if [ "$default" = "y" ]; then
+      echo "${prompt}y (auto — non-interactive)"
+      return 0
+    else
+      echo "${prompt}n (auto — non-interactive)"
+      return 1
+    fi
+  fi
+
+  while true; do
+    read -p "$prompt" answer < /dev/tty
+    answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
+    case "$answer" in
+      y|yes) return 0 ;;
+      n|no) return 1 ;;
+      "") 
+        if [ "$default" = "y" ]; then return 0;
+        elif [ "$default" = "n" ]; then return 1;
+        else echo "   Please enter y or n."; fi ;;
+      *) echo "   Please enter y or n." ;;
+    esac
+  done
+}
+
+# Helper: ask m/r/k question for non-interactive mode
+# Always returns 'k' (keep) when non-interactive
+ask_mrk() {
+  local prompt="$1"
+  local answer
+  if [ "$INTERACTIVE" != "true" ]; then
+    echo "${prompt}k (auto — non-interactive)"
+    echo "k"
+    return
+  fi
+  while true; do
+    read -p "$prompt" answer < /dev/tty
+    answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
+    case "$answer" in
+      m|r|k) echo "$answer"; return ;;
+      *) echo "   Please enter m, r, or k." >&2 ;;
+    esac
+  done
+}
 
 WORKSPACE="${CLAWD_WORKSPACE:-$(pwd)}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -66,7 +126,7 @@ if command -v openclaw &>/dev/null; then
       echo "   [DRY RUN] Would update 'Daily Memory Distillation' (id: $DAILY_ID) message"
       UPDATED=$((UPDATED + 1))
     else
-      openclaw cron edit "$DAILY_ID" --message "$DAILY_MSG" --model default 2>/dev/null \
+      openclaw cron edit "$DAILY_ID" --message "$DAILY_MSG" 2>/dev/null \
         && echo "   ✅ Updated 'Daily Memory Distillation' cron message" \
         && UPDATED=$((UPDATED + 1)) \
         || echo "   ⚠️  Could not update 'Daily Memory Distillation' — run manually: openclaw cron edit $DAILY_ID --message '...'"
@@ -81,7 +141,7 @@ if command -v openclaw &>/dev/null; then
       echo "   [DRY RUN] Would update 'Weekly Synthesis' (id: $WEEKLY_ID) message"
       UPDATED=$((UPDATED + 1))
     else
-      openclaw cron edit "$WEEKLY_ID" --message "$WEEKLY_MSG" --model default 2>/dev/null \
+      openclaw cron edit "$WEEKLY_ID" --message "$WEEKLY_MSG" 2>/dev/null \
         && echo "   ✅ Updated 'Weekly Synthesis' cron message" \
         && UPDATED=$((UPDATED + 1)) \
         || echo "   ⚠️  Could not update 'Weekly Synthesis' — run manually: openclaw cron edit $WEEKLY_ID --message '...'"
@@ -90,6 +150,33 @@ if command -v openclaw &>/dev/null; then
     echo "   ⏭️  'Weekly Synthesis' cron not found — run install.sh to create it"
     SKIPPED=$((SKIPPED + 1))
   fi
+  # Check for model overrides (can't clear via CLI, provide manual instructions)
+  echo ""
+  echo "   Checking for cron model overrides..."
+  HAS_MODEL_OVERRIDE=false
+  for CRON_NAME in "Daily Memory Distill" "Weekly Synthesis"; do
+    CRON_ID=$(get_cron_id "$CRON_NAME")
+    [ -z "$CRON_ID" ] && continue
+    CRON_DETAIL=$(openclaw cron list --json 2>/dev/null || echo "[]")
+    CRON_MODEL=$(echo "$CRON_DETAIL" | tr ',' '\n' | tr '{' '\n' | tr '}' '\n' | sed 's/^ *//' | awk -v id="$CRON_ID" '
+      /^"id"/ || /^"_id"/ { gsub(/[" ]/, ""); split($0, a, ":"); cur_id=a[2] }
+      /^"model"/ && cur_id == id { gsub(/[" ]/, ""); split($0, a, ":"); print a[2]; exit }
+    ' 2>/dev/null || true)
+    if [ -n "$CRON_MODEL" ] && [ "$CRON_MODEL" != "null" ]; then
+      echo "   ⚠️  '$CRON_NAME' ($CRON_ID) has model override: $CRON_MODEL"
+      HAS_MODEL_OVERRIDE=true
+    fi
+  done
+  if [ "$HAS_MODEL_OVERRIDE" = true ]; then
+    echo ""
+    echo "   OpenClaw CLI has no --clear-model flag. To remove model overrides manually:"
+    echo "   1. Open the TUI: openclaw"
+    echo "   2. Go to Cron Jobs → select the job → edit → clear the model field"
+    echo "   (The override is harmless if it matches your gateway default model.)"
+  else
+    echo "   ✅ No model overrides found"
+  fi
+
 else
   echo "   ⚠️  openclaw CLI not found — skipping cron updates"
   SKIPPED=$((SKIPPED + 1))
@@ -259,9 +346,7 @@ EOPR
           echo "   📋 Custom content detected beyond the standard ${pnum}:"
           echo "$custom_lines" | sed 's/^/      /'
           echo ""
-          read -p "   Migrate custom content to P0 before updating? (Y/n): " MIGRATE
-          MIGRATE=$(echo "$MIGRATE" | tr '[:upper:]' '[:lower:]')
-          if [ "$MIGRATE" != "n" ] && [ "$MIGRATE" != "no" ]; then
+          if ask_yn "   Migrate custom content to P0 before updating? (Y/n): " y; then
             # Find or create P0 section
             if grep -q "^### P0:" "$WORKSPACE/MEMORY.md" 2>/dev/null; then
               # Count existing P0 sub-principles to determine next letter
@@ -292,9 +377,7 @@ EOPR
         fi
 
         echo "   ⚠️  Replacing will overwrite any custom additions you made to this principle."
-        read -p "   Update ${pnum}? (y/N): " UPDATE_PRINCIPLE
-        UPDATE_PRINCIPLE=$(echo "$UPDATE_PRINCIPLE" | tr '[:upper:]' '[:lower:]')
-        if [ "$UPDATE_PRINCIPLE" = "y" ] || [ "$UPDATE_PRINCIPLE" = "yes" ]; then
+        if ask_yn "   Update ${pnum}? (y/N): " n; then
           # Find the start and end line of the existing principle block
           start_line=""; end_line=""; next_section=""
           start_line=$(grep -n "^### ${pnum}:" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1)
@@ -354,6 +437,319 @@ EOPR
         UPDATED=$((UPDATED + 1))
       done
     fi
+  fi
+fi
+
+# Clean up extra/duplicate principles beyond P0-P8
+if [ -f "$WORKSPACE/MEMORY.md" ]; then
+  echo ""
+  echo "🧹 Checking for extra principles..."
+  EXTRA_PRINCIPLES=$(grep "^### P[0-9]" "$WORKSPACE/MEMORY.md" | grep -v "^### P0:\|^### P1:\|^### P2:\|^### P3:\|^### P4:\|^### P5:\|^### P6:\|^### P7:\|^### P8:" || true)
+
+  if [ -n "$EXTRA_PRINCIPLES" ]; then
+    echo "   Found principles outside P0-P8 range:"
+    echo "$EXTRA_PRINCIPLES" | sed 's/^/      /'
+    echo ""
+
+    while IFS= read -r extra_line; do
+      [ -z "$extra_line" ] && continue
+      extra_pnum=$(echo "$extra_line" | sed 's/^### \(P[0-9]*\):.*/\1/')
+      extra_title="$extra_line"
+
+      # Extract the full body of this extra principle
+      extra_body=$(awk "/^### ${extra_pnum}:/{found=1} found{if(/^### P[0-9]/ && !/^### ${extra_pnum}:/)exit; if(/^---$/)exit; if(/^## /)exit; print}" "$WORKSPACE/MEMORY.md" 2>/dev/null)
+
+      # Check if this is a duplicate of an existing P1-P8
+      # Must match BOTH title AND body content to be considered a duplicate
+      is_duplicate=false
+      dup_of=""
+      for std_pnum in P1 P2 P3 P4 P5 P6 P7 P8; do
+        std_title=$(grep "^### ${std_pnum}:" "$WORKSPACE/MEMORY.md" 2>/dev/null | head -1)
+        if [ -n "$std_title" ]; then
+          extra_name=$(echo "$extra_title" | sed 's/^### P[0-9]*: //')
+          std_name=$(echo "$std_title" | sed 's/^### P[0-9]*: //')
+          if [ "$extra_name" = "$std_name" ]; then
+            # Title matches — now compare body content
+            std_body=$(awk "/^### ${std_pnum}:/{found=1} found{if(/^### P[0-9]/ && !/^### ${std_pnum}:/)exit; if(/^---$/)exit; if(/^## /)exit; print}" "$WORKSPACE/MEMORY.md" 2>/dev/null)
+            # Compare using hash of whitespace-stripped content
+            extra_hash=$(echo "$extra_body" | tr -d '[:space:]' | md5sum | cut -d' ' -f1)
+            std_hash=$(echo "$std_body" | tr -d '[:space:]' | md5sum | cut -d' ' -f1)
+            if [ "$extra_hash" = "$std_hash" ]; then
+              is_duplicate=true
+              dup_of="$std_pnum"
+              echo "   🔄 $extra_pnum is a full duplicate of $std_pnum ($std_name) — same title AND body"
+              break
+            else
+              echo "   ℹ️  $extra_pnum has same title as $std_pnum ($std_name) but DIFFERENT body content"
+            fi
+          fi
+        fi
+      done
+
+      if [ "$is_duplicate" = true ]; then
+        if ask_yn "   Remove duplicate $extra_pnum? (y/N): " n; then
+          if [ "$DRY_RUN" != "true" ]; then
+            start_line=$(grep -n "^### ${extra_pnum}:" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1)
+            next_line=$(tail -n "+$((start_line + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^### \|^## " | head -1 | cut -d: -f1)
+            if [ -n "$next_line" ]; then
+              end_line=$((start_line + next_line - 1))
+            else
+              end_line=$(wc -l < "$WORKSPACE/MEMORY.md")
+            fi
+            tmp_mem=$(mktemp)
+            head -n "$((start_line - 1))" "$WORKSPACE/MEMORY.md" > "$tmp_mem"
+            tail -n "+$((end_line + 1))" "$WORKSPACE/MEMORY.md" >> "$tmp_mem"
+            mv "$tmp_mem" "$WORKSPACE/MEMORY.md"
+            echo "   ✅ Removed duplicate $extra_pnum"
+            UPDATED=$((UPDATED + 1))
+          fi
+        fi
+      else
+        echo "   📋 $extra_pnum has unique content:"
+        echo "$extra_body" | head -5 | sed 's/^/      /'
+        echo ""
+        echo "   What should we do with $extra_pnum?"
+        echo "     m = Move to P0 as custom sub-principle"
+        echo "     r = Remove entirely"
+        echo "     k = Keep as-is (no change)"
+        ACTION=$(ask_mrk "   Action for $extra_pnum? (m/r/k): ")
+        case "$ACTION" in
+            m)
+              if [ "$DRY_RUN" != "true" ]; then
+                # Count existing P0 sub-principles
+                existing_count=$(grep -c "^#### P0-" "$WORKSPACE/MEMORY.md" 2>/dev/null || true)
+                existing_count=$(printf '%s' "$existing_count" | tr -dc '0-9')
+                existing_count=${existing_count:-0}
+                next_letter=$(printf "\\$(printf '%03o' $((65 + existing_count)))")
+
+                # Add to P0
+                p0_line=$(grep -n "^### P0:" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1)
+                p0_end=$(tail -n "+$((p0_line + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^### P[0-9]" | head -1 | cut -d: -f1)
+                if [ -n "$p0_end" ]; then
+                  insert_at=$((p0_line + p0_end - 1))
+                else
+                  insert_at=$((p0_line + 1))
+                fi
+                # Build sub-principle from body (skip the original ### header)
+                sub_body=$(echo "$extra_body" | tail -n +2)
+                sub_name=$(echo "$extra_title" | sed 's/^### P[0-9]*: //')
+                sub_text="\n#### P0-${next_letter}: ${sub_name}\n${sub_body}\n"
+                sed -i "${insert_at}a\\${sub_text}" "$WORKSPACE/MEMORY.md"
+
+                # Remove the original
+                start_line=$(grep -n "^### ${extra_pnum}:" "$WORKSPACE/MEMORY.md" | tail -1 | cut -d: -f1)
+                next_line=$(tail -n "+$((start_line + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^### \|^## " | head -1 | cut -d: -f1)
+                if [ -n "$next_line" ]; then
+                  end_line=$((start_line + next_line - 1))
+                else
+                  end_line=$(wc -l < "$WORKSPACE/MEMORY.md")
+                fi
+                tmp_mem=$(mktemp)
+                head -n "$((start_line - 1))" "$WORKSPACE/MEMORY.md" > "$tmp_mem"
+                tail -n "+$((end_line + 1))" "$WORKSPACE/MEMORY.md" >> "$tmp_mem"
+                mv "$tmp_mem" "$WORKSPACE/MEMORY.md"
+                echo "   ✅ Moved to P0-${next_letter}, removed $extra_pnum"
+                UPDATED=$((UPDATED + 1))
+              fi
+              ;;
+            r)
+              if [ "$DRY_RUN" != "true" ]; then
+                start_line=$(grep -n "^### ${extra_pnum}:" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1)
+                next_line=$(tail -n "+$((start_line + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^### \|^## " | head -1 | cut -d: -f1)
+                if [ -n "$next_line" ]; then
+                  end_line=$((start_line + next_line - 1))
+                else
+                  end_line=$(wc -l < "$WORKSPACE/MEMORY.md")
+                fi
+                tmp_mem=$(mktemp)
+                head -n "$((start_line - 1))" "$WORKSPACE/MEMORY.md" > "$tmp_mem"
+                tail -n "+$((end_line + 1))" "$WORKSPACE/MEMORY.md" >> "$tmp_mem"
+                mv "$tmp_mem" "$WORKSPACE/MEMORY.md"
+                echo "   ✅ Removed $extra_pnum"
+                UPDATED=$((UPDATED + 1))
+              fi
+              ;;
+            k)
+              echo "   ⏭️  Kept $extra_pnum"
+              SKIPPED=$((SKIPPED + 1))
+              ;;
+        esac
+      fi
+    done <<< "$EXTRA_PRINCIPLES"
+  else
+    echo "   ⏭️  No extra principles found (P0-P8 only)"
+    SKIPPED=$((SKIPPED + 1))
+  fi
+fi
+
+# Check for non-standard ## sections in MEMORY.md that should be moved
+if [ -f "$WORKSPACE/MEMORY.md" ]; then
+  echo ""
+  echo "🧹 Checking MEMORY.md structure..."
+  STANDARD_MEM_SECTIONS="PRINCIPLES|Identity|Memory Index"
+  NON_STANDARD=""
+  while IFS= read -r section_line; do
+    section_name=$(echo "$section_line" | sed 's/^## //')
+    if ! echo "$section_name" | grep -qE "($STANDARD_MEM_SECTIONS)"; then
+      NON_STANDARD="${NON_STANDARD}${section_line}\n"
+    fi
+  done < <(grep "^## " "$WORKSPACE/MEMORY.md" | grep -v "^## 🔴")
+
+  if [ -n "$NON_STANDARD" ]; then
+    echo "   Found non-standard ## sections in MEMORY.md:"
+    printf "   %b" "$NON_STANDARD" | sed 's/^/      /'
+    echo "   MEMORY.md should only contain: 🔴 PRINCIPLES, ## Identity, ## Memory Index"
+    echo ""
+
+    # Move each non-standard section to its own file
+    while IFS= read -r ns_line; do
+      [ -z "$ns_line" ] && continue
+      ns_name=$(echo "$ns_line" | sed 's/^## //')
+      # Sanitize for filename: lowercase, spaces to hyphens, strip special chars
+      ns_file=$(echo "$ns_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
+      ns_dest="$WORKSPACE/memory/${ns_file}.md"
+
+      # Extract section content
+      ns_start=$(grep -n "^## ${ns_name}$" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1)
+      [ -z "$ns_start" ] && continue
+      ns_next=$(tail -n "+$((ns_start + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^## " | head -1 | cut -d: -f1)
+      if [ -n "$ns_next" ]; then
+        ns_end=$((ns_start + ns_next - 1))
+      else
+        ns_end=$(wc -l < "$WORKSPACE/MEMORY.md")
+      fi
+      ns_content=$(sed -n "${ns_start},${ns_end}p" "$WORKSPACE/MEMORY.md")
+
+      echo "   📦 \"## ${ns_name}\" → memory/${ns_file}.md"
+      if ask_yn "   Move this section? (Y/n): " y; then
+        if [ "$DRY_RUN" != "true" ]; then
+          if [ -f "$ns_dest" ]; then
+            echo "" >> "$ns_dest"
+            echo "$ns_content" >> "$ns_dest"
+            echo "   ✅ Appended to existing ${ns_dest##*/}"
+          else
+            echo "# ${ns_name}" > "$ns_dest"
+            echo "" >> "$ns_dest"
+            # Write body (skip the ## header line)
+            echo "$ns_content" | tail -n +2 >> "$ns_dest"
+            echo "   ✅ Created memory/${ns_file}.md"
+          fi
+
+          # Remove from MEMORY.md
+          tmp_mem=$(mktemp)
+          # Keep lines before section, skip section, keep lines after
+          head -n "$((ns_start - 1))" "$WORKSPACE/MEMORY.md" > "$tmp_mem"
+          if [ "$ns_end" -lt "$(wc -l < "$WORKSPACE/MEMORY.md")" ]; then
+            tail -n "+$((ns_end + 1))" "$WORKSPACE/MEMORY.md" >> "$tmp_mem"
+          fi
+          mv "$tmp_mem" "$WORKSPACE/MEMORY.md"
+          echo "   ✅ Removed from MEMORY.md"
+          UPDATED=$((UPDATED + 1))
+        fi
+      else
+        echo "   ⏭️  Kept in MEMORY.md"
+        SKIPPED=$((SKIPPED + 1))
+      fi
+    done <<< "$(printf '%b' "$NON_STANDARD")"
+  else
+    echo "   ⏭️  MEMORY.md structure is clean"
+    SKIPPED=$((SKIPPED + 1))
+  fi
+
+  # Size check — after non-standard section moves, re-measure
+  MEM_SIZE=$(du -k "$WORKSPACE/MEMORY.md" 2>/dev/null | cut -f1)
+  if [ "$MEM_SIZE" -gt 5 ]; then
+    echo ""
+    echo "   📏 MEMORY.md is ${MEM_SIZE}KB (target: < 5KB) — checking for bloated subsections..."
+
+    # Find ### subsections under ## Memory Index that are over 10 lines
+    # These can be extracted to dedicated files with a reference left behind
+    MEM_INDEX_START=$(grep -n "^## Memory Index" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1 || true)
+    if [ -n "$MEM_INDEX_START" ]; then
+    MEM_INDEX_END=$(tail -n "+$((MEM_INDEX_START + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^## " | head -1 | cut -d: -f1 || true)
+      if [ -n "$MEM_INDEX_END" ]; then
+        MEM_INDEX_END=$((MEM_INDEX_START + MEM_INDEX_END - 1))
+      else
+        MEM_INDEX_END=$(wc -l < "$WORKSPACE/MEMORY.md")
+      fi
+
+      # Extract each ### subsection and check line count
+      SUBSECTIONS=$(sed -n "${MEM_INDEX_START},${MEM_INDEX_END}p" "$WORKSPACE/MEMORY.md" | grep "^### " || true)
+      while IFS= read -r sub_header; do
+        [ -z "$sub_header" ] && continue
+        sub_name=$(echo "$sub_header" | sed 's/^### //' | sed 's/ (.*//')
+        # Use fixed-string grep to handle special chars in headers like (memory/contacts/)
+        sub_start=$(grep -nF "$sub_header" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1)
+        [ -z "$sub_start" ] && continue
+        sub_next=$(tail -n "+$((sub_start + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^### \|^## " | head -1 | cut -d: -f1 || true)
+        if [ -n "$sub_next" ]; then
+          sub_end=$((sub_start + sub_next - 1))
+        else
+          sub_end=$MEM_INDEX_END
+        fi
+        sub_lines=$((sub_end - sub_start))
+
+        if [ "$sub_lines" -gt 10 ]; then
+          # Determine destination file
+          sub_file=$(echo "$sub_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
+          sub_dest="$WORKSPACE/memory/${sub_file}.md"
+
+          echo "   📦 \"### ${sub_name}\" is ${sub_lines} lines — move to memory/${sub_file}.md?"
+          if ask_yn "   Extract and replace with reference? (Y/n): " y; then
+            if [ "$DRY_RUN" != "true" ]; then
+              # Extract content (include header)
+              sub_content=$(sed -n "${sub_start},${sub_end}p" "$WORKSPACE/MEMORY.md")
+
+              if [ -f "$sub_dest" ]; then
+                echo "" >> "$sub_dest"
+                echo "$sub_content" | tail -n +2 >> "$sub_dest"
+              else
+                echo "# ${sub_name}" > "$sub_dest"
+                echo "" >> "$sub_dest"
+                echo "$sub_content" | tail -n +2 >> "$sub_dest"
+              fi
+
+              # Replace section with brief reference (keep ### header, add See reference, remove body)
+              tmp_mem=$(mktemp)
+              head -n "$sub_start" "$WORKSPACE/MEMORY.md" > "$tmp_mem"
+              echo "See \`memory/${sub_file}.md\` for details." >> "$tmp_mem"
+              echo "" >> "$tmp_mem"
+              if [ "$sub_end" -lt "$(wc -l < "$WORKSPACE/MEMORY.md")" ]; then
+                tail -n "+$((sub_end + 1))" "$WORKSPACE/MEMORY.md" >> "$tmp_mem"
+              fi
+              mv "$tmp_mem" "$WORKSPACE/MEMORY.md"
+
+              echo "   ✅ Extracted to memory/${sub_file}.md, left reference in MEMORY.md"
+              UPDATED=$((UPDATED + 1))
+
+              # Recalculate line numbers since file changed
+              MEM_INDEX_START=$(grep -n "^## Memory Index" "$WORKSPACE/MEMORY.md" | head -1 | cut -d: -f1 || true)
+              if [ -n "$MEM_INDEX_START" ]; then
+                MEM_INDEX_END_TMP=$(tail -n "+$((MEM_INDEX_START + 1))" "$WORKSPACE/MEMORY.md" | grep -n "^## " | head -1 | cut -d: -f1 || true)
+                if [ -n "$MEM_INDEX_END_TMP" ]; then
+                  MEM_INDEX_END=$((MEM_INDEX_START + MEM_INDEX_END_TMP - 1))
+                else
+                  MEM_INDEX_END=$(wc -l < "$WORKSPACE/MEMORY.md")
+                fi
+              fi
+            fi
+          else
+            echo "   ⏭️  Kept inline"
+            SKIPPED=$((SKIPPED + 1))
+          fi
+        fi
+      done <<< "$SUBSECTIONS"
+    fi
+
+    # Final size report
+    MEM_SIZE=$(du -k "$WORKSPACE/MEMORY.md" 2>/dev/null | cut -f1)
+    if [ "$MEM_SIZE" -gt 5 ]; then
+      echo "   ℹ️  MEMORY.md is now ${MEM_SIZE}KB — further trimming may be needed by the agent during distillation"
+    else
+      echo "   ✅ MEMORY.md trimmed to ${MEM_SIZE}KB (within target)"
+    fi
+  else
+    echo "   ✅ MEMORY.md is ${MEM_SIZE}KB (within target)"
   fi
 fi
 echo ""
@@ -583,9 +979,7 @@ echo "📄 Checking template files..."
 # SOUL.md
 if [ ! -f "$WORKSPACE/SOUL.md" ]; then
   echo "   ⚠️  SOUL.md is missing"
-  read -p "   Create default SOUL.md? (Y/n): " CREATE_SOUL
-  CREATE_SOUL=$(echo "$CREATE_SOUL" | tr '[:upper:]' '[:lower:]')
-  if [ "$CREATE_SOUL" != "n" ] && [ "$CREATE_SOUL" != "no" ]; then
+  if ask_yn "   Create default SOUL.md? (Y/n): " y; then
     if [ "$DRY_RUN" != "true" ]; then
       cat > "$WORKSPACE/SOUL.md" << 'SOULEOF'
 # SOUL.md — Who You Are
@@ -630,9 +1024,7 @@ fi
 # USER.md
 if [ ! -f "$WORKSPACE/USER.md" ]; then
   echo "   ⚠️  USER.md is missing"
-  read -p "   Create default USER.md? (Y/n): " CREATE_USER
-  CREATE_USER=$(echo "$CREATE_USER" | tr '[:upper:]' '[:lower:]')
-  if [ "$CREATE_USER" != "n" ] && [ "$CREATE_USER" != "no" ]; then
+  if ask_yn "   Create default USER.md? (Y/n): " y; then
     if [ "$DRY_RUN" != "true" ]; then
       cat > "$WORKSPACE/USER.md" << 'USEREOF'
 # USER.md — About Your Human
@@ -705,15 +1097,141 @@ if [ -f "$WORKSPACE/AGENTS.md" ]; then
   if ! grep -q "Custom Principles\|P0" "$WORKSPACE/AGENTS.md" 2>/dev/null; then
     AGENTS_WARNINGS+=("Custom Principles (P0) guidance")
   fi
+  if ! grep -q "## Safety" "$WORKSPACE/AGENTS.md" 2>/dev/null; then
+    AGENTS_WARNINGS+=("Safety boundaries")
+  fi
+  if ! grep -q "## Formatting" "$WORKSPACE/AGENTS.md" 2>/dev/null; then
+    AGENTS_WARNINGS+=("Formatting guidance")
+  fi
   if [ ${#AGENTS_WARNINGS[@]} -gt 0 ]; then
     echo "   ⚠️  AGENTS.md is missing: ${AGENTS_WARNINGS[*]}"
-    read -p "   Back up current AGENTS.md and regenerate? (y/N): " REGEN_AGENTS
-    REGEN_AGENTS=$(echo "$REGEN_AGENTS" | tr '[:upper:]' '[:lower:]')
-    if [ "$REGEN_AGENTS" = "y" ] || [ "$REGEN_AGENTS" = "yes" ]; then
+    if ask_yn "   Back up current and regenerate AGENTS.md? (y/N): " n; then
       if [ "$DRY_RUN" != "true" ]; then
-        cp "$WORKSPACE/AGENTS.md" "$WORKSPACE/AGENTS.md.bak.$(date +%Y%m%d%H%M%S)"
-        echo "   📦 Backed up to AGENTS.md.bak.*"
-        echo "   ℹ️  Run install.sh (option 2: Full reinstall) to regenerate AGENTS.md"
+        # Extract custom sections from existing AGENTS.md before regenerating
+        # Standard sections that the template provides:
+        STANDARD_SECTIONS="Boot Sequence|Principles|Delegation|Custom Principles|Write Before Responding|Memory Structure|Health Check|Metrics|Updates|Safety|Formatting"
+        CUSTOM_SECTIONS=""
+        if [ -f "$WORKSPACE/AGENTS.md" ]; then
+          # Extract any ## sections whose title doesn't match a standard section
+          current_section=""
+          current_content=""
+          while IFS= read -r line; do
+            if echo "$line" | grep -q "^## "; then
+              # Save previous non-standard section
+              if [ -n "$current_section" ] && ! echo "$current_section" | grep -qE "($STANDARD_SECTIONS)"; then
+                CUSTOM_SECTIONS="${CUSTOM_SECTIONS}${current_content}"$'\n'
+              fi
+              current_section=$(echo "$line" | sed 's/^## //')
+              current_content="$line"$'\n'
+            elif [ -n "$current_section" ]; then
+              current_content="${current_content}${line}"$'\n'
+            fi
+          done < "$WORKSPACE/AGENTS.md"
+          # Capture last section
+          if [ -n "$current_section" ] && ! echo "$current_section" | grep -qE "($STANDARD_SECTIONS)"; then
+            CUSTOM_SECTIONS="${CUSTOM_SECTIONS}${current_content}"$'\n'
+          fi
+        fi
+
+        if [ -n "$CUSTOM_SECTIONS" ]; then
+          echo "   📋 Preserving custom sections from existing AGENTS.md"
+        fi
+
+        # Determine boot sequence
+        AGENTS_BOOT="## Boot Sequence"$'\n'"1. Read SOUL.md"$'\n'"2. Read MEMORY.md — principles + memory index"$'\n'"3. Use memory_search for anything deeper"
+        if [ -f "$WORKSPACE/INFRA.md" ]; then
+          AGENTS_BOOT="$AGENTS_BOOT"$'\n'"4. Read INFRA.md — infrastructure reference"
+        fi
+
+        cat > "$WORKSPACE/AGENTS.md" << AGENTSEOF
+# AGENTS.md — Operating Protocol
+
+$AGENTS_BOOT
+
+## Principles
+Live in MEMORY.md under 🔴 PRINCIPLES. Follow them always.
+
+## Delegation (P1)
+**Default action: delegate.** Before doing work, ask:
+1. Can a sub-agent do this? → Yes for most things
+2. What calibre? → Light (simple), Medium (moderate), Heavy (complex)
+3. Delegate with clear task description + relevant file paths
+4. Stay available to the user
+
+**Sub-agent debrief (P6):** Include in every sub-agent task:
+"Before completing, append a brief debrief to memory/YYYY-MM-DD.md: what you did, what you learned, any issues."
+
+**Never delegate:** Conversation, confirmations, principle changes, ambiguous decisions
+
+## Custom Principles (P0)
+When the user asks to add a new principle, even if they ask for P9, P10, or any number beyond P8:
+1. All custom principles go in P0 as sub-principles (P0-A, P0-B, P0-C, etc.)
+2. Explain that P1-P8 are managed by OpenCortex and P0 is the dedicated space for custom additions
+3. Before adding, assess whether it truly belongs as a principle or would be better as:
+   - A **preference** (memory/preferences.md) — if it is about how the user likes things done
+   - A **decision** (relevant project file) — if it is a one-time choice, not an ongoing rule
+   - A **runbook** (memory/runbooks/) — if it is a step-by-step procedure
+   - An **AGENTS.md rule** — if it is about agent behavior during boot or delegation
+4. Check for conflicts with P1-P8. If the proposed principle would contradict an existing one, explain the conflict and work with the user to resolve it before adding
+5. A principle should be a persistent behavioral rule that applies across all sessions and all work
+
+## Write Before Responding (P2)
+When the user states a preference, makes a decision, gives a deadline, or corrects you:
+1. Write it to the relevant memory file FIRST
+2. Then compose and send your response
+This ensures nothing is lost if the session ends or compacts between your response and the write.
+
+## Memory Structure
+- MEMORY.md — Principles + index (< 3KB, fast load)
+- TOOLS.md — Tool shed with abilities descriptions
+- INFRA.md — Infrastructure atlas
+- memory/projects/*.md — Per-project knowledge
+- memory/contacts/*.md — Per-person/org knowledge
+- memory/workflows/*.md — Per-workflow/pipeline knowledge
+- memory/preferences.md — Cross-cutting user preferences by category
+- memory/runbooks/*.md — Repeatable procedures
+- memory/archive/*.md — Archived daily logs
+- memory/YYYY-MM-DD.md — Today's working log
+
+## Health Check
+When the user asks if OpenCortex is installed, working, or wants a status check, run:
+  bash skills/opencortex/scripts/verify.sh
+Share the results and offer to fix any failures.
+
+## Metrics
+When the user asks about OpenCortex metrics, how it is doing, or wants to see growth:
+1. Run: bash scripts/metrics.sh --report
+2. Share the trends, compound score, and any areas that need attention.
+3. If no data exists yet, run: bash scripts/metrics.sh --collect first.
+
+## Safety
+- Never exfiltrate private data
+- Ask before external actions (P3)
+- Private context stays out of group chats
+- When in doubt, ask — do not assume permission
+
+## Formatting
+- Keep replies concise for chat surfaces (Telegram, Discord, etc.)
+- Avoid markdown tables on surfaces that do not render them well
+- Match the communication style documented in USER.md
+
+## Updates
+When the user asks to update OpenCortex or check for updates:
+1. Run: clawhub install opencortex --force
+2. Run: bash skills/opencortex/scripts/update.sh
+3. Run: bash skills/opencortex/scripts/verify.sh
+Share the results with the user.
+AGENTSEOF
+
+        # Append any custom sections that were in the old file
+        if [ -n "$CUSTOM_SECTIONS" ]; then
+          echo "" >> "$WORKSPACE/AGENTS.md"
+          printf '%s' "$CUSTOM_SECTIONS" >> "$WORKSPACE/AGENTS.md"
+          echo "   ✅ Regenerated AGENTS.md (custom sections preserved)"
+        else
+          echo "   ✅ Regenerated AGENTS.md"
+        fi
+        UPDATED=$((UPDATED + 1))
       fi
     else
       echo "   ⏭️  Kept existing AGENTS.md"
@@ -737,13 +1255,53 @@ if [ -f "$WORKSPACE/BOOTSTRAP.md" ]; then
   fi
   if [ ${#BOOTSTRAP_WARNINGS[@]} -gt 0 ]; then
     echo "   ⚠️  BOOTSTRAP.md is missing: ${BOOTSTRAP_WARNINGS[*]}"
-    read -p "   Back up current BOOTSTRAP.md and regenerate? (y/N): " REGEN_BOOT
-    REGEN_BOOT=$(echo "$REGEN_BOOT" | tr '[:upper:]' '[:lower:]')
-    if [ "$REGEN_BOOT" = "y" ] || [ "$REGEN_BOOT" = "yes" ]; then
+    if ask_yn "   Back up current and regenerate BOOTSTRAP.md? (y/N): " n; then
       if [ "$DRY_RUN" != "true" ]; then
-        cp "$WORKSPACE/BOOTSTRAP.md" "$WORKSPACE/BOOTSTRAP.md.bak.$(date +%Y%m%d%H%M%S)"
-        echo "   📦 Backed up to BOOTSTRAP.md.bak.*"
-        echo "   ℹ️  Run install.sh (option 2: Full reinstall) to regenerate BOOTSTRAP.md"
+        # Extract custom sections from existing BOOTSTRAP.md
+        BOOT_STANDARD="First-Run Checklist|Silent Replies|Sub-Agent Protocol"
+        BOOT_CUSTOM=""
+        if [ -f "$WORKSPACE/BOOTSTRAP.md" ]; then
+          current_section=""
+          current_content=""
+          while IFS= read -r line; do
+            if echo "$line" | grep -q "^## "; then
+              if [ -n "$current_section" ] && ! echo "$current_section" | grep -qE "($BOOT_STANDARD)"; then
+                BOOT_CUSTOM="${BOOT_CUSTOM}${current_content}"$'\n'
+              fi
+              current_section=$(echo "$line" | sed 's/^## //')
+              current_content="$line"$'\n'
+            elif [ -n "$current_section" ]; then
+              current_content="${current_content}${line}"$'\n'
+            fi
+          done < "$WORKSPACE/BOOTSTRAP.md"
+          if [ -n "$current_section" ] && ! echo "$current_section" | grep -qE "($BOOT_STANDARD)"; then
+            BOOT_CUSTOM="${BOOT_CUSTOM}${current_content}"$'\n'
+          fi
+        fi
+        cat > "$WORKSPACE/BOOTSTRAP.md" << 'BOOTEOF'
+# BOOTSTRAP.md — First-Run Checklist
+
+On new session start:
+1. Read SOUL.md — identity and personality
+2. Read MEMORY.md — principles (🔴 PRINCIPLES section) and memory index
+3. Do NOT bulk-load other files — use memory_search when needed
+
+## Silent Replies
+- `NO_REPLY` — when you have nothing to say (must be entire message, nothing else)
+- `HEARTBEAT_OK` — when heartbeat poll finds nothing needing attention
+
+## Sub-Agent Protocol
+When delegating, always include in task message:
+"Before completing, append a brief debrief to memory/YYYY-MM-DD.md (today's date): what you did, what you learned, any issues."
+BOOTEOF
+        if [ -n "$BOOT_CUSTOM" ]; then
+          echo "" >> "$WORKSPACE/BOOTSTRAP.md"
+          printf '%s' "$BOOT_CUSTOM" >> "$WORKSPACE/BOOTSTRAP.md"
+          echo "   ✅ Regenerated BOOTSTRAP.md (custom sections preserved)"
+        else
+          echo "   ✅ Regenerated BOOTSTRAP.md"
+        fi
+        UPDATED=$((UPDATED + 1))
       fi
     else
       echo "   ⏭️  Kept existing BOOTSTRAP.md"
@@ -760,22 +1318,109 @@ fi
 # Part 6: Cron jobs — verify they exist
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "⏰ Verifying cron jobs exist..."
+echo "⏰ Verifying cron jobs..."
 if command -v openclaw >/dev/null 2>&1; then
   CRON_LIST=$(openclaw cron list 2>/dev/null || true)
-  if echo "$CRON_LIST" | grep -qi "Daily Memory Distillation"; then
+
+  # Deduplicate: remove extra Daily Memory Distillation crons (keep the first)
+  DAILY_MATCHES=$(echo "$CRON_LIST" | grep -i "Daily Memory Distill" | awk '{print $1}' || true)
+  DAILY_COUNT=$(echo "$DAILY_MATCHES" | grep -c . 2>/dev/null || true)
+  if [ "$DAILY_COUNT" -gt 1 ]; then
+    echo "   🧹 Found $DAILY_COUNT 'Daily Memory Distillation' crons — removing duplicates..."
+    FIRST_DAILY=true
+    while IFS= read -r cron_id; do
+      [ -z "$cron_id" ] && continue
+      if [ "$FIRST_DAILY" = true ]; then
+        FIRST_DAILY=false
+        echo "   ⏭️  Keeping: $cron_id"
+      else
+        if [ "$DRY_RUN" != "true" ]; then
+          openclaw cron delete "$cron_id" 2>/dev/null && \
+          echo "   🗑️  Deleted duplicate: $cron_id" || true
+        else
+          echo "   [DRY RUN] Would delete duplicate: $cron_id"
+        fi
+      fi
+    done <<< "$DAILY_MATCHES"
+    UPDATED=$((UPDATED + 1))
+  fi
+
+  # Deduplicate: remove extra Weekly Synthesis crons (keep the first)
+  WEEKLY_MATCHES=$(echo "$CRON_LIST" | grep -i "Weekly Synth" | awk '{print $1}' || true)
+  WEEKLY_COUNT=$(echo "$WEEKLY_MATCHES" | grep -c . 2>/dev/null || true)
+  if [ "$WEEKLY_COUNT" -gt 1 ]; then
+    echo "   🧹 Found $WEEKLY_COUNT 'Weekly Synthesis' crons — removing duplicates..."
+    FIRST_WEEKLY=true
+    while IFS= read -r cron_id; do
+      [ -z "$cron_id" ] && continue
+      if [ "$FIRST_WEEKLY" = true ]; then
+        FIRST_WEEKLY=false
+        echo "   ⏭️  Keeping: $cron_id"
+      else
+        if [ "$DRY_RUN" != "true" ]; then
+          openclaw cron delete "$cron_id" 2>/dev/null && \
+          echo "   🗑️  Deleted duplicate: $cron_id" || true
+        else
+          echo "   [DRY RUN] Would delete duplicate: $cron_id"
+        fi
+      fi
+    done <<< "$WEEKLY_MATCHES"
+    UPDATED=$((UPDATED + 1))
+  fi
+
+  # Refresh cron list after dedup
+  CRON_LIST=$(openclaw cron list 2>/dev/null || true)
+
+  if echo "$CRON_LIST" | grep -qi "Daily Memory Distill"; then
     echo "   ⏭️  Daily Memory Distillation cron exists"
     SKIPPED=$((SKIPPED + 1))
   else
     echo "   ⚠️  Daily Memory Distillation cron not found"
-    echo "      Run install.sh to create it, or manually add with: openclaw cron add"
+    if ask_yn "   Create it now? (Y/n): " y; then
+      # Detect timezone
+      CRON_TZ="${CLAWD_TZ:-}"
+      if [ -z "$CRON_TZ" ] && [ -f /etc/timezone ]; then
+        CRON_TZ=$(cat /etc/timezone 2>/dev/null | tr -d '[:space:]')
+      elif [ -z "$CRON_TZ" ] && [ -L /etc/localtime ]; then
+        CRON_TZ=$(readlink -f /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||')
+      fi
+      CRON_TZ="${CRON_TZ:-UTC}"
+      if [ "$DRY_RUN" != "true" ]; then
+        openclaw cron add \
+          --name "Daily Memory Distillation" \
+          --cron "0 3 * * *" \
+          --tz "$CRON_TZ" \
+          --session "isolated" \
+          --timeout-seconds 180 \
+          --no-deliver \
+          --message "$DAILY_MSG" 2>/dev/null && \
+        echo "   ✅ Created Daily Memory Distillation cron (3 AM $CRON_TZ)" || \
+        echo "   ❌ Failed to create cron — try: openclaw cron add --name 'Daily Memory Distillation' --cron '0 3 * * *'"
+        UPDATED=$((UPDATED + 1))
+      fi
+    fi
   fi
-  if echo "$CRON_LIST" | grep -qi "Weekly Synthesis"; then
+  if echo "$CRON_LIST" | grep -qi "Weekly Synth"; then
     echo "   ⏭️  Weekly Synthesis cron exists"
     SKIPPED=$((SKIPPED + 1))
   else
     echo "   ⚠️  Weekly Synthesis cron not found"
-    echo "      Run install.sh to create it, or manually add with: openclaw cron add"
+    if ask_yn "   Create it now? (Y/n): " y; then
+      CRON_TZ="${CRON_TZ:-${CLAWD_TZ:-UTC}}"
+      if [ "$DRY_RUN" != "true" ]; then
+        openclaw cron add \
+          --name "Weekly Synthesis" \
+          --cron "0 5 * * 0" \
+          --tz "$CRON_TZ" \
+          --session "isolated" \
+          --timeout-seconds 180 \
+          --no-deliver \
+          --message "$WEEKLY_MSG" 2>/dev/null && \
+        echo "   ✅ Created Weekly Synthesis cron (Sunday 5 AM $CRON_TZ)" || \
+        echo "   ❌ Failed to create cron — try: openclaw cron add --name 'Weekly Synthesis' --cron '0 5 * * 0'"
+        UPDATED=$((UPDATED + 1))
+      fi
+    fi
   fi
 else
   echo "   ⏭️  openclaw not in PATH — skipping cron existence check"
@@ -792,9 +1437,7 @@ SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Metrics
 if ! crontab -l 2>/dev/null | grep -q "metrics.sh"; then
   echo ""
-  read -p "📊 New feature: daily metrics tracking (knowledge growth over time). Enable? (y/N): " ENABLE_METRICS
-  ENABLE_METRICS=$(echo "$ENABLE_METRICS" | tr '[:upper:]' '[:lower:]')
-  if [ "$ENABLE_METRICS" = "y" ] || [ "$ENABLE_METRICS" = "yes" ]; then
+  if ask_yn "📊 New feature: daily metrics tracking (knowledge growth over time). Enable? (y/N): " n; then
     if [ -f "$SKILL_DIR/metrics.sh" ]; then
       if [ "$DRY_RUN" != "true" ]; then
         cp "$SKILL_DIR/metrics.sh" "$WORKSPACE/scripts/metrics.sh"
@@ -819,6 +1462,28 @@ else
     fi
   fi
 fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Memory search health
+# ─────────────────────────────────────────────────────────────────────────────
+echo "🔍 Checking memory search..."
+MEM_DB=$(find "$HOME/.openclaw" -name "memory*.sqlite" -o -name "memory*.db" 2>/dev/null | head -1)
+if [ -n "$MEM_DB" ]; then
+  DB_SIZE=$(du -k "$MEM_DB" 2>/dev/null | cut -f1)
+  echo "   ✅ Memory search index found (${DB_SIZE}KB)"
+  SKIPPED=$((SKIPPED + 1))
+else
+  echo "   ⚠️  No memory search index found."
+  echo "   Memory search needs an embedding provider. OpenClaw auto-detects from API keys:"
+  echo "     • OpenAI:  set OPENAI_API_KEY or models.providers.openai.apiKey"
+  echo "     • Gemini:  set GEMINI_API_KEY or models.providers.google.apiKey"
+  echo "     • Voyage:  set VOYAGE_API_KEY or models.providers.voyage.apiKey"
+  echo "     • Mistral: set MISTRAL_API_KEY or models.providers.mistral.apiKey"
+  echo "     • Local:   set agents.defaults.memorySearch.local.modelPath to a GGUF file"
+  echo "   Once configured, restart the gateway: openclaw gateway restart"
+  echo "   Docs: https://docs.openclaw.ai/concepts/memory"
+fi
+echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "   ✅ Updated: $UPDATED"

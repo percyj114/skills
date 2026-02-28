@@ -75,14 +75,14 @@ if command -v openclaw &>/dev/null; then
   else
     check "Weekly Synthesis cron NOT found" "fail"
   fi
-  # Check for hardcoded model overrides (common misconfiguration)
+  # Check for problematic model overrides (models that don't exist)
   CRON_JSON=$(openclaw cron list --json 2>/dev/null || echo "")
   if [ -n "$CRON_JSON" ]; then
-    MODEL_OVERRIDES=$(echo "$CRON_JSON" | grep -o '"model":\s*"[^"]*"' | grep -v '"default"' || true)
-    if [ -n "$MODEL_OVERRIDES" ]; then
-      check "Cron jobs have hardcoded model overrides (should use gateway default) — run update.sh to fix" "warn"
+    BAD_MODELS=$(echo "$CRON_JSON" | grep -o '"model":\s*"[^"]*"' | grep -iE '"(anthropic/default|default)"' || true)
+    if [ -n "$BAD_MODELS" ]; then
+      check "Cron jobs have invalid model overrides (e.g. 'default' is not a real model)" "warn"
     else
-      check "No hardcoded model overrides in crons" "ok"
+      check "No invalid model overrides in crons" "ok"
     fi
   fi
 else
@@ -133,6 +133,42 @@ if [ -f "$WORKSPACE/.gitignore" ]; then
   fi
 else
   check "No .gitignore found" "warn"
+fi
+echo ""
+
+# --- Memory Search ---
+echo "🔍 Memory Search:"
+if command -v openclaw >/dev/null 2>&1; then
+  # Check if memory_search is functional by looking for the memory index
+  MEM_DB=$(find "$HOME/.openclaw" -name "memory*.sqlite" -o -name "memory*.db" 2>/dev/null | head -1)
+  if [ -n "$MEM_DB" ]; then
+    DB_SIZE=$(du -k "$MEM_DB" 2>/dev/null | cut -f1)
+    check "Memory search index exists (${DB_SIZE}KB)" "ok"
+  else
+    check "No memory search index found — embeddings may not be configured" "warn"
+  fi
+
+  # Check if memory files are being indexed (non-empty memory dir)
+  MEM_FILES=$(find "$WORKSPACE/memory" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$MEM_FILES" -gt 0 ]; then
+    check "$MEM_FILES memory files available for indexing" "ok"
+  else
+    check "No memory files found in memory/" "warn"
+  fi
+
+  # Check MEMORY.md size (should stay small for boot performance)
+  if [ -f "$WORKSPACE/MEMORY.md" ]; then
+    MEM_SIZE=$(du -k "$WORKSPACE/MEMORY.md" 2>/dev/null | cut -f1)
+    if [ "$MEM_SIZE" -le 5 ]; then
+      check "MEMORY.md is ${MEM_SIZE}KB (target: < 5KB)" "ok"
+    elif [ "$MEM_SIZE" -le 10 ]; then
+      check "MEMORY.md is ${MEM_SIZE}KB — consider trimming (target: < 5KB)" "warn"
+    else
+      check "MEMORY.md is ${MEM_SIZE}KB — too large, will slow boot (target: < 5KB)" "fail"
+    fi
+  fi
+else
+  check "openclaw not in PATH — cannot verify memory search" "warn"
 fi
 echo ""
 
