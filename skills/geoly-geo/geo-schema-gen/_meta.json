@@ -1,0 +1,11 @@
+{
+  "owner": "geoly-geo",
+  "slug": "geo-schema-gen",
+  "displayName": "Schema Markup Generator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772202471480,
+    "commit": null
+  },
+  "history": []
+}
