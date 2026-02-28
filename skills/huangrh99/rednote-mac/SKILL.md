@@ -1,6 +1,15 @@
 ---
 name: rednote-mac
-description: Control the Xiaohongshu (RedNote) Mac desktop app via macOS Accessibility API. Supports DMs, comment replies, video comment reading, search, like, collect, follow, and author stats — features unavailable in headless browser-based alternatives. Requires Mac + rednote App visible on screen + Terminal accessibility permission.
+description: >
+  Control the RedNote (Xiaohongshu) Mac desktop app via macOS Accessibility API.
+  Supports DMs, comment replies, video comment reading, search, like, collect,
+  follow, and author stats — features unavailable in headless alternatives.
+
+  REQUIREMENTS: macOS only. Requires Terminal accessibility permission
+  (System Settings → Privacy & Security → Accessibility). RedNote App must be
+  visible on screen. Contains install.sh (symlinks plugin dir) and index.ts
+  (registers OpenClaw plugin tools). No network calls, no credentials stored.
+  All actions are scoped to the RedNote App window only.
 ---
 
 # rednote-mac
@@ -8,24 +17,37 @@ description: Control the Xiaohongshu (RedNote) Mac desktop app via macOS Accessi
 Control the RedNote (Xiaohongshu) Mac app directly via macOS Accessibility API.
 
 **Why this instead of headless?**
-Headless browser tools can't access DMs, comment reply threads, or video comment lists — the App's native session handles all of that. This skill talks directly to the App.
+Headless browser tools can't access DMs, comment reply threads, or video comment
+lists. This skill talks directly to the native App via macOS Accessibility API —
+no reverse engineering, no API tokens.
 
-## Requirements
+## Permissions required
 
-- macOS + RedNote (rednote) App installed
-- **System Settings → Privacy & Security → Accessibility → enable Terminal** (required)
-- RedNote App must be **visible on screen** (not minimized, screen not locked)
-- For long-running tasks: run `caffeinate -di &` to prevent sleep
+| Permission | Why |
+|------------|-----|
+| Terminal → Accessibility | Required by macOS for AX API mouse/keyboard control |
+| Screen visible | Mouse events only work when the App window is on-screen |
+
+No network access. No stored credentials. No data leaves the machine.
 
 ## Install
 
 ```bash
+# One-liner
 cd ~/.agents/skills/rednote-mac && bash install.sh
+
+# What install.sh does (transparent):
+#   1. uv sync  (installs Python deps: atomacos, pyobjc)
+#   2. ln -sf ~/.agents/skills/rednote-mac ~/.openclaw/extensions/rednote-mac
+#   3. Prints: openclaw config set tools.allow '["rednote-mac"]'
+
 openclaw config set tools.allow '["rednote-mac"]'
 openclaw gateway restart
 ```
 
 Verify: `openclaw plugins list | grep rednote-mac`
+
+⚠️ System Settings → Privacy & Security → Accessibility → enable Terminal
 
 ## Available Tools (quick reference)
 
