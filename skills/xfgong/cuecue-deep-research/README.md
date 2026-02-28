@@ -10,8 +10,8 @@ The skill is automatically published to ClawdHub when a new release is created.
 
 1. Create a new release on GitHub:
    ```bash
-   git tag v1.0.6
-   git push origin v1.0.6
+   git tag 1.0.6
+   git push origin 1.0.6
    ```
 
 2. Go to GitHub Releases and create a new release from the tag
