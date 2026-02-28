@@ -1,0 +1,11 @@
+{
+  "owner": "prompt-surfer",
+  "slug": "exa-search-rust",
+  "displayName": "Exa Search (Rust)",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772188054506,
+    "commit": null
+  },
+  "history": []
+}
