@@ -1,0 +1,11 @@
+{
+  "owner": "zfdang",
+  "slug": "nova-builder-clean",
+  "displayName": "Nova Builder Clean",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772251059638,
+    "commit": null
+  },
+  "history": []
+}
