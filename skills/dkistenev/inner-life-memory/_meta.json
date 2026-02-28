@@ -1,11 +1,17 @@
 {
   "owner": "dkistenev",
   "slug": "inner-life-memory",
-  "displayName": "inner-life-memory",
+  "displayName": "Inner Life Memory",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772208603795,
-    "commit": "https://github.com/openclaw/skills/commit/fc8eae1dec0fb4f34775dbf30e3990f21b1701a0"
+    "version": "1.0.3",
+    "publishedAt": 1772279821452,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772208603795,
+      "commit": "https://github.com/openclaw/skills/commit/fc8eae1dec0fb4f34775dbf30e3990f21b1701a0"
+    }
+  ]
 }

@@ -1,11 +1,15 @@
 ---
 name: inner-life-memory
-version: 1.0.0
+version: 1.0.2
+homepage: https://github.com/DKistenev/openclaw-inner-life
+source: https://github.com/DKistenev/openclaw-inner-life/tree/main/skills/inner-life-memory
 description: "Your agent loses context between sessions and performs familiarity instead of genuine recall. inner-life-memory transforms passive logging into active development — structured memories with confidence scores, curiosity tracking, and questions that carry forward."
 metadata:
   clawdbot:
     requires:
       bins: ["jq"]
+    reads: ["memory/inner-state.json", "memory/drive.json", "memory/daily-notes/", "memory/diary/"]
+    writes: ["memory/MEMORY.md", "memory/questions.md", "memory/drive.json", "memory/inner-state.json"]
   agent-discovery:
     triggers:
       - "agent forgets between sessions"
