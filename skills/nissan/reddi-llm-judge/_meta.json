@@ -1,0 +1,11 @@
+{
+  "owner": "nissan",
+  "slug": "reddi-llm-judge",
+  "displayName": "Llm As Judge",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772145139946,
+    "commit": null
+  },
+  "history": []
+}
