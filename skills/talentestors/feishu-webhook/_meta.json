@@ -1,0 +1,11 @@
+{
+  "owner": "talentestors",
+  "slug": "feishu-webhook",
+  "displayName": "Feishu Webhook",
+  "latest": {
+    "version": "1.2.1",
+    "publishedAt": 1772249486572,
+    "commit": null
+  },
+  "history": []
+}
