@@ -1,0 +1,11 @@
+{
+  "owner": "lixiaojie-1012",
+  "slug": "weather-of-beijing-with-almanac",
+  "displayName": "get tomorrow weather of beijing , with Chinese almanac information",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772249200135,
+    "commit": null
+  },
+  "history": []
+}
