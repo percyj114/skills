@@ -41,7 +41,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.resolveMarket = exports.snapshotMarket = exports.createMarket = exports.saveMarkets = exports.loadMarkets = void 0;
 const fs = __importStar(require("fs"));
-const torchsdk_1 = require("../torchsdk");
+const torchsdk_1 = require("torchsdk");
 const oracle_1 = require("./oracle");
 const utils_1 = require("./utils");
 const SDK_TIMEOUT_MS = 30000;
@@ -96,6 +96,12 @@ const createMarket = async (connection, market, agentKeypair, vaultCreator) => {
         buyResult.transaction.sign(agentKeypair);
         const buySig = await (0, utils_1.withTimeout)(connection.sendRawTransaction(buyResult.transaction.serialize()), SDK_TIMEOUT_MS, 'sendRawTransaction(buy)');
         await (0, utils_1.withTimeout)((0, torchsdk_1.confirmTransaction)(connection, buySig, agentKeypair.publicKey.toBase58()), SDK_TIMEOUT_MS, 'confirmTransaction(buy)');
+        // v3.7.22: if the buy completed the bonding curve, send the migration transaction
+        if (buyResult.migrationTransaction) {
+            buyResult.migrationTransaction.sign(agentKeypair);
+            const migSig = await (0, utils_1.withTimeout)(connection.sendRawTransaction(buyResult.migrationTransaction.serialize()), SDK_TIMEOUT_MS, 'sendRawTransaction(migrate)');
+            await (0, utils_1.withTimeout)((0, torchsdk_1.confirmTransaction)(connection, migSig, agentKeypair.publicKey.toBase58()), SDK_TIMEOUT_MS, 'confirmTransaction(migrate)');
+        }
     }
     return mintAddress;
 };
