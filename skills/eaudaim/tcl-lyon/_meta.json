@@ -1,0 +1,11 @@
+{
+  "owner": "eaudaim",
+  "slug": "tcl-lyon",
+  "displayName": "TCL (Lyon public transport network)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772210931571,
+    "commit": null
+  },
+  "history": []
+}
