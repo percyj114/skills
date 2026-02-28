@@ -3,11 +3,16 @@
   "slug": "polymarket-weather-trader",
   "displayName": "Polymarket Weather Trader",
   "latest": {
-    "version": "1.10.2",
-    "publishedAt": 1771940650071,
-    "commit": "https://github.com/openclaw/skills/commit/bffa2d60e991d74f8ddbf0219955fb7764565cd0"
+    "version": "1.12.3",
+    "publishedAt": 1772187753309,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.10.2",
+      "publishedAt": 1771940650071,
+      "commit": "https://github.com/openclaw/skills/commit/bffa2d60e991d74f8ddbf0219955fb7764565cd0"
+    },
     {
       "version": "1.10.1",
       "publishedAt": 1771695992683,

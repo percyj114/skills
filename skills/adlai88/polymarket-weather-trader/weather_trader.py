@@ -46,57 +46,7 @@ except ImportError:
 # Configuration (config.json > env vars > defaults)
 # =============================================================================
 
-def _load_config(schema, skill_file, config_filename="config.json"):
-    """Load config with priority: config.json > env vars > defaults."""
-    from pathlib import Path
-    config_path = Path(skill_file).parent / config_filename
-    file_cfg = {}
-    if config_path.exists():
-        try:
-            with open(config_path) as f:
-                file_cfg = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
-    result = {}
-    for key, spec in schema.items():
-        if key in file_cfg:
-            result[key] = file_cfg[key]
-        elif spec.get("env") and os.environ.get(spec["env"]):
-            val = os.environ.get(spec["env"])
-            type_fn = spec.get("type", str)
-            try:
-                result[key] = type_fn(val) if type_fn != str else val
-            except (ValueError, TypeError):
-                result[key] = spec.get("default")
-        else:
-            result[key] = spec.get("default")
-    return result
-
-def _get_config_path(skill_file, config_filename="config.json"):
-    """Get path to config file."""
-    from pathlib import Path
-    return Path(skill_file).parent / config_filename
-
-def _update_config(updates, skill_file, config_filename="config.json"):
-    """Update config values and save to file."""
-    from pathlib import Path
-    config_path = Path(skill_file).parent / config_filename
-    existing = {}
-    if config_path.exists():
-        try:
-            with open(config_path) as f:
-                existing = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
-    existing.update(updates)
-    with open(config_path, "w") as f:
-        json.dump(existing, f, indent=2)
-    return existing
-
-# Aliases for compatibility
-load_config = _load_config
-get_config_path = _get_config_path
-update_config = _update_config
+from simmer_sdk.skill import load_config, update_config, get_config_path
 
 # Configuration schema
 CONFIG_SCHEMA = {
@@ -106,10 +56,11 @@ CONFIG_SCHEMA = {
     "sizing_pct": {"env": "SIMMER_WEATHER_SIZING_PCT", "default": 0.05, "type": float},
     "max_trades_per_run": {"env": "SIMMER_WEATHER_MAX_TRADES", "default": 5, "type": int},
     "locations": {"env": "SIMMER_WEATHER_LOCATIONS", "default": "NYC", "type": str},
+    "binary_only": {"env": "SIMMER_WEATHER_BINARY_ONLY", "default": False, "type": bool},
 }
 
 # Load configuration
-_config = load_config(CONFIG_SCHEMA, __file__)
+_config = load_config(CONFIG_SCHEMA, __file__, slug="polymarket-weather-trader")
 
 NOAA_API_BASE = "https://api.weather.gov"
 
@@ -136,6 +87,7 @@ def get_client(live=True):
 
 # Source tag for tracking
 TRADE_SOURCE = "sdk:weather"
+SKILL_SLUG = "polymarket-weather-trader"
 _automaton_reported = False
 
 # Polymarket constraints
@@ -156,6 +108,9 @@ SMART_SIZING_PCT = _config["sizing_pct"]
 # Rate limiting
 MAX_TRADES_PER_RUN = _config["max_trades_per_run"]
 
+# Market type filter
+BINARY_ONLY = _config["binary_only"]
+
 # Context safeguard thresholds
 SLIPPAGE_MAX_PCT = 0.15  # Skip if slippage > 15%
 TIME_TO_RESOLUTION_MIN_HOURS = 2  # Skip if resolving in < 2 hours
@@ -165,12 +120,12 @@ PRICE_DROP_THRESHOLD = 0.10  # 10% drop in last 24h = stronger signal
 
 # Supported locations (matching Polymarket resolution sources)
 LOCATIONS = {
-    "NYC": {"lat": 40.7769, "lon": -73.8740, "name": "New York City (LaGuardia)"},
-    "Chicago": {"lat": 41.9742, "lon": -87.9073, "name": "Chicago (O'Hare)"},
-    "Seattle": {"lat": 47.4502, "lon": -122.3088, "name": "Seattle (Sea-Tac)"},
-    "Atlanta": {"lat": 33.6407, "lon": -84.4277, "name": "Atlanta (Hartsfield)"},
-    "Dallas": {"lat": 32.8998, "lon": -97.0403, "name": "Dallas (DFW)"},
-    "Miami": {"lat": 25.7959, "lon": -80.2870, "name": "Miami (MIA)"},
+    "NYC": {"lat": 40.7769, "lon": -73.8740, "name": "New York City (LaGuardia)", "station": "KLGA"},
+    "Chicago": {"lat": 41.9742, "lon": -87.9073, "name": "Chicago (O'Hare)", "station": "KORD"},
+    "Seattle": {"lat": 47.4502, "lon": -122.3088, "name": "Seattle (Sea-Tac)", "station": "KSEA"},
+    "Atlanta": {"lat": 33.6407, "lon": -84.4277, "name": "Atlanta (Hartsfield)", "station": "KATL"},
+    "Dallas": {"lat": 32.8998, "lon": -97.0403, "name": "Dallas (DFW)", "station": "KDFW"},
+    "Miami": {"lat": 25.7959, "lon": -80.2870, "name": "Miami (MIA)", "station": "KMIA"},
 }
 
 # Active locations - from config
@@ -247,6 +202,28 @@ def get_noaa_forecast(location: str) -> dict:
         else:
             forecasts[date_str]["low"] = temp
 
+    # Supplement with NOAA observations for today (D+0)
+    # /forecast often starts from the next period, missing today's daytime high
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if today_str not in forecasts or forecasts[today_str].get("high") is None:
+        station_id = loc.get("station")
+        if station_id:
+            try:
+                obs_url = f"{NOAA_API_BASE}/stations/{station_id}/observations/latest"
+                obs_data = fetch_json(obs_url, headers)
+                if obs_data and "properties" in obs_data:
+                    temp_c = obs_data["properties"].get("temperature", {}).get("value")
+                    if temp_c is not None:
+                        temp_f = round(temp_c * 9 / 5 + 32)
+                        if today_str not in forecasts:
+                            forecasts[today_str] = {"high": None, "low": None}
+                        if forecasts[today_str]["high"] is None:
+                            forecasts[today_str]["high"] = temp_f
+                        if forecasts[today_str]["low"] is None:
+                            forecasts[today_str]["low"] = temp_f
+            except Exception:
+                pass  # Observation fetch is best-effort
+
     return forecasts
 
 
@@ -308,7 +285,7 @@ def parse_weather_event(event_name: str) -> dict:
     year = now.year
     try:
         target_date = datetime(year, month, day, tzinfo=timezone.utc)
-        if target_date < now - timedelta(days=30):
+        if target_date < now - timedelta(days=7):
             year += 1
         date_str = f"{year}-{month:02d}-{day:02d}"
     except ValueError:
@@ -575,7 +552,7 @@ def execute_trade(market_id: str, side: str, amount: float) -> dict:
     """Execute a buy trade via Simmer SDK with source tagging."""
     try:
         result = get_client().trade(
-            market_id=market_id, side=side, amount=amount, source=TRADE_SOURCE,
+            market_id=market_id, side=side, amount=amount, source=TRADE_SOURCE, skill_slug=SKILL_SLUG,
         )
         return {
             "success": result.success, "trade_id": result.trade_id,
@@ -591,7 +568,7 @@ def execute_sell(market_id: str, shares: float) -> dict:
     try:
         result = get_client().trade(
             market_id=market_id, side="yes", action="sell",
-            shares=shares, source=TRADE_SOURCE,
+            shares=shares, source=TRADE_SOURCE, skill_slug=SKILL_SLUG,
         )
         return {
             "success": result.success, "trade_id": result.trade_id,
@@ -699,7 +676,7 @@ def check_exit_opportunities(dry_run: bool = False, use_safeguards: bool = True)
                 if trade_id and JOURNAL_AVAILABLE and not result.get("simulated"):
                     log_trade(
                         trade_id=trade_id,
-                        source=TRADE_SOURCE,
+                        source=TRADE_SOURCE, skill_slug=SKILL_SLUG,
                         thesis=f"Exit: price ${current_price:.2f} reached exit threshold ${EXIT_THRESHOLD:.2f}",
                         action="sell",
                     )
@@ -834,6 +811,11 @@ def run_weather_strategy(dry_run: bool = True, positions_only: bool = False,
         if location not in ACTIVE_LOCATIONS:
             continue
 
+        # Skip range-bucket events (multi-outcome) if binary_only is set
+        if BINARY_ONLY and len(event_markets) > 2:
+            log(f"  ⏭️  Skipping range event ({len(event_markets)} outcomes) — binary_only=true")
+            continue
+
         log(f"\n📍 {location} {date_str} ({metric} temp)")
 
         if location not in forecast_cache:
@@ -939,7 +921,7 @@ def run_weather_strategy(dry_run: bool = True, positions_only: bool = False,
                         confidence = 0.7  # Default confidence if threshold is zero
                     log_trade(
                         trade_id=trade_id,
-                        source=TRADE_SOURCE,
+                        source=TRADE_SOURCE, skill_slug=SKILL_SLUG,
                         thesis=f"NOAA forecasts {forecast_temp}°F for {location} on {date_str}, "
                                f"bucket '{outcome_name}' underpriced at ${price:.2f}",
                         confidence=round(confidence, 2),
@@ -1020,13 +1002,14 @@ if __name__ == "__main__":
             print(f"✅ Config updated: {updates}")
             print(f"   Saved to: {get_config_path(__file__)}")
             # Reload config
-            _config = load_config(CONFIG_SCHEMA, __file__)
+            _config = load_config(CONFIG_SCHEMA, __file__, slug="polymarket-weather-trader")
             # Update module-level vars
             globals()["ENTRY_THRESHOLD"] = _config["entry_threshold"]
             globals()["EXIT_THRESHOLD"] = _config["exit_threshold"]
             globals()["MAX_POSITION_USD"] = _config["max_position_usd"]
             globals()["SMART_SIZING_PCT"] = _config["sizing_pct"]
             globals()["MAX_TRADES_PER_RUN"] = _config["max_trades_per_run"]
+            globals()["BINARY_ONLY"] = _config["binary_only"]
             _locations_str = _config["locations"]
             globals()["ACTIVE_LOCATIONS"] = [loc.strip().upper() for loc in _locations_str.split(",") if loc.strip()]
 

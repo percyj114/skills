@@ -2,11 +2,12 @@
 name: polymarket-weather-trader
 displayName: Polymarket Weather Trader
 description: Trade Polymarket weather markets using NOAA forecasts via Simmer API. Inspired by gopfan2's $2M+ strategy. Use when user wants to trade temperature markets, automate weather bets, check NOAA forecasts, or run gopfan2-style trading.
-metadata: {"clawdbot":{"emoji":"🌡️","requires":{"env":["SIMMER_API_KEY"],"pip":["simmer-sdk"]},"cron":null,"autostart":false,"automaton":{"managed":true,"entrypoint":"weather_trader.py"}}}
+metadata: {"clawdbot":{"emoji":"🌡️","requires":{"env":["SIMMER_API_KEY"],"pip":["simmer-sdk"]},"cron":null,"autostart":false,"automaton":{"managed":true,"entrypoint":"weather_trader.py"},"tunables":[{"env":"SIMMER_WEATHER_ENTRY_THRESHOLD","type":"number","default":0.05,"range":[0.01,0.30],"step":0.01,"label":"Entry edge threshold"},{"env":"SIMMER_WEATHER_EXIT_THRESHOLD","type":"number","default":0.85,"range":[0.5,0.99],"step":0.01,"label":"Exit probability threshold"},{"env":"SIMMER_WEATHER_MAX_POSITION_USD","type":"number","default":50,"range":[1,200],"step":5,"label":"Max position size"},{"env":"SIMMER_WEATHER_SIZING_PCT","type":"number","default":0.10,"range":[0.01,1.0],"step":0.01,"label":"Position sizing percentage"},{"env":"SIMMER_WEATHER_MAX_TRADES_PER_RUN","type":"number","default":5,"range":[1,20],"step":1,"label":"Max trades per run"}]}}
 authors:
   - Simmer (@simmer_markets)
 attribution: "Strategy inspired by gopfan2"
-version: "1.10.1"
+version: "1.12.0"
+difficulty: beginner
 published: true
 ---
 
@@ -25,8 +26,11 @@ Use this skill when the user wants to:
 - Check their weather trading positions
 - Configure trading thresholds or locations
 
-## What's New in v1.2.0
+## What's New in v1.11.0
 
+- **Binary Only Mode**: New `SIMMER_WEATHER_BINARY_ONLY` config to skip range-bucket events (e.g., "NYC 34-35°F") and only trade binary yes/no weather markets
+
+### v1.2.0
 - **Max Trades Per Run**: New `SIMMER_WEATHER_MAX_TRADES` config to limit trades per scan cycle (default: 5)
 
 ### v1.1.1
@@ -70,6 +74,7 @@ When user asks to install or configure this skill:
 | Exit threshold | `SIMMER_WEATHER_EXIT` | 0.45 | Sell when price above this |
 | Max position | `SIMMER_WEATHER_MAX_POSITION` | 2.00 | Maximum USD per trade |
 | Max trades/run | `SIMMER_WEATHER_MAX_TRADES` | 5 | Maximum trades per scan cycle |
+| Binary only | `SIMMER_WEATHER_BINARY_ONLY` | false | Skip range-bucket events (e.g., "34-35°F"), only trade binary yes/no markets |
 | Locations | `SIMMER_WEATHER_LOCATIONS` | NYC | Comma-separated cities |
 | Smart sizing % | `SIMMER_WEATHER_SIZING_PCT` | 0.05 | % of balance per trade |
 
