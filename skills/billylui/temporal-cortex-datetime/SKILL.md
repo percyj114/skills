@@ -1,13 +1,13 @@
 ---
 name: temporal-cortex-datetime
 description: |-
-  Convert timezones, resolve natural language times ("next Tuesday at 2pm"), compute durations, and adjust timestamps with DST awareness. Zero-setup — no API calls or credentials needed.
+  Convert timezones, resolve natural language times ("next Tuesday at 2pm"), compute durations, and adjust timestamps with DST awareness. No credentials needed — all tools are pure local computation.
 license: MIT
 compatibility: |-
-  Requires npx (Node.js 18+) for the MCP server. No OAuth or credentials needed — all tools are pure computation. Works with Claude Code, Claude Desktop, Cursor, Windsurf, and any MCP-compatible client.
+  Requires npx (Node.js 18+) to download and run the MCP server binary from npm. No OAuth or credentials needed — all 5 tools are pure local computation after server startup. Works with Claude Code, Claude Desktop, Cursor, Windsurf, and any MCP-compatible client.
 metadata:
   author: temporal-cortex
-  version: "0.5.2"
+  version: "0.5.5"
   mcp-server: "@temporal-cortex/cortex-mcp"
   homepage: "https://temporal-cortex.com"
   repository: "https://github.com/temporal-cortex/skills"
@@ -19,7 +19,7 @@ metadata:
 
 # Temporal Context & Datetime Resolution
 
-5 tools for temporal orientation and datetime computation. All are pure computation (no external API calls), read-only, and idempotent. No OAuth or calendar credentials required.
+5 tools for temporal orientation and datetime computation. All are pure local computation (no external API calls at runtime), read-only, and idempotent. No OAuth, credentials, or configuration required — works immediately after MCP server startup.
 
 ## Tools
 
@@ -30,6 +30,21 @@ metadata:
 | `convert_timezone` | Convert RFC 3339 datetime between IANA timezones. |
 | `compute_duration` | Duration between two timestamps (days, hours, minutes). |
 | `adjust_timestamp` | DST-aware timestamp adjustment. `"+1d"` across spring-forward = same wall-clock time. |
+
+## Runtime
+
+These tools run inside the [Temporal Cortex MCP server](https://github.com/temporal-cortex/mcp) (`@temporal-cortex/cortex-mcp@0.5.5`), a compiled Rust binary distributed as an npm package.
+
+**What happens at startup:**
+1. `npx` downloads `@temporal-cortex/cortex-mcp@0.5.5` from the npm registry (one-time, cached locally)
+2. The MCP server starts as a local process communicating over stdio
+3. All 5 datetime tools execute as pure local computation — no external API calls after startup
+
+**Network access:** Only during the initial npm download. Once cached, subsequent launches are offline-capable. The tools themselves make zero network requests.
+
+**No credentials required.** Unlike the scheduling skill, this skill needs no OAuth tokens or API keys.
+
+**Verification:** Package provenance is attested via [npm SLSA](https://www.npmjs.com/package/@temporal-cortex/cortex-mcp#provenance). Source: [github.com/temporal-cortex/platform](https://github.com/temporal-cortex/platform) (Rust, MIT-licensed). SHA256 checksums published with each [GitHub Release](https://github.com/temporal-cortex/mcp/releases).
 
 ## Critical Rules
 

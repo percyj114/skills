@@ -1,11 +1,17 @@
 {
   "owner": "billylui",
   "slug": "temporal-cortex-datetime",
-  "displayName": "Temporal Cortex Datetime",
+  "displayName": "temporal-cortex-datetime",
   "latest": {
-    "version": "0.5.2",
-    "publishedAt": 1772256391808,
-    "commit": "https://github.com/openclaw/skills/commit/171fb3d9294d731f09e20fb013f2ccd5dcba00b4"
+    "version": "0.5.5",
+    "publishedAt": 1772287044254,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.5.2",
+      "publishedAt": 1772256391808,
+      "commit": "https://github.com/openclaw/skills/commit/171fb3d9294d731f09e20fb013f2ccd5dcba00b4"
+    }
+  ]
 }
