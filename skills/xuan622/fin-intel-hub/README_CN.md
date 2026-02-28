@@ -34,43 +34,37 @@ OpenClaw 金融数据智能分析技能 - 支持全球市场包括美国、中�
 
 ### 🇨🇳 简体中文
 
-#### 方法 A：手动安装（推荐用于测试）
+#### 方法 A：通过 Clawhub 安装（推荐）
 ```bash
-# 安装技能
-cp -r fin-intel-hub ~/.openclaw/skills/
-
-# 无需 API 密钥即可使用！
-# 添加密钥可解锁更多功能（可选）
-```
-
-#### 方法 B：从 Clawhub 安装（发布后）
-```bash
-# 使用 Clawhub CLI
 npx clawhub install fin-intel-hub
-
-# 或从 GitHub 直接安装
-npx clawhub install xuan622/fin-intel-hub
 ```
+
+#### 方法 B：手动安装
+克隆或下载到 OpenClaw 技能目录：
+```bash
+git clone https://github.com/xuan622/fin-intel-hub.git ~/.openclaw/skills/fin-intel-hub
+```
+
+或下载并解压到 `~/.openclaw/skills/fin-intel-hub/`。
+
+**无需 API 密钥即可使用！**
 
 ### 🇭🇰 繁體中文 (香港)
 
-#### 方法 A：手動安裝（推薦用於測試）
+#### 方法 A：通過 Clawhub 安裝（推薦）
 ```bash
-# 安裝技能
-cp -r fin-intel-hub ~/.openclaw/skills/
-
-# 無需 API 密鑰即可使用！
-# 添加密鑰可解鎖更多功能（可選）
-```
-
-#### 方法 B：從 Clawhub 安裝（發布後）
-```bash
-# 使用 Clawhub CLI
 npx clawhub install fin-intel-hub
-
-# 或從 GitHub 直接安裝
-npx clawhub install xuan622/fin-intel-hub
 ```
+
+#### 方法 B：手動安裝
+克隆或下載到 OpenClaw 技能目錄：
+```bash
+git clone https://github.com/xuan622/fin-intel-hub.git ~/.openclaw/skills/fin-intel-hub
+```
+
+或下載並解壓到 `~/.openclaw/skills/fin-intel-hub/`。
+
+**無需 API 密鑰即可使用！**
 
 ---
 
@@ -98,54 +92,6 @@ prices = get_hong_kong_stock("0700", period="1y")
 
 # 台灣 - 台積電 (2330.TW)
 prices = get_taiwan_stock("2330")
-```
-
-### 期权流分析 / 期權流分析
-
-**简体中文:**
-```python
-from scripts.options_data import analyze_options_flow
-
-# 分析期权流
-flow = analyze_options_flow("AAPL")
-print(f"认购/认沽比率: {flow['analysis']['call_put_ratio']}")
-print(f"Max Pain: ${flow['analysis']['max_pain']}")
-```
-
-**繁體中文 (香港):**
-```python
-from scripts.options_data import analyze_options_flow
-
-# 分析期權流
-flow = analyze_options_flow("AAPL")
-print(f"認購/認沽比率: {flow['analysis']['call_put_ratio']}")
-print(f"Max Pain: ${flow['analysis']['max_pain']}")
-```
-
-### 财报分析 / 財報分析
-
-**简体中文:**
-```python
-from scripts.earnings_data import get_earnings_history, analyze_earnings_trend
-
-# 获取财报历史
-earnings = get_earnings_history("AAPL", limit=4)
-
-# 分析财报趋势
-trend = analyze_earnings_trend("TSLA")
-print(f"超预期率: {trend['beat_rate']}%")
-```
-
-**繁體中文 (香港):**
-```python
-from scripts.earnings_data import get_earnings_history, analyze_earnings_trend
-
-# 獲取財報歷史
-earnings = get_earnings_history("AAPL", limit=4)
-
-# 分析財報趨勢
-trend = analyze_earnings_trend("TSLA")
-print(f"超預期率: {trend['beat_rate']}%")
 ```
 
 ---

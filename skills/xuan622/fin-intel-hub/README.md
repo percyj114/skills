@@ -1,5 +1,10 @@
 # Fin Intel Hub
 
+**Author:** xuan622  
+**Repository:** https://github.com/xuan622/fin-intel-hub  
+**License:** MIT  
+**Language:** Python  
+
 OpenClaw skill for comprehensive financial intelligence and analytics.
 
 **🌏 Multi-language Support:** [English](#fin-intel-hub) | [简体中文 / 繁體中文](README_CN.md)
@@ -18,23 +23,18 @@ OpenClaw skill for comprehensive financial intelligence and analytics.
 
 ### 1. Install
 
-#### Method A: Manual Installation (Recommended for Testing)
-
-Copy this skill folder to your OpenClaw skills directory:
+#### Method A: Install via Clawhub (Recommended)
 ```bash
-cp -r fin-intel-hub ~/.openclaw/skills/
-```
-
-#### Method B: Install from Clawhub (When Published)
-
-Once published to Clawhub, you can install via:
-```bash
-# Using Clawhub CLI
 npx clawhub install fin-intel-hub
-
-# Or install directly from GitHub
-npx clawhub install xuan622/fin-intel-hub
 ```
+
+#### Method B: Manual Installation
+Clone or download the repository to your OpenClaw skills directory:
+```bash
+git clone https://github.com/xuan622/fin-intel-hub.git ~/.openclaw/skills/fin-intel-hub
+```
+
+Or download and extract to `~/.openclaw/skills/fin-intel-hub/`.
 
 ### 2. Get API Keys (Optional)
 
@@ -132,46 +132,6 @@ sp_futures = get_sp500_futures(period="1mo")
 from scripts.yahoo_finance import list_available_indices, list_available_futures
 indices = list_available_indices()   # 15+ global indices
 futures = list_available_futures()   # 15+ futures contracts
-```
-
-### Options Flow Analysis
-```python
-from scripts.options_data import analyze_options_flow, get_unusual_options_activity
-from scripts.options_data import get_max_pain, get_call_put_ratio
-
-# Full options flow analysis
-flow = analyze_options_flow("AAPL")
-print(f"Call/Put Ratio: {flow['analysis']['call_put_ratio']}")
-print(f"Max Pain: ${flow['analysis']['max_pain']}")
-print(f"Sentiment: {flow['analysis']['sentiment']['bias']}")
-
-# Unusual options activity (volume spike > 2x average)
-unusual = get_unusual_options_activity("TSLA", threshold=2.0)
-for alert in unusual[:5]:
-    print(f"{alert['type']} ${alert['strike']}: {alert['volume']} contracts")
-
-# Get Max Pain strike (where most options expire worthless)
-max_pain = get_max_pain("SPY")
-print(f"SPY Max Pain: ${max_pain}")
-```
-
-### Earnings Reports
-```python
-from scripts.earnings_data import get_earnings_history, get_next_earnings_date, analyze_earnings_trend
-
-# Get historical earnings with beat/miss
-earnings = get_earnings_history("AAPL", limit=4)
-for e in earnings:
-    beat_miss = "BEAT" if e['beat'] else "MISS"
-    print(f"{e['report_date']}: EPS ${e['eps_actual']} vs Est ${e['eps_estimate']} ({beat_miss})")
-
-# Check next earnings date
-next_date = get_next_earnings_date("TSLA")
-print(f"Next earnings: {next_date['next_earnings_date']}")
-
-# Analyze earnings consistency (beat rate, streak)
-trend = analyze_earnings_trend("MSFT")
-print(f"Beat rate: {trend['beat_rate']}%, Streak: {trend['current_streak']}")
 ```
 
 ### Crypto On-Chain
