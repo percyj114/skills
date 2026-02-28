@@ -31,8 +31,8 @@ Generate the <MODE> tech digest for **<DATE>**. Use `<DATE>` as the report date 
 ## Configuration
 
 Read config files (workspace overrides take priority over defaults):
-1. **Sources**: `<WORKSPACE>/config/sources.json` → fallback `<SKILL_DIR>/config/defaults/sources.json`
-2. **Topics**: `<WORKSPACE>/config/topics.json` → fallback `<SKILL_DIR>/config/defaults/topics.json`
+1. **Sources**: `<WORKSPACE>/config/tech-news-digest-sources.json` → fallback `<SKILL_DIR>/config/defaults/sources.json`
+2. **Topics**: `<WORKSPACE>/config/tech-news-digest-topics.json` → fallback `<SKILL_DIR>/config/defaults/topics.json`
 
 ## Context: Previous Report
 
@@ -62,13 +62,15 @@ python3 <SKILL_DIR>/scripts/summarize-merged.py --input /tmp/td-merged.json --to
 
 Use this output to select articles — **do NOT write ad-hoc Python to parse the JSON**. Apply the template from `<SKILL_DIR>/references/templates/<TEMPLATE>.md`.
 
-Select articles **purely by quality_score regardless of source type**. For Reddit posts, append `*[Reddit r/xxx, {{score}}↑]*`.
+Select articles **purely by quality_score regardless of source type**. Articles in merged JSON are already sorted by quality_score descending within each topic — respect this order. For Reddit posts, append `*[Reddit r/xxx, {{score}}↑]*`.
+
+Each article line must include its quality score using 🔥 prefix. Format: `🔥{score} | {summary with link}`. This makes scoring transparent and helps readers identify the most important news at a glance.
 
 ### Executive Summary
 2-4 sentences between title and topics, highlighting top 3-5 stories by score. Concise and punchy, no links. Discord: `> ` blockquote. Email: gray background. Telegram: `<i>`.
 
 ### Topic Sections
-From `topics.json`: `emoji` + `label` headers, `<ITEMS_PER_SECTION>` items each.
+From `topics.json`: `emoji` + `label` headers, `<ITEMS_PER_SECTION>` items each, strictly ordered by quality_score descending (highest first).
 
 ### Fixed Sections (after topics)
 
@@ -110,13 +112,21 @@ Save to `<WORKSPACE>/archive/tech-news-digest/<MODE>-YYYY-MM-DD.md`. Delete file
 ## Delivery
 
 1. **Discord**: Send to `<DISCORD_CHANNEL_ID>` via `message` tool
-2. **Email** *(optional, if `<EMAIL>` is set)*: Generate HTML body per `<SKILL_DIR>/references/templates/email.md` → write to `/tmp/td-email.html`. **Email must contain ALL the same items as Discord.**
-   ```bash
-   # Option A: mail (msmtp) — preferred
-   mail -a "Content-Type: text/html; charset=UTF-8" [-a "From: <EMAIL_FROM>"] -s '<SUBJECT>' '<EMAIL>' < /tmp/td-email.html
-   # Option B: gog CLI — fallback
-   gog gmail send --to '<EMAIL>' --subject '<SUBJECT>' --body-html-file /tmp/td-email.html
-   ```
-   Only include `-a "From: ..."` if `<EMAIL_FROM>` is set. SUBJECT must be a static string. If delivery fails, log error and continue.
+2. **Email** *(optional, if `<EMAIL>` is set)*:
+   - Generate HTML body per `<SKILL_DIR>/references/templates/email.md` → write to `/tmp/td-email.html`
+   - Generate PDF attachment:
+     ```bash
+     python3 <SKILL_DIR>/scripts/generate-pdf.py -i <WORKSPACE>/archive/tech-news-digest/<MODE>-<DATE>.md -o /tmp/td-digest.pdf
+     ```
+   - Send email with PDF attached using the `send-email.py` script (handles MIME correctly). **Email must contain ALL the same items as Discord.**
+     ```bash
+     python3 <SKILL_DIR>/scripts/send-email.py \
+       --to '<EMAIL>' \
+       --subject '<SUBJECT>' \
+       --html /tmp/td-email.html \
+       --attach /tmp/td-digest.pdf \
+       --from '<EMAIL_FROM>'
+     ```
+   - Omit `--from` if `<EMAIL_FROM>` is not set. Omit `--attach` if PDF generation failed. SUBJECT must be a static string. If delivery fails, log error and continue.
 
 Write the report in <LANGUAGE>.

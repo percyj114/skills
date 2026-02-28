@@ -1,5 +1,84 @@
 # Changelog
 
+## v3.11.0
+
+- **Tavily Search backend**: Alternative to Brave Search via `TAVILY_API_KEY` + `WEB_SEARCH_BACKEND` env
+- **Quality scores in output**: 🔥 score prefix on every article, strict descending order per topic
+- **Domain limit fix**: Exempt x.com/github.com/reddit.com from per-topic domain limits (#1)
+- **Brave multi-key**: `BRAVE_API_KEYS` for comma-separated key rotation
+- **Config naming**: User overlay files renamed to `tech-news-digest-sources.json` / `tech-news-digest-topics.json`
+- **Tests**: 41 unit + integration tests with real fixture data, GitHub Actions CI (Python 3.9 + 3.12)
+- **Docs**: Full env var alignment, Network Access/Shell Safety updates, README badges, CN sync
+
+## v3.10.3
+
+- **Docs**: Align API Keys & Environment with all 10 actual env vars
+- **Docs**: Update Network Access (add Reddit) and Shell Safety (send-email.py + generate-pdf.py)
+- **Refactor**: Rename user overlay configs to `tech-news-digest-sources.json` / `tech-news-digest-topics.json` to avoid naming conflicts
+
+## v3.10.2
+
+- **Fix domain limits**: Exempt multi-author platforms (x.com, github.com, reddit.com) from per-topic domain limits — previously 77 tweets were cut to 12 (#1)
+- **Brave multi-key**: Prefer `BRAVE_API_KEYS` (comma-separated) over `BRAVE_API_KEY` for key rotation in `fetch-web.py`
+
+## v3.10.1
+
+- **Fix email MIME**: New `send-email.py` — proper multipart MIME construction for HTML body + PDF attachment (replaces broken `mail -a -A` approach)
+- **Docs alignment**: README + SKILL.md updated to v3.10 (source counts, PDF, all scripts documented)
+
+## v3.10.0
+
+- **PDF generation**: New `generate-pdf.py` script — converts markdown digest to styled A4 PDF with Chinese typography (Noto Sans CJK SC), emoji icons, page headers/footers, blue accent theme. Requires `weasyprint`.
+- **PDF template**: `references/templates/pdf.md` with usage docs and examples
+
+## v3.9.1
+
+- Remove unused markdown and telegram templates
+- Add `sanitize-html.py` for safe markdown→HTML email conversion (XSS-safe, inline CSS)
+
+## v3.9.0
+
+- **URL-based dedup**: merge-sources now deduplicates by normalized URL (domain+path) before title similarity, catching cross-source duplicates
+- **Brave rate limit caching**: `detect_brave_rate_limit()` results cached for 24h; supports `BRAVE_PLAN=free|pro` env override
+- **source-health**: Now tracks Reddit (`--reddit`) and Web (`--web`) sources; flexible key detection
+- **run-pipeline**: `--skip` (comma-separated step names) and `--reuse-dir` (reuse intermediate outputs) for partial reruns
+
+## v3.8.1
+
+- **merge-sources**: Fix `getattr` → direct `args.reddit`; domain limit stats now accurate; SequenceMatcher early-exit for >30% length diff
+- **merge-sources**: RSS priority sources get +2 extra score bonus (prevent drowning by low-engagement tweets)
+- **run-pipeline**: Add `--twitter-backend` parameter (transparent passthrough); clean up tmp dir after success
+- **fetch-rss**: Warn when feedparser not installed (basic regex parser fallback)
+- **config_loader**: Validate required fields (id, type, enabled) on source load, skip invalid with warning
+
+## v3.8.0
+
+- **twitterapiio pagination**: Fetches up to 2 pages (40 tweets) for high-volume users; logs truncation warning
+- **Unified tweet limit**: `MAX_TWEETS_PER_USER` 10→20 for official backend (matches twitterapiio)
+- **Shared result helpers**: `_make_result()` / `_make_error()` on base class, reduces duplication
+- **Smarter rate limiting**: `RateLimiter` class with `threading.Lock` for twitterapiio (5 QPS); replaces per-thread sleep
+- **Retry improvements**: `RETRY_COUNT` 1→2 (3 attempts); twitterapiio 429 wait 60s→5s
+- **Tweet text limit**: 200→280 chars (matches Twitter's actual limit)
+- **Empty result format**: Now matches normal output structure for consistent downstream parsing
+- **Removed redundant isReply filter** in twitterapiio (API already excludes replies)
+
+## v3.7.1
+
+- **twitterapi.io bugfix**: Fix response envelope parsing (`data.tweets` not top-level `tweets`)
+- **twitterapi.io concurrency**: 3-worker parallel fetch with progress logs showing tweet counts and top likes
+- **test-pipeline.sh revamp**: `--only`, `--skip`, `--topics`, `--ids`, `--twitter-backend` filtering; per-step timing; detailed `--help`
+
+## v3.7.0
+
+- **twitterapi.io backend**: Alternative Twitter data source via `TWITTERAPI_IO_KEY` — no username→ID resolution needed, simpler API, same normalized output format
+- **Backend auto-detection**: `TWITTER_API_BACKEND=auto` (default) uses twitterapi.io if key is set, else falls back to official X API v2
+- **`--backend` CLI arg**: Override env var per invocation (`official`, `twitterapiio`, `auto`)
+- **Backend abstraction**: `fetch-twitter.py` refactored with `TwitterBackend` base class and two implementations (`OfficialBackend`, `TwitterApiIoBackend`)
+
+## v3.6.3
+
+- Add GitHub source: zeroclaw-labs/zeroclaw (137→138 total, 27→28 GitHub)
+
 ## v3.6.2
 
 - Add 3 GitHub sources: cloudflare/moltworker, sipeed/picoclaw, HKUDS/nanobot (134→137 total, 24→27 GitHub)

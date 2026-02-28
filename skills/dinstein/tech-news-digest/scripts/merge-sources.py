@@ -96,6 +96,17 @@ def get_domain(url: str) -> str:
         return ''
 
 
+def normalize_url(url: str) -> str:
+    """Normalize URL for dedup comparison (strip query, fragment, trailing slash, www.)."""
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower().replace('www.', '')
+        path = parsed.path.rstrip('/')
+        return f"{domain}{path}"
+    except Exception:
+        return url
+
+
 def calculate_base_score(article: Dict[str, Any], source: Dict[str, Any]) -> float:
     """Calculate base quality score for an article."""
     score = 0.0
@@ -127,7 +138,11 @@ def calculate_base_score(article: Dict[str, Any], source: Dict[str, Any]) -> flo
             score += SCORE_ENGAGEMENT_MED
         elif likes >= 50 or retweets >= 20:
             score += SCORE_ENGAGEMENT_LOW
-            
+
+    # RSS from priority sources get extra weight (official blogs, research papers)
+    if source.get("source_type") == "rss" and source.get("priority", False):
+        score += 2  # Extra priority RSS bonus
+
     return score
 
 
@@ -190,11 +205,31 @@ def deduplicate_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     if not articles:
         return articles
         
-    deduplicated = []
-    
     # Sort by quality score (highest first) to keep best versions
     articles.sort(key=lambda x: x.get("quality_score", 0), reverse=True)
-    
+
+    # Phase 1: URL dedup (exact URL match after normalization)
+    url_seen: Dict[str, int] = {}  # normalized_url -> index in articles
+    url_duplicates: Set[int] = set()
+    for i, article in enumerate(articles):
+        url = article.get("link", "")
+        if not url:
+            continue
+        norm_url = normalize_url(url)
+        if norm_url in url_seen:
+            # Keep the one with higher quality_score (articles already sorted by score)
+            url_duplicates.add(i)
+            logging.debug(f"URL duplicate: {url} ~= {articles[url_seen[norm_url]].get('link','')}")
+        else:
+            url_seen[norm_url] = i
+
+    if url_duplicates:
+        articles = [a for i, a in enumerate(articles) if i not in url_duplicates]
+        logging.info(f"URL dedup: removed {len(url_duplicates)} duplicates")
+
+    # Phase 2: Title similarity dedup
+    deduplicated = []
+
     # Build token buckets for candidate pairs
     candidates = _build_token_buckets(articles)
     
@@ -211,6 +246,11 @@ def deduplicate_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         for j in candidates.get(i, set()):
             if j > i and j not in duplicate_indices:
                 other_title = articles[j].get("title", "")
+                # Quick length check — titles with >30% length difference are unlikely duplicates
+                norm_i = normalize_title(title)
+                norm_j = normalize_title(other_title)
+                if abs(len(norm_i) - len(norm_j)) > 0.3 * max(len(norm_i), len(norm_j), 1):
+                    continue
                 similarity = calculate_title_similarity(title, other_title)
                 if similarity >= TITLE_SIMILARITY_THRESHOLD:
                     logging.debug(f"Title duplicate: '{other_title}' ~= '{title}' ({similarity:.2f})")
@@ -222,6 +262,9 @@ def deduplicate_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     return deduplicated
 
 
+# Domains exempt from per-topic limits (multi-author platforms)
+DOMAIN_LIMIT_EXEMPT = {"x.com", "twitter.com", "github.com", "reddit.com"}
+
 def apply_domain_limits(articles: List[Dict[str, Any]], max_per_domain: int = 3) -> List[Dict[str, Any]]:
     """Limit articles per domain within a single topic group.
     
@@ -232,7 +275,7 @@ def apply_domain_limits(articles: List[Dict[str, Any]], max_per_domain: int = 3)
     result = []
     for article in articles:
         domain = get_domain(article.get("link", ""))
-        if domain:
+        if domain and domain not in DOMAIN_LIMIT_EXEMPT:
             count = domain_counts.get(domain, 0)
             if count >= max_per_domain:
                 logging.debug(f"Domain limit ({max_per_domain}): skipping {domain} article in topic")
@@ -438,7 +481,7 @@ Examples:
         twitter_data = load_source_data(args.twitter)
         web_data = load_source_data(args.web)
         github_data = load_source_data(args.github)
-        reddit_data = load_source_data(getattr(args, 'reddit', None))
+        reddit_data = load_source_data(args.reddit)
         
         logger.info(f"Loaded sources - RSS: {rss_data.get('total_articles', 0)}, "
                    f"Twitter: {twitter_data.get('total_articles', 0)}, "
@@ -541,8 +584,9 @@ Examples:
             if before != after:
                 logger.info(f"Domain limits ({topic}): {before} → {after}")
         
-        # Generate summary stats (use deduplicated count, not topic-grouped which double-counts)
-        total_final = len(all_articles)
+        # Recalculate total after domain limits
+        total_after_domain_limits = sum(len(articles) for articles in topic_groups.values())
+
         topic_counts = {topic: len(articles) for topic, articles in topic_groups.items()}
         
         output = {
@@ -562,7 +606,7 @@ Examples:
                 "quality_scoring": True
             },
             "output_stats": {
-                "total_articles": total_final,
+                "total_articles": total_after_domain_limits,
                 "topics_count": len(topic_groups),
                 "topic_distribution": topic_counts
             },
@@ -581,7 +625,7 @@ Examples:
         
         logger.info(f"✅ Merged and scored articles:")
         logger.info(f"   Input: {total_collected} articles")
-        logger.info(f"   Output: {total_final} articles across {len(topic_groups)} topics")
+        logger.info(f"   Output: {total_after_domain_limits} articles across {len(topic_groups)} topics")
         logger.info(f"   File: {args.output}")
         
         return 0

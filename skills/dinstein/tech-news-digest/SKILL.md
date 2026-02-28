@@ -1,21 +1,36 @@
 ---
 name: tech-news-digest
 description: Generate tech news digests with unified source model, quality scoring, and multi-format output. Five-layer data collection from RSS feeds, Twitter/X KOLs, GitHub releases, Reddit, and web search. Pipeline-based scripts with retry mechanisms and deduplication. Supports Discord, email, and markdown templates.
-version: "3.6.2"
+version: "3.11.0"
 homepage: https://github.com/draco-agent/tech-news-digest
 source: https://github.com/draco-agent/tech-news-digest
 metadata:
   openclaw:
     requires:
       bins: ["python3"]
-    optionalBins: ["mail", "msmtp", "gog", "gh", "openssl"]
+    optionalBins: ["mail", "msmtp", "gog", "gh", "openssl", "weasyprint"]
 env:
+  - name: TWITTER_API_BACKEND
+    required: false
+    description: "Twitter API backend: 'official', 'twitterapiio', or 'auto' (default: auto)"
   - name: X_BEARER_TOKEN
     required: false
-    description: Twitter/X API bearer token for KOL monitoring
+    description: Twitter/X API bearer token for KOL monitoring (official backend)
+  - name: TWITTERAPI_IO_KEY
+    required: false
+    description: twitterapi.io API key for KOL monitoring (twitterapiio backend)
+  - name: TAVILY_API_KEY
+    required: false
+    description: Tavily Search API key (alternative to Brave)
+  - name: WEB_SEARCH_BACKEND
+    required: false
+    description: "Web search backend: auto (default), brave, or tavily"
+  - name: BRAVE_API_KEYS
+    required: false
+    description: Brave Search API keys (comma-separated for rotation)
   - name: BRAVE_API_KEY
     required: false
-    description: Brave Search API key for web search layer
+    description: Brave Search API key (single key fallback)
   - name: GITHUB_TOKEN
     required: false
     description: GitHub token for higher API rate limits (auto-generated from GitHub App if not set)
@@ -41,6 +56,7 @@ files:
   write:
     - /tmp/td-*.json: Temporary pipeline intermediate outputs
     - /tmp/td-email.html: Temporary email HTML body
+    - /tmp/td-digest.pdf: Generated PDF digest
     - <workspace>/archive/tech-news-digest/: Saved digest archives
 ---
 
@@ -53,13 +69,17 @@ Automated tech news digest system with unified data source model, quality scorin
 1. **Configuration Setup**: Default configs are in `config/defaults/`. Copy to workspace for customization:
    ```bash
    mkdir -p workspace/config
-   cp config/defaults/sources.json workspace/config/
-   cp config/defaults/topics.json workspace/config/
+   cp config/defaults/sources.json workspace/config/tech-news-digest-sources.json
+   cp config/defaults/topics.json workspace/config/tech-news-digest-topics.json
    ```
 
 2. **Environment Variables**: 
-   - `X_BEARER_TOKEN` - Twitter API bearer token (optional)
-   - `BRAVE_API_KEY` - Brave Search API key (optional)
+   - `TWITTERAPI_IO_KEY` - twitterapi.io API key (optional, preferred)
+   - `X_BEARER_TOKEN` - Twitter/X official API bearer token (optional, fallback)
+   - `TAVILY_API_KEY` - Tavily Search API key, alternative to Brave (optional)
+   - `WEB_SEARCH_BACKEND` - Web search backend: auto|brave|tavily (optional, default: auto)
+   - `BRAVE_API_KEYS` - Brave Search API keys, comma-separated for rotation (optional)
+   - `BRAVE_API_KEY` - Single Brave key fallback (optional)
    - `GITHUB_TOKEN` - GitHub personal access token (optional, improves rate limits)
 
 3. **Generate Digest**:
@@ -73,7 +93,7 @@ Automated tech news digest system with unified data source model, quality scorin
      --output /tmp/td-merged.json --verbose --force
    ```
 
-4. **Use Templates**: Apply Discord, email, or markdown templates to merged output
+4. **Use Templates**: Apply Discord, email, or PDF templates to merged output
 
 ## Configuration Files
 
@@ -153,11 +173,12 @@ python3 scripts/fetch-rss.py [--defaults DIR] [--config DIR] [--hours 48] [--out
 - Parallel fetching (10 workers), retry with backoff, feedparser + regex fallback
 - Timeout: 30s per feed, ETag/Last-Modified caching
 
-#### `fetch-twitter.py` - Twitter/X KOL Monitor  
+#### `fetch-twitter.py` - Twitter/X KOL Monitor
 ```bash
-python3 scripts/fetch-twitter.py [--defaults DIR] [--config DIR] [--hours 48] [--output FILE]
+python3 scripts/fetch-twitter.py [--defaults DIR] [--config DIR] [--hours 48] [--output FILE] [--backend auto|official|twitterapiio]
 ```
-- Requires `X_BEARER_TOKEN`, rate limit handling, engagement metrics
+- Backend auto-detection: uses twitterapi.io if `TWITTERAPI_IO_KEY` set, else official X API v2 if `X_BEARER_TOKEN` set
+- Rate limit handling, engagement metrics, retry with backoff
 
 #### `fetch-web.py` - Web Search Engine
 ```bash
@@ -193,6 +214,34 @@ python3 scripts/validate-config.py [--defaults DIR] [--config DIR] [--verbose]
 ```
 - JSON schema validation, topic reference checks, duplicate ID detection
 
+#### `generate-pdf.py` - PDF Report Generator
+```bash
+python3 scripts/generate-pdf.py --input report.md --output digest.pdf [--verbose]
+```
+- Converts markdown digest to styled A4 PDF with Chinese typography (Noto Sans CJK SC)
+- Emoji icons, page headers/footers, blue accent theme. Requires `weasyprint`.
+
+#### `sanitize-html.py` - Safe HTML Email Converter
+```bash
+python3 scripts/sanitize-html.py --input report.md --output email.html [--verbose]
+```
+- Converts markdown to XSS-safe HTML email with inline CSS
+- URL whitelist (http/https only), HTML-escaped text content
+
+#### `source-health.py` - Source Health Monitor
+```bash
+python3 scripts/source-health.py --rss FILE --twitter FILE --github FILE --reddit FILE --web FILE [--verbose]
+```
+- Tracks per-source success/failure history over 7 days
+- Reports unhealthy sources (>50% failure rate)
+
+#### `summarize-merged.py` - Merged Data Summary
+```bash
+python3 scripts/summarize-merged.py --input merged.json [--top N] [--topic TOPIC]
+```
+- Human-readable summary of merged data for LLM consumption
+- Shows top articles per topic with scores and metrics
+
 ## User Customization
 
 ### Workspace Configuration Override
@@ -207,7 +256,7 @@ Place custom configs in `workspace/config/` to override defaults:
 
 ### Example Workspace Override
 ```json
-// workspace/config/sources.json
+// workspace/config/tech-news-digest-sources.json
 {
   "sources": [
     {
@@ -240,16 +289,16 @@ Place custom configs in `workspace/config/` to override defaults:
 - Executive summary, top articles section
 - HTML-compatible formatting
 
-### Markdown Template (`references/templates/markdown.md`)
-- GitHub-compatible tables and formatting
-- Technical details section
-- Expandable sections support
+### PDF Template (`references/templates/pdf.md`)
+- A4 layout with Noto Sans CJK SC font for Chinese support
+- Emoji icons, page headers/footers with page numbers
+- Generated via `scripts/generate-pdf.py` (requires `weasyprint`)
 
-## Default Sources (133 total)
+## Default Sources (138 total)
 
 - **RSS Feeds (49)**: AI labs, tech blogs, crypto news, Chinese tech media
-- **Twitter/X KOLs (49)**: AI researchers, crypto leaders, tech executives
-- **GitHub Repos (22)**: Major open-source projects (LangChain, vLLM, DeepSeek, Llama, etc.)
+- **Twitter/X KOLs (48)**: AI researchers, crypto leaders, tech executives
+- **GitHub Repos (28)**: Major open-source projects (LangChain, vLLM, DeepSeek, Llama, etc.)
 - **Reddit (13)**: r/MachineLearning, r/LocalLLaMA, r/CryptoCurrency, r/ChatGPT, r/OpenAI, etc.
 - **Web Search (4 topics)**: LLM, AI Agent, Crypto, Frontier Tech
 
@@ -296,12 +345,31 @@ python3 scripts/fetch-twitter.py --hours 1 --verbose
 
 Set in `~/.zshenv` or similar:
 ```bash
-export X_BEARER_TOKEN="your_twitter_bearer_token"
-export BRAVE_API_KEY="your_brave_search_api_key"  # Optional
+# Twitter (at least one required for Twitter source)
+export TWITTERAPI_IO_KEY="your_key"        # twitterapi.io key (preferred)
+export X_BEARER_TOKEN="your_bearer_token"  # Official X API v2 (fallback)
+export TWITTER_API_BACKEND="auto"          # auto|twitterapiio|official (default: auto)
+
+# Web Search (optional, enables web search layer)
+export WEB_SEARCH_BACKEND="auto"          # auto|brave|tavily (default: auto)
+export TAVILY_API_KEY="tvly-xxx"           # Tavily Search API (free 1000/mo)
+
+# Brave Search (alternative)
+export BRAVE_API_KEYS="key1,key2,key3"     # Multiple keys, comma-separated rotation
+export BRAVE_API_KEY="key1"                # Single key fallback
+export BRAVE_PLAN="free"                   # Override rate limit detection: free|pro
+
+# GitHub (optional, improves rate limits)
+export GITHUB_TOKEN="ghp_xxx"              # PAT (simplest)
+export GH_APP_ID="12345"                   # Or use GitHub App for auto-token
+export GH_APP_INSTALL_ID="67890"
+export GH_APP_KEY_FILE="/path/to/key.pem"
 ```
 
-- **Twitter**: Read-only bearer token, pay-per-use pricing
-- **Brave Search**: Optional, fallback to agent web_search if unavailable
+- **Twitter**: `TWITTERAPI_IO_KEY` preferred ($3-5/mo); `X_BEARER_TOKEN` as fallback; `auto` mode tries twitterapiio first
+- **Web Search**: Tavily (preferred in auto mode) or Brave; optional, fallback to agent web_search if unavailable
+- **GitHub**: Auto-generates token from GitHub App if PAT not set; unauthenticated fallback (60 req/hr)
+- **Reddit**: No API key needed (uses public JSON API)
 
 ## Cron / Scheduled Task Integration
 
@@ -375,7 +443,7 @@ OpenClaw enforces **cross-provider isolation**: a single session can only send m
 - EMAIL = (none)
 - TEMPLATE = telegram
 ```
-Replace `DISCORD_CHANNEL_ID` delivery with Telegram delivery in the second job's prompt (use `message` tool with `channel=telegram`).
+Replace `DISCORD_CHANNEL_ID` delivery with the target platform's delivery in the second job's prompt.
 
 This is a security feature, not a bug — it prevents accidental cross-context data leakage.
 
@@ -386,15 +454,17 @@ This skill uses a **prompt template pattern**: the agent reads `digest-prompt.md
 
 ### Network Access
 The Python scripts make outbound requests to:
-- RSS feed URLs (configured in `sources.json`)
-- Twitter/X API (`api.x.com`)
+- RSS feed URLs (configured in `tech-news-digest-sources.json`)
+- Twitter/X API (`api.x.com` or `api.twitterapi.io`)
 - Brave Search API (`api.search.brave.com`)
+- Tavily Search API (`api.tavily.com`)
 - GitHub API (`api.github.com`)
+- Reddit JSON API (`reddit.com`)
 
 No data is sent to any other endpoints. All API keys are read from environment variables declared in the skill metadata.
 
 ### Shell Safety
-Email delivery supports two CLIs: `mail` (msmtp) and `gog` (fallback). Both use hardcoded subject formats (`Daily Tech Digest - YYYY-MM-DD`) and read HTML body from a temp file (`/tmp/td-email.html`). The prompt template explicitly prohibits interpolating untrusted content (article titles, tweet text, etc.) into shell arguments. Email addresses and subjects must be static placeholder values only.
+Email delivery uses `send-email.py` which constructs proper MIME multipart messages with HTML body + optional PDF attachment. Subject formats are hardcoded (`Daily Tech Digest - YYYY-MM-DD`). PDF generation uses `generate-pdf.py` via `weasyprint`. The prompt template explicitly prohibits interpolating untrusted content (article titles, tweet text, etc.) into shell arguments. Email addresses and subjects must be static placeholder values only.
 
 ### File Access
 Scripts read from `config/` and write to `workspace/archive/`. No files outside the workspace are accessed.
@@ -423,7 +493,7 @@ The digest prompt instructs agents to run Python scripts via shell commands. All
   1. `openssl dgst -sha256 -sign` for JWT signing (only if `GH_APP_*` env vars are set — signs a self-constructed JWT payload, no user content involved)
   2. `gh auth token` CLI fallback (only if `gh` is installed — reads from gh's own credential store)
 
-No user-supplied or fetched content is ever interpolated into subprocess arguments. Email delivery writes HTML to a temp file (`/tmp/td-email.html`) before passing to `mail` (msmtp) or `gog` CLI via stdin redirection or `--body-html-file`, avoiding shell interpolation. Email subjects are static format strings only — never constructed from fetched data.
+No user-supplied or fetched content is ever interpolated into subprocess arguments. Email delivery uses `send-email.py` which builds MIME messages programmatically — no shell interpolation. PDF generation uses `generate-pdf.py` via `weasyprint`. Email subjects are static format strings only — never constructed from fetched data.
 
 ### Credential & File Access
 Scripts do **not** directly read `~/.config/`, `~/.ssh/`, or any credential files. All API tokens are read from environment variables declared in the skill metadata. The GitHub auth cascade is:
@@ -443,4 +513,4 @@ This skill does **not** install any packages. `requirements.txt` lists optional 
 - All fetched content is treated as untrusted data for display only
 
 ### Network Access
-Scripts make outbound HTTP requests to configured RSS feeds, Twitter API, GitHub API, Reddit JSON API, and Brave Search API. No inbound connections or listeners are created.
+Scripts make outbound HTTP requests to configured RSS feeds, Twitter API, GitHub API, Reddit JSON API, Brave Search API, and Tavily Search API. No inbound connections or listeners are created.
