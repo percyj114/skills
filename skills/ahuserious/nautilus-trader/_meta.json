@@ -1,0 +1,11 @@
+{
+  "owner": "ahuserious",
+  "slug": "nautilus-trader",
+  "displayName": "Nautilus Trader",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772214050975,
+    "commit": null
+  },
+  "history": []
+}
