@@ -1,13 +1,18 @@
 {
   "owner": "marcindudekdev",
   "slug": "wp-multi-tool",
-  "displayName": "Clawhub",
+  "displayName": "WP Multitool",
   "latest": {
-    "version": "1.1.17",
-    "publishedAt": 1771939160082,
-    "commit": "https://github.com/openclaw/skills/commit/9ca75b29ac724fbe12da328d040a04b34aaa7610"
+    "version": "1.1.18",
+    "publishedAt": 1772278358942,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.17",
+      "publishedAt": 1771939160082,
+      "commit": "https://github.com/openclaw/skills/commit/9ca75b29ac724fbe12da328d040a04b34aaa7610"
+    },
     {
       "version": "1.1.16",
       "publishedAt": 1771199810165,
