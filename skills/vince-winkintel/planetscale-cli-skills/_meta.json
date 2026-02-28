@@ -3,11 +3,16 @@
   "slug": "planetscale-cli-skills",
   "displayName": "Planetscale Cli Skills",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770963125295,
-    "commit": "https://github.com/openclaw/skills/commit/0b8434059e9da4d018d4ecd25ebfa8b4db864fcc"
+    "version": "1.0.2",
+    "publishedAt": 1772238466093,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770963125295,
+      "commit": "https://github.com/openclaw/skills/commit/0b8434059e9da4d018d4ecd25ebfa8b4db864fcc"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770904075299,
