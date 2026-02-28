@@ -1,13 +1,21 @@
 ---
 name: tuniu-hotel
 description: 途牛酒店助手 - 通过 exec + curl 调用 MCP 实现酒店搜索、详情查询、预订下单。适用于用户询问某地酒店、入住日期、查看酒店详情或提交订单时使用。
-version: 1.0.0
-metadata: {"openclaw": {"emoji": "🏨", "category": "travel", "tags": ["途牛", "酒店", "预订", "搜索"]}}
+version: 1.0.3
+metadata: {"openclaw": {"emoji": "🏨", "category": "travel", "tags": ["途牛", "酒店", "预订", "搜索"], "requires": {"bins": ["curl"]}, "env": {"TUNIU_API_KEY": {"type": "string", "description": "途牛开放平台 API key，用于 apiKey 请求头", "required": true}}}}
 ---
 
 # 途牛酒店助手
 
 当用户询问酒店搜索、详情或预订时，使用此 skill 通过 exec 执行 curl 调用途牛酒店 MCP 服务。
+
+## 运行环境要求
+
+本 skill 通过 **shell exec** 执行 **curl** 向 MCP endpoint 发起 HTTP POST 请求，使用 JSON-RPC 2.0 / `tools/call` 协议。**运行环境必须提供 curl 或等效的 HTTP 调用能力**（如 wget、fetch 等可发起 POST 的客户端），否则无法调用 MCP 服务。
+
+## 隐私与个人信息（PII）说明
+
+预订功能会将用户提供的**个人信息**（联系人姓名、手机号、入住人姓名等）通过 HTTP POST 发送至途牛 MCP 远端服务（`https://openapi.tuniu.cn/mcp/hotel`），以完成酒店预订。使用本 skill 即表示用户知晓并同意上述 PII 被发送到外部服务。请勿在日志或回复中暴露用户个人信息。
 
 ## 适用场景
 
@@ -19,10 +27,9 @@ metadata: {"openclaw": {"emoji": "🏨", "category": "travel", "tags": ["途牛"
 
 ### 必需配置
 
-- **TUNIU_MEMBER_KEY**：途牛开放平台会员 key，用于 `Authorization: Bearer` 请求头
 - **TUNIU_API_KEY**：途牛开放平台 API key，用于 `apiKey` 请求头
 
-用户需在[途牛开放平台](https://platform.tuniu.com)注册并获取上述密钥。
+用户需在[途牛开放平台](https://open.tuniu.com/mcp)注册并获取上述密钥。
 
 ### 可选配置
 
@@ -34,7 +41,6 @@ metadata: {"openclaw": {"emoji": "🏨", "category": "travel", "tags": ["途牛"
 
 **直接调用工具**：使用以下请求头调用 `tools/call` 即可：
 
-- `Authorization: Bearer $TUNIU_MEMBER_KEY`
 - `apiKey: $TUNIU_API_KEY`
 - `Content-Type: application/json`
 - `Accept: application/json, text/event-stream`
@@ -56,7 +62,6 @@ metadata: {"openclaw": {"emoji": "🏨", "category": "travel", "tags": ["途牛"
 curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $TUNIU_MEMBER_KEY" \
   -H "apiKey: $TUNIU_API_KEY" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"tuniu_hotel_search","arguments":{"cityName":"<用户指定的城市>","checkIn":"<用户指定的入住日期 YYYY-MM-DD>","checkOut":"<用户指定的离店日期 YYYY-MM-DD>"}}}'
 ```
@@ -66,7 +71,6 @@ curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
 curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $TUNIU_MEMBER_KEY" \
   -H "apiKey: $TUNIU_API_KEY" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"tuniu_hotel_search","arguments":{"queryId":"<上轮返回的queryId>","pageNum":2}}}'
 ```
@@ -84,7 +88,6 @@ curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
 curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $TUNIU_MEMBER_KEY" \
   -H "apiKey: $TUNIU_API_KEY" \
   -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"tuniu_hotel_detail","arguments":{"hotelId":<用户/搜索结果中的 hotelId>,"checkIn":"<用户指定的入住日期 YYYY-MM-DD>","checkOut":"<用户指定的离店日期 YYYY-MM-DD>"}}}'
 ```
@@ -94,7 +97,6 @@ curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
 curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $TUNIU_MEMBER_KEY" \
   -H "apiKey: $TUNIU_API_KEY" \
   -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"tuniu_hotel_detail","arguments":{"hotelName":"<用户指定的酒店名称>","checkIn":"<用户指定的入住日期 YYYY-MM-DD>","checkOut":"<用户指定的离店日期 YYYY-MM-DD>"}}}'
 ```
@@ -114,7 +116,6 @@ curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
 curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $TUNIU_MEMBER_KEY" \
   -H "apiKey: $TUNIU_API_KEY" \
   -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"tuniu_hotel_create_order","arguments":{"hotelId":"<detail 返回的 hotelId>","roomId":"<detail 返回的 roomId>","preBookParam":"<detail 对应报价的 preBookParam>","checkInDate":"<用户指定的入住日期 YYYY-MM-DD>","checkOutDate":"<用户指定的离店日期 YYYY-MM-DD>","roomCount":1,"roomGuests":[{"guests":[{"firstName":"<入住人名的名>","lastName":"<入住人名的姓>"}]}],"contactName":"<用户提供的联系人姓名>","contactPhone":"<用户提供的联系电话>"}}}'
 ```
@@ -172,7 +173,7 @@ curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
 
 **用户**：北京 2 月 20 号入住一晚，有什么酒店？
 
-**AI 执行**：按用户意图填参：cityName=北京、checkIn=2026-02-20、checkOut=2026-02-21，调用 tuniu_hotel_search（请求头需带 Authorization、apiKey、Content-Type、Accept）。解析 result.content[0].text，整理酒店列表回复，并保留 queryId 供翻页。
+**AI 执行**：按用户意图填参：cityName=北京、checkIn=2026-02-20、checkOut=2026-02-21，调用 tuniu_hotel_search（请求头需带 apiKey、Content-Type、Accept）。解析 result.content[0].text，整理酒店列表回复，并保留 queryId 供翻页。
 
 **用户**：还有吗？/ 下一页
 
@@ -188,8 +189,9 @@ curl -s -X POST "${TUNIU_MCP_URL:-https://openapi.tuniu.cn/mcp/hotel}" \
 
 ## 注意事项
 
-1. **密钥安全**：不要在回复或日志中暴露 TUNIU_MEMBER_KEY、TUNIU_API_KEY
-2. **认证**：若遇协议或认证错误，可重试或检查 TUNIU_MEMBER_KEY、TUNIU_API_KEY
-3. **日期格式**：所有日期均为 YYYY-MM-DD
-4. **下单前**：create_order 的 hotelId、roomId、preBookParam 必须来自最近一次 tuniu_hotel_detail 的返回；若间隔较长，建议重新调 detail 刷新报价
-5. **翻页**：用户要「更多」「下一页」时必须用上一轮 search 返回的 queryId 和 pageNum（≥2）调用，不能只传城市名
+1. **密钥安全**：不要在回复或日志中暴露 TUNIU_API_KEY
+2. **PII 安全**：联系人姓名、手机号、入住人姓名等仅在预订时发送至 MCP 服务，勿在日志或回复中暴露
+3. **认证**：若遇协议或认证错误，可重试或检查 TUNIU_API_KEY
+4. **日期格式**：所有日期均为 YYYY-MM-DD
+5. **下单前**：create_order 的 hotelId、roomId、preBookParam 必须来自最近一次 tuniu_hotel_detail 的返回；若间隔较长，建议重新调 detail 刷新报价
+6. **翻页**：用户要「更多」「下一页」时必须用上一轮 search 返回的 queryId 和 pageNum（≥2）调用，不能只传城市名
