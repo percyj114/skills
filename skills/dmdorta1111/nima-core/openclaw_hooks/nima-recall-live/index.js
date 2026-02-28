@@ -31,7 +31,7 @@ const MIN_QUERY_LENGTH = 3; // Skip very short messages (was 10, lowered for tes
 const COOLDOWN_MS = 10000; // Reduced from 30s for more responsive conversations
 const MAX_QUERY_CHARS = 300;
 const FTS_ONLY_MODE = false; // Hybrid mode: FTS first, then Voyage if needed (uses pre-computed index)
-const USE_LADYBUG = true; // Use LadybugDB backend (default: true)
+const USE_LADYBUG = true; // LadybugDB backend (13K+ memories) — multi-word CONTAINS bug fixed
 
 // Session-level memory tracking for deduplication and budget
 const SESSION_MEMORY_IDS = new Set();
@@ -143,7 +143,7 @@ function extractUserMessage(prompt) {
     if (line.startsWith("🎭")) continue;
     if (line.length < 10) continue;
     if (line.startsWith("[message_id:")) continue;
-    if (line.startsWith("<media:")) continue;
+    if (line.startsWith("<media:") && !line.includes("<media:audio>")) continue;
     if (line.startsWith("{") || line.startsWith("}")) continue; // JSON fragments
     if (line.startsWith('"') && line.endsWith(',')) continue; // JSON fields
     if (line.includes("doctorHint") || line.includes("sessionKey")) continue;
@@ -154,8 +154,19 @@ function extractUserMessage(prompt) {
     if (line.startsWith("```json") || line.startsWith("```")) continue;
     if (line.includes("gateway-client")) continue;
     
+    // Extract transcript from audio messages: "[Audio] User text: [...] <media:audio> Transcript: [ts] actual text"
+    let cleaned = line;
+    if (line.startsWith("[Audio]") || line.includes("<media:audio>")) {
+      const transcriptMatch = line.match(/Transcript:\s*(?:\[\d{2}:\d{2}[^\]]*\]\s*)+(.*)/i);
+      if (transcriptMatch) {
+        cleaned = transcriptMatch[1].trim();
+      } else {
+        continue; // No transcript found — skip audio line
+      }
+    }
+
     // Strip channel prefix to get actual message content
-    let cleaned = stripChannelPrefix(line);
+    cleaned = stripChannelPrefix(cleaned);
     // Also strip timestamp prefix (e.g., [Mon 2026-02-16 21:16 EST])
     cleaned = stripTimestampPrefix(cleaned);
     if (cleaned.length > 5) {

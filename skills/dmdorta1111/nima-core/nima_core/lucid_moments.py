@@ -237,6 +237,10 @@ class LucidMoments:
 
         db = lb.Database(self.db_path)
         conn = lb.Connection(db)
+        try:
+            conn.execute("LOAD VECTOR")
+        except Exception:
+            pass
 
         try:
             rows = conn.execute(
@@ -444,8 +448,8 @@ def main():
         else:
             print("⏸ No lucid moment surfaced (timing or no candidate).")
     elif args.dry_run:
-        print(f"[DRY RUN] Would deliver:
-{delivered_text[-1] if delivered_text else result}")
+        preview = delivered_text[-1] if delivered_text else result
+        print(f"[DRY RUN] Would deliver:\n{preview}")
 
 
 if __name__ == "__main__":

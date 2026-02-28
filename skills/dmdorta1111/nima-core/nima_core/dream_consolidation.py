@@ -1029,6 +1029,15 @@ class DreamConsolidator:
                 self._save_state()
                 if narrative:
                     _save_dream_markdown(narrative, session, self._dreams_dir)
+                
+                # Sync dream outputs to both databases (SQLite + LadybugDB)
+                try:
+                    from nima_core.dream_db_sync import sync_all as dream_sync
+                    sync_results = dream_sync(verbose=verbose)
+                    if verbose:
+                        logger.info(f"Dream DB sync: {sync_results}")
+                except Exception as sync_err:
+                    logger.warning(f"Dream DB sync failed (non-fatal): {sync_err}")
 
             # 9. Darwinian selection — merge near-duplicate memories
             darwin_stats = {"clusters_found": 0, "ghosted": 0}

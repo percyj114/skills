@@ -1,6 +1,6 @@
 """NIMA Core — Dynamic Affect System for AI agents."""
 
-__version__ = "3.0.7"
+__version__ = "3.1.4"
 
 from .cognition.dynamic_affect import DynamicAffectSystem, AffectVector, get_affect_system
 from .cognition.personality_profiles import PersonalityManager, get_profile, list_profiles
@@ -60,6 +60,14 @@ __all__ = [
     "DreamSession",
     "blend_dream_vector",
 ]
+
+# Dream DB sync (dual-database persistence)
+try:
+    from .dream_db_sync import sync_all, sync_pruner_to_ladybug
+    __all__.extend(["sync_all", "sync_pruner_to_ladybug"])
+except ImportError:
+    pass
+
 # Memory pruner (optional - may fail if ladybug not available)
 try:
     from .memory_pruner import run_pruner, status as pruner_status
@@ -86,6 +94,13 @@ except ImportError:
 try:
     from .lucid_moments import LucidMoments
     __all__.extend(["LucidMoments"])
+except ImportError:
+    pass
+
+# Memory Git (versioned memory tracking)
+try:
+    from .memory_git import commit_memory, get_log, setup_memory_repo
+    __all__.extend(["commit_memory", "get_log", "setup_memory_repo"])
 except ImportError:
     pass
 

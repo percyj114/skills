@@ -5,6 +5,27 @@ All notable changes to NIMA Core will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-02-26
+
+### Fixed
+- **CRITICAL: LadybugDB SIGSEGV on SET/CREATE/DELETE** — Root cause identified: `LOAD VECTOR` extension must be called before any mutation on tables with `FLOAT[512]` columns (like MemoryNode). Without it, Kùzu crashes with SIGSEGV. Added `LOAD VECTOR` calls to: `memory_pruner.py`, `lucid_moments.py`, `dream_db_sync.py`, and all LadybugDB connection helpers.
+
+### Added
+- **`nima_core/dream_db_sync.py`** — New module that syncs dream consolidation outputs (insights, patterns, dream runs, narratives) from JSON files to both SQLite and LadybugDB. Called automatically after dream consolidation and pruning.
+- **Ghost-marking pipeline** — Memory pruner now syncs suppression registry → LadybugDB ghost marks after each pruning run. Batched in groups of 200 IDs.
+- **SQLite dual-write in `ladybug_store.py`** — Every memory stored to LadybugDB is also written to SQLite with optional Voyage embedding for semantic search (requires `VOYAGE_API_KEY` env var).
+- **Dream system SQLite tables** in `scripts/init_db.py`:
+  - `nima_insights` — Dream-generated insights with confidence scores
+  - `nima_patterns` — Cross-domain recurring patterns
+  - `nima_dream_runs` — Dream consolidation run history
+  - `nima_suppressed_memories` — Pruned memory records
+  - `nima_pruner_runs` — Pruner execution log
+  - `nima_lucid_moments` — Surfaced memory moments
+
+### Changed
+- **`dream_consolidation.py`** — Now calls `dream_db_sync.sync_all()` after each consolidation run to persist results to both databases.
+- **`memory_pruner.py`** — After pruning, syncs ghost marks to LadybugDB via `dream_db_sync.sync_pruner_to_ladybug()`.
+
 ## [3.0.8] - 2026-02-24
 
 ### Added

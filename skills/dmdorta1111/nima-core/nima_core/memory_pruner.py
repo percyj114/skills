@@ -127,7 +127,12 @@ def get_conn():
     try:
         from real_ladybug import Database, Connection
         db = Database(DB_PATH)
-        return Connection(db)
+        conn = Connection(db)
+        try:
+            conn.execute("LOAD VECTOR")
+        except Exception:
+            pass
+        return conn
     except ImportError:
         pass
 
@@ -135,7 +140,12 @@ def get_conn():
     try:
         from ladybug import Database, Connection
         db = Database(DB_PATH)
-        return Connection(db)
+        conn = Connection(db)
+        try:
+            conn.execute("LOAD VECTOR")
+        except Exception:
+            pass
+        return conn
     except ImportError:
         pass
 
@@ -446,6 +456,17 @@ def run_pruner(min_age_days=7, dry_run=True, max_sessions=None, limbo_days=None,
         history.append(summary)
         LOG_PATH.parent.mkdir(exist_ok=True)
         LOG_PATH.write_text(json.dumps(history[-30:], indent=2))
+        
+        # Sync ghost marks to LadybugDB
+        try:
+            from nima_core.dream_db_sync import sync_pruner_to_ladybug, _get_ladybug_conn
+            lb_conn = _get_ladybug_conn()
+            if lb_conn:
+                ghost_result = sync_pruner_to_ladybug(lb_conn)
+                print("  LadybugDB ghost sync: {ghosted} marked".format(
+                    ghosted=ghost_result.get('ghosted', 0)))
+        except Exception as e:
+            print("  LadybugDB ghost sync skipped: {err}".format(err=e))
 
     print("\nDone: {distilled} sessions distilled, {suppressed} turns suppressed".format(
         distilled=distilled_count, suppressed=suppressed_count

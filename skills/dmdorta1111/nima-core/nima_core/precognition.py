@@ -123,6 +123,10 @@ class NimaPrecognition:
 
         db = lb.Database(self.db_path)
         conn = lb.Connection(db)
+        try:
+            conn.execute("LOAD VECTOR")
+        except Exception:
+            pass  # LOAD VECTOR may not be available in all versions
         cutoff_ms = int(
             (datetime.now() - timedelta(days=self.lookback_days)).timestamp() * 1000
         )

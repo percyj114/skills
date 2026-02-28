@@ -35,8 +35,97 @@ except ImportError:
                 continue
 
 LADYBUG_DB = os.path.expanduser("~/.nima/memory/ladybug.lbug")
+SQLITE_DB = os.path.expanduser(os.environ.get("NIMA_SQLITE_DB",
+    os.path.join(os.environ.get("NIMA_HOME", "~/.nima"), "memory", "graph.sqlite")))
 MAX_TEXT_LENGTH = 2000
 MAX_SUMMARY_LENGTH = 500
+
+
+def _get_embedding(text: str):
+    """Generate Voyage embedding for semantic search. Returns bytes blob or None."""
+    api_key = os.environ.get("VOYAGE_API_KEY")
+    if not api_key or not text.strip():
+        return None
+    try:
+        import struct
+        import voyageai
+        client = voyageai.Client(api_key=api_key)
+        result = client.embed([text[:2000]], model="voyage-3-lite")
+        vec = result.embeddings[0]
+        return struct.pack(f'{len(vec)}f', *vec)
+    except Exception:
+        return None
+
+
+def _dual_write_sqlite(data: dict, input_id: int, contemplation_id: int, output_id: int):
+    """
+    Dual-write memory turn to SQLite for FTS + embedding search.
+    Non-fatal — LadybugDB is primary, SQLite is supplementary.
+    """
+    import sqlite3
+    
+    if not os.path.exists(SQLITE_DB):
+        return
+    
+    conn = sqlite3.connect(SQLITE_DB, timeout=5.0)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+    
+        timestamp = data.get("timestamp", int(time.time() * 1000))
+        turn_id = data.get("turn_id", f"turn_{timestamp}")
+        affect_json = data.get("affect_json", "{}")
+        session_key = data.get("session_key", "")
+        fe_score = data.get("fe_score", 0.5)
+    
+        layers = [
+            ("input", data["input"], input_id),
+            ("contemplation", data["contemplation"], contemplation_id),
+            ("output", data["output"], output_id),
+        ]
+    
+        node_ids = []
+        for layer, content, ladybug_id in layers:
+            text = content.get("text", "")[:MAX_TEXT_LENGTH]
+            summary = content.get("summary", "")[:MAX_SUMMARY_LENGTH]
+            who = content.get("who", "self") if layer == "input" else "self"
+        
+            # Generate embedding for output layer (most searchable)
+            embedding_blob = _get_embedding(text) if layer == "output" else None
+        
+            cur = conn.execute(
+                """INSERT INTO memory_nodes 
+                    (id, timestamp, layer, text, summary, who, affect_json, 
+                     session_key, turn_id, fe_score, embedding)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (ladybug_id, timestamp, layer, text, summary, who,
+                 affect_json, session_key, turn_id, fe_score, embedding_blob)
+            )
+            node_ids.append(cur.lastrowid)
+    
+        # Create edges
+        if len(node_ids) == 3:
+            for src, tgt, rel in [
+                (node_ids[0], node_ids[1], 'triggered'),
+                (node_ids[1], node_ids[2], 'produced'),
+                (node_ids[2], node_ids[0], 'responded_to'),
+            ]:
+                conn.execute(
+                    "INSERT INTO memory_edges (source_id, target_id, relation) VALUES (?, ?, ?)",
+                    (src, tgt, rel)
+                )
+    
+        # Create turn record
+        conn.execute(
+            """INSERT OR IGNORE INTO memory_turns 
+                (turn_id, input_node_id, contemplation_node_id, output_node_id, timestamp, affect_json)
+                VALUES (?, ?, ?, ?, ?, ?)""",
+            (turn_id, node_ids[0], node_ids[1], node_ids[2], timestamp, affect_json)
+        )
+    
+        conn.commit()
+        print(f"[ladybug_store] SQLite dual-write OK: {node_ids}", file=sys.stderr)
+    finally:
+        conn.close()
 
 
 def _open_db_safe(db_path=None, max_retries=2):
@@ -265,6 +354,13 @@ def store_memory(data_file: str) -> bool:
         })
         
         print(f"stored:{input_id},{contemplation_id},{output_id}")
+        
+        # Dual-write to SQLite for FTS + embedding search
+        try:
+            _dual_write_sqlite(data, input_id, contemplation_id, output_id)
+        except Exception as sqlite_err:
+            print(f"[ladybug_store] SQLite dual-write failed (non-fatal): {sqlite_err}", file=sys.stderr)
+        
         return True
         
     except Exception as e:

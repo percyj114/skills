@@ -173,16 +173,31 @@ def text_search(query: str, limit: int = MAX_RESULTS) -> List[Dict]:
     conn = connect()
     start = time.time()
     min_timestamp = int((datetime.now() - timedelta(days=TIME_WINDOW_DAYS)).timestamp() * 1000)
-    
+
+    # Split multi-word queries — CONTAINS requires exact substring match
+    # so "EMJAC fabrication" would fail. Search each term separately with OR.
+    terms = [t.strip() for t in query.split() if len(t.strip()) >= 3][:6]
+    if not terms:
+        terms = [query]
+
+    # Build per-term conditions
+    params: Dict[str, Any] = {"min_ts": min_timestamp, "result_limit": limit * 3}
+    term_clauses = []
+    for i, term in enumerate(terms):
+        key = f"term{i}"
+        params[key] = term
+        term_clauses.append(f"(n.text CONTAINS ${key} OR n.summary CONTAINS ${key})")
+    where_terms = " OR ".join(term_clauses)
+
     try:
-        result = conn.execute("""
+        result = conn.execute(f"""
             MATCH (n:MemoryNode)
-            WHERE (n.text CONTAINS $query OR n.summary CONTAINS $query)
+            WHERE ({where_terms})
             AND n.timestamp >= $min_ts
             RETURN n.id, n.text, n.summary, n.who, n.layer, n.timestamp,
                    n.strength, n.decay_rate
             LIMIT $result_limit
-        """, {"query": query, "min_ts": min_timestamp, "result_limit": limit * 3})
+        """, params)
         
         memories = []
         for row in result:
@@ -329,6 +344,50 @@ def hybrid_search(query: str, query_embedding: List[float],
 # COMPATIBILITY LAYER
 # =============================================================================
 
+def get_voyage_embedding(text: str, verbose: bool = False) -> Optional[List[float]]:
+    """Generate query embedding via Voyage AI — uses disk cache for speed."""
+    # Try voyage_cache first (SQLite-backed LRU — same-session repeat = instant)
+    try:
+        _this_dir = os.path.dirname(os.path.abspath(__file__))
+        import sys as _sys
+        if _this_dir not in _sys.path:
+            _sys.path.insert(0, _this_dir)
+        from voyage_cache import embed_cached
+        emb = embed_cached(text[:500])
+        if emb is not None:
+            emb_list = emb.tolist() if hasattr(emb, 'tolist') else list(emb)
+            if verbose: print(f"[ladybug_recall] ✅ Voyage embedding (cached): {len(emb_list)}D", file=sys.stderr)
+            return emb_list
+    except Exception:
+        pass  # Fall through to direct API call
+
+    # Direct API call fallback
+    import urllib.request, json as _json
+    api_key = os.environ.get("VOYAGE_API_KEY")
+    if not api_key:
+        return None
+    try:
+        payload = _json.dumps({
+            "input": [text[:500]],
+            "model": "voyage-3-lite",  # matches stored 512D embeddings
+            "input_type": "query"
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.voyageai.com/v1/embeddings",
+            data=payload,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = _json.loads(resp.read())
+            emb = data["data"][0]["embedding"]
+            if verbose: print(f"[ladybug_recall] ✅ Voyage embedding (API): {len(emb)}D", file=sys.stderr)
+            return emb
+    except Exception as e:
+        if verbose: print(f"[ladybug_recall] Voyage embedding failed: {e}", file=sys.stderr)
+        return None
+
+
 def lazy_recall(query: str, 
                  query_embedding: Optional[List[float]] = None,
                  who: Optional[str] = None,
@@ -336,7 +395,11 @@ def lazy_recall(query: str,
                  verbose: bool = False) -> List[Dict]:
     start = time.time()
     if verbose: print(f"[ladybug_recall] Query: '{query[:50]}...'", file=sys.stderr)
-    
+
+    # Auto-generate embedding if not provided (enables semantic search)
+    if not query_embedding:
+        query_embedding = get_voyage_embedding(query, verbose=verbose)
+
     if query_embedding:
         results = hybrid_search(query, query_embedding, limit=top_k)
     else:
