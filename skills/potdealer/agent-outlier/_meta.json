@@ -1,0 +1,11 @@
+{
+  "owner": "potdealer",
+  "slug": "agent-outlier",
+  "displayName": "Agent Outlier",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772242990631,
+    "commit": null
+  },
+  "history": []
+}
