@@ -3,11 +3,16 @@
   "slug": "alicloud-ai-content-aicontent",
   "displayName": "Alicloud Ai Content Aicontent",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770973116202,
-    "commit": "https://github.com/openclaw/skills/commit/953a4a93f67351584fe65a15839c403b1a7e29a0"
+    "version": "1.0.3",
+    "publishedAt": 1772109475368,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770973116202,
+      "commit": "https://github.com/openclaw/skills/commit/953a4a93f67351584fe65a15839c403b1a7e29a0"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770768397859,
