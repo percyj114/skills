@@ -1,0 +1,11 @@
+{
+  "owner": "2233admin",
+  "slug": "config-rollback",
+  "displayName": "config-rollback",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772208471102,
+    "commit": null
+  },
+  "history": []
+}
