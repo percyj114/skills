@@ -1,0 +1,11 @@
+{
+  "owner": "feiskyer",
+  "slug": "claude-skill",
+  "displayName": "Claude Skill",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772248906169,
+    "commit": null
+  },
+  "history": []
+}
