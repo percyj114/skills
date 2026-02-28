@@ -1,0 +1,11 @@
+{
+  "owner": "discodaddy",
+  "slug": "agent-mail-guard",
+  "displayName": "Agent Mail Guard — Email Sanitizer for AI Agents",
+  "latest": {
+    "version": "1.4.0",
+    "publishedAt": 1772229832892,
+    "commit": null
+  },
+  "history": []
+}
