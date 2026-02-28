@@ -3,11 +3,16 @@
   "slug": "pilot-protocol",
   "displayName": "pilotprotocol",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770847903306,
-    "commit": "https://github.com/openclaw/skills/commit/aba82fdb841de1848a8918d29a745d64a69de409"
+    "version": "1.0.4",
+    "publishedAt": 1772260710850,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770847903306,
+      "commit": "https://github.com/openclaw/skills/commit/aba82fdb841de1848a8918d29a745d64a69de409"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770586511219,
