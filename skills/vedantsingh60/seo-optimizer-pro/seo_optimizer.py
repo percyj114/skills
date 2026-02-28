@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """
 SEO Optimizer Pro - AI-Powered SEO Content Optimization
-Version: 1.0.6
+Version: 1.0.7
 Copyright © 2026 UnisAI. All Rights Reserved.
 
-Multi-provider SEO analysis using Claude, GPT, Gemini, Llama, or Mistral.
-Each provider requires its own API key. Only the provider you select needs
-a key configured.
+Model-agnostic SEO analysis — pass any model ID from any supported provider.
+Provider routing is automatic based on model name prefix.
+Only the API key for your chosen provider needs to be configured.
+
+Supported provider families (any model matching the prefix works):
+  claude-*      → Anthropic         (ANTHROPIC_API_KEY)
+  gpt-*, o1*, o3* → OpenAI          (OPENAI_API_KEY)
+  gemini-*      → Google            (GOOGLE_API_KEY)
+  mistral-*, mixtral-*, devstral-*, ministral-* → Mistral (MISTRAL_API_KEY)
+  deepseek-*    → DeepSeek          (DEEPSEEK_API_KEY)
+  grok-*        → xAI               (XAI_API_KEY)
+  minimax*      → MiniMax           (MINIMAX_API_KEY)
+  qwen*         → Qwen/Alibaba      (DASHSCOPE_API_KEY)
+  meta-llama/*, llama-* → OpenRouter (OPENROUTER_API_KEY)
 
 Features:
 - Content optimization suggestions via your chosen AI model
@@ -20,7 +31,7 @@ PRIVACY NOTICE: This skill sends your content to third-party AI providers.
 Review the provider's privacy policy before sending sensitive content.
 """
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 import os
 import json
@@ -73,65 +84,78 @@ class SEOAnalysisResult:
 
 class SEOOptimizer:
     """
-    AI-powered SEO optimizer with real multi-provider support.
+    Model-agnostic AI-powered SEO optimizer.
 
-    Each provider uses its own SDK and API key:
-    - Anthropic Claude: ANTHROPIC_API_KEY
-    - OpenAI GPT: OPENAI_API_KEY
-    - Google Gemini: GOOGLE_API_KEY
-    - Mistral: MISTRAL_API_KEY
-    - Meta Llama (via OpenRouter): OPENROUTER_API_KEY
+    Pass any model ID — provider is detected automatically from the model name
+    prefix. No hardcoded whitelist; new models work without code changes.
 
-    Only the API key for your chosen provider is required.
+    Provider detection (prefix → provider → required env var):
+      claude-*            → Anthropic    → ANTHROPIC_API_KEY
+      gpt-*, o1*, o3*     → OpenAI       → OPENAI_API_KEY
+      gemini-*            → Google       → GOOGLE_API_KEY
+      mistral-*/mixtral-* → Mistral      → MISTRAL_API_KEY
+      deepseek-*          → DeepSeek     → DEEPSEEK_API_KEY
+      grok-*              → xAI          → XAI_API_KEY
+      minimax*/MiniMax*   → MiniMax      → MINIMAX_API_KEY
+      qwen*               → Qwen         → DASHSCOPE_API_KEY
+      meta-llama/*/llama-* → OpenRouter  → OPENROUTER_API_KEY
     """
 
     # IP Protection
     WATERMARK = "PROPRIETARY_SKILL_SEO_OPTIMIZER_2026"
 
-    # Supported models and their providers (2026)
-    SUPPORTED_MODELS = {
-        # Anthropic Claude 4.5
-        "claude-opus-4-5-20251101": {"provider": "anthropic", "env_key": "ANTHROPIC_API_KEY"},
-        "claude-sonnet-4-5-20250929": {"provider": "anthropic", "env_key": "ANTHROPIC_API_KEY"},
-        "claude-haiku-4-5-20251001": {"provider": "anthropic", "env_key": "ANTHROPIC_API_KEY"},
+    # Default model
+    DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
-        # OpenAI GPT-5.2
-        "gpt-5.2-pro": {"provider": "openai", "env_key": "OPENAI_API_KEY"},
-        "gpt-5.2-thinking": {"provider": "openai", "env_key": "OPENAI_API_KEY"},
-        "gpt-5.2-instant": {"provider": "openai", "env_key": "OPENAI_API_KEY"},
+    # Prefix-based provider routing — (prefix, provider, env_key, base_url)
+    # Order matters: longer/more-specific prefixes first.
+    PROVIDER_MAP = [
+        ("claude-",      "anthropic",  "ANTHROPIC_API_KEY",  None),
+        ("gpt-",         "openai",     "OPENAI_API_KEY",     None),
+        ("o1",           "openai",     "OPENAI_API_KEY",     None),
+        ("o3",           "openai",     "OPENAI_API_KEY",     None),
+        ("gemini-",      "google",     "GOOGLE_API_KEY",     None),
+        ("mistral-",     "mistral",    "MISTRAL_API_KEY",    None),
+        ("mixtral-",     "mistral",    "MISTRAL_API_KEY",    None),
+        ("devstral-",    "mistral",    "MISTRAL_API_KEY",    None),
+        ("ministral-",   "mistral",    "MISTRAL_API_KEY",    None),
+        ("deepseek-",    "deepseek",   "DEEPSEEK_API_KEY",   "https://api.deepseek.com/v1"),
+        ("grok-",        "xai",        "XAI_API_KEY",        "https://api.x.ai/v1"),
+        ("MiniMax",      "minimax",    "MINIMAX_API_KEY",    "https://api.minimax.io/v1"),
+        ("minimax",      "minimax",    "MINIMAX_API_KEY",    "https://api.minimax.io/v1"),
+        ("qwen",         "qwen",       "DASHSCOPE_API_KEY",  "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"),
+        ("meta-llama/",  "openrouter", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
+        ("llama-",       "openrouter", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
+    ]
 
-        # Google Gemini 2.5/3.0
-        "gemini-3-pro": {"provider": "google", "env_key": "GOOGLE_API_KEY"},
-        "gemini-2.5-pro": {"provider": "google", "env_key": "GOOGLE_API_KEY"},
-        "gemini-2.5-flash": {"provider": "google", "env_key": "GOOGLE_API_KEY"},
-
-        # Meta Llama (via OpenRouter)
-        "llama-3.3-70b": {"provider": "openrouter", "env_key": "OPENROUTER_API_KEY"},
-        "llama-3.2-90b": {"provider": "openrouter", "env_key": "OPENROUTER_API_KEY"},
-
-        # Mistral
-        "mistral-large-2501": {"provider": "mistral", "env_key": "MISTRAL_API_KEY"},
-    }
+    # Known tested models — documentation only, NOT a validation gate.
+    KNOWN_MODELS = [
+        "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001",
+        "gpt-5.2-pro", "gpt-5.2", "gpt-5.1",
+        "gemini-2.5-pro", "gemini-2.5-flash",
+        "mistral-large-latest", "mistral-small-latest",
+        "deepseek-chat", "deepseek-reasoner",
+        "grok-4-1-fast", "grok-3-beta",
+        "MiniMax-M2.1",
+        "qwen3.5-plus", "qwen3-max-instruct",
+        "meta-llama/llama-4-maverick", "meta-llama/llama-3.3-70b-instruct",
+    ]
 
     def __init__(self, model: str = None, api_key: str = None):
         """
         Initialize with model selection and optional API key override.
 
         Args:
-            model: Model ID to use (defaults to claude-haiku-4-5-20251001)
+            model: Any model ID — provider is auto-detected from prefix.
+                   Defaults to claude-haiku-4-5-20251001.
+                   See KNOWN_MODELS for tested options, or pass any model
+                   whose prefix matches a supported provider.
             api_key: Override API key (otherwise reads from environment variable)
         """
-        self.model = model or "claude-haiku-4-5-20251001"
+        self.model = model or self.DEFAULT_MODEL
 
-        if self.model not in self.SUPPORTED_MODELS:
-            raise ValueError(
-                f"Model '{self.model}' not supported.\n"
-                f"Available models: {list(self.SUPPORTED_MODELS.keys())}"
-            )
-
-        self.model_config = self.SUPPORTED_MODELS[self.model]
-        self.provider = self.model_config["provider"]
-        self.env_key = self.model_config["env_key"]
+        # Detect provider from model name prefix
+        self.provider, self.env_key, self.base_url = self._detect_provider(self.model)
 
         # Resolve API key
         self.api_key = api_key or os.getenv(self.env_key)
@@ -144,15 +168,27 @@ class SEOOptimizer:
         # Initialize the correct client for the provider
         self.client = self._init_client()
 
+    def _detect_provider(self, model: str) -> Tuple[str, str, Optional[str]]:
+        """
+        Detect provider, env key, and base URL from model name prefix.
+        Returns (provider, env_key, base_url).
+        """
+        for prefix, provider, env_key, base_url in self.PROVIDER_MAP:
+            if model.startswith(prefix):
+                return provider, env_key, base_url
+
+        known_prefixes = [p for p, *_ in self.PROVIDER_MAP]
+        raise ValueError(
+            f"Cannot detect provider for model '{model}'.\n"
+            f"Model name must start with one of: {known_prefixes}\n"
+            f"Known tested models: {self.KNOWN_MODELS}"
+        )
+
     def _init_client(self):
-        """Initialize the correct SDK client based on provider."""
+        """Initialize the correct SDK client based on detected provider."""
         if self.provider == "anthropic":
             from anthropic import Anthropic
             return Anthropic(api_key=self.api_key)
-
-        elif self.provider == "openai":
-            from openai import OpenAI
-            return OpenAI(api_key=self.api_key)
 
         elif self.provider == "google":
             import google.generativeai as genai
@@ -163,12 +199,13 @@ class SEOOptimizer:
             from mistralai import Mistral
             return Mistral(api_key=self.api_key)
 
-        elif self.provider == "openrouter":
+        elif self.provider in ("openai", "deepseek", "xai", "minimax", "qwen", "openrouter"):
+            # All OpenAI-SDK-compatible providers — just vary base_url
             from openai import OpenAI
-            return OpenAI(
-                api_key=self.api_key,
-                base_url="https://openrouter.ai/api/v1"
-            )
+            kwargs = {"api_key": self.api_key}
+            if self.base_url:
+                kwargs["base_url"] = self.base_url
+            return OpenAI(**kwargs)
 
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
@@ -176,7 +213,7 @@ class SEOOptimizer:
     def _call_ai(self, prompt: str, max_tokens: int = 1000) -> str:
         """
         Send a prompt to the selected AI model and return the response text.
-        Routes to the correct API based on provider.
+        Routes to the correct API based on detected provider.
         """
         if self.provider == "anthropic":
             message = self.client.messages.create(
@@ -185,24 +222,6 @@ class SEOOptimizer:
                 messages=[{"role": "user", "content": prompt}]
             )
             return message.content[0].text
-
-        elif self.provider in ("openai", "openrouter"):
-            # OpenAI SDK (also used for OpenRouter/Llama)
-            model_id = self.model
-            if self.provider == "openrouter":
-                # OpenRouter uses specific model paths
-                model_map = {
-                    "llama-3.3-70b": "meta-llama/llama-3.3-70b-instruct",
-                    "llama-3.2-90b": "meta-llama/llama-3.2-90b-vision-instruct",
-                }
-                model_id = model_map.get(self.model, self.model)
-
-            response = self.client.chat.completions.create(
-                model=model_id,
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
 
         elif self.provider == "google":
             response = self.client.generate_content(
@@ -216,6 +235,15 @@ class SEOOptimizer:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content
+
+        elif self.provider in ("openai", "deepseek", "xai", "minimax", "qwen", "openrouter"):
+            # All OpenAI-SDK-compatible providers use the same call pattern
+            response = self.client.chat.completions.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}]
             )
             return response.choices[0].message.content
 

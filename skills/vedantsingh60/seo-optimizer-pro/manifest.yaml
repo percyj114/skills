@@ -1,7 +1,7 @@
 name: "SEO Optimizer Pro"
 id: "seo-optimizer-pro"
-version: "1.0.6"
-description: "AI-powered SEO content optimization for Google ranking and AI search (AEO). Multi-model support: Claude, GPT-5.2, Gemini, Llama, Mistral. Analyze readability, keywords, technical SEO with your choice of AI model."
+version: "1.0.7"
+description: "AI-powered SEO content optimization for Google ranking and AI search (AEO). Model-agnostic: pass any model from Claude, GPT, Gemini, DeepSeek, Grok, MiniMax, Qwen, Llama, Mistral — provider auto-detected from model name."
 
 # Top-level registry fields (for ClawhHub registry indexing)
 homepage: "https://unisai.vercel.app"
@@ -11,8 +11,12 @@ required_env_vars:
   - "ANTHROPIC_API_KEY"   # Required if using Claude models
   - "OPENAI_API_KEY"      # Required if using GPT models
   - "GOOGLE_API_KEY"      # Required if using Gemini models
-  - "OPENROUTER_API_KEY"  # Required if using Llama models
   - "MISTRAL_API_KEY"     # Required if using Mistral models
+  - "DEEPSEEK_API_KEY"    # Required if using DeepSeek models
+  - "XAI_API_KEY"         # Required if using Grok/xAI models
+  - "MINIMAX_API_KEY"     # Required if using MiniMax models
+  - "DASHSCOPE_API_KEY"   # Required if using Qwen/Alibaba models
+  - "OPENROUTER_API_KEY"  # Required if using Llama/OpenRouter models
 primary_credential: "At least ONE provider API key is required (see required_env_vars)"
 
 # Runtime
@@ -62,12 +66,12 @@ dependencies:
     - "mistralai>=1.3.0"           # Required ONLY for Mistral models
   install_all: "pip install anthropic openai google-generativeai mistralai"
   install_selective: |
-    # Install ONLY the SDK(s) for your chosen provider:
-    pip install anthropic  # For Claude models
-    pip install openai  # For GPT or Llama models
-    pip install google-generativeai  # For Gemini models
-    pip install mistralai  # For Mistral models
-  note: "RECOMMENDED: Install only the SDK for the provider you plan to use to avoid unnecessary dependencies."
+    # Install ONLY the SDK for your chosen provider:
+    pip install anthropic          # Claude
+    pip install openai             # GPT, DeepSeek, xAI, MiniMax, Qwen, Llama (OpenAI-compat)
+    pip install google-generativeai  # Gemini
+    pip install mistralai          # Mistral
+  note: "RECOMMENDED: Install only the SDK for the provider you plan to use. DeepSeek, xAI, MiniMax, Qwen, and Llama all use the openai package with a custom base URL."
   requirements_file: "requirements.txt"
 
 security:
@@ -164,25 +168,32 @@ credentials:
 
 environment_variables:
   ANTHROPIC_API_KEY:
-    description: "Anthropic API key — required if using Claude models"
-    required: true  # Required when using Claude models
-    required_for: ["claude-opus-4-5-20251101", "claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251001"]
+    description: "Anthropic API key — required for any claude-* model"
+    required_for_prefix: "claude-"
   OPENAI_API_KEY:
-    description: "OpenAI API key — required if using GPT models"
-    required: true  # Required when using GPT models
-    required_for: ["gpt-5.2-pro", "gpt-5.2-thinking", "gpt-5.2-instant"]
+    description: "OpenAI API key — required for any gpt-*, o1*, o3* model"
+    required_for_prefix: "gpt-, o1, o3"
   GOOGLE_API_KEY:
-    description: "Google AI API key — required if using Gemini models"
-    required: true  # Required when using Gemini models
-    required_for: ["gemini-3-pro", "gemini-2.5-pro", "gemini-2.5-flash"]
-  OPENROUTER_API_KEY:
-    description: "OpenRouter API key — required if using Llama models"
-    required: true  # Required when using Llama models
-    required_for: ["llama-3.3-70b", "llama-3.2-90b"]
+    description: "Google AI API key — required for any gemini-* model"
+    required_for_prefix: "gemini-"
   MISTRAL_API_KEY:
-    description: "Mistral API key — required if using Mistral models"
-    required: true  # Required when using Mistral models
-    required_for: ["mistral-large-2501"]
+    description: "Mistral API key — required for mistral-*, mixtral-*, devstral-*, ministral-* models"
+    required_for_prefix: "mistral-, mixtral-, devstral-, ministral-"
+  DEEPSEEK_API_KEY:
+    description: "DeepSeek API key — required for any deepseek-* model"
+    required_for_prefix: "deepseek-"
+  XAI_API_KEY:
+    description: "xAI API key — required for any grok-* model"
+    required_for_prefix: "grok-"
+  MINIMAX_API_KEY:
+    description: "MiniMax API key — required for minimax* or MiniMax* models"
+    required_for_prefix: "minimax, MiniMax"
+  DASHSCOPE_API_KEY:
+    description: "Alibaba DashScope API key — required for any qwen* model"
+    required_for_prefix: "qwen"
+  OPENROUTER_API_KEY:
+    description: "OpenRouter API key — required for meta-llama/* or llama-* models"
+    required_for_prefix: "meta-llama/, llama-"
 
 support:
   support_email: "support@unisai.vercel.app"
@@ -198,6 +209,12 @@ restrictions:
   - "Modifications allowed for personal use only (no redistribution of modified versions)"
 
 changelog:
+  "1.0.7":
+    - "🏗️ Model-agnostic architecture — provider auto-detected from model name prefix, no hardcoded whitelist"
+    - "✨ Added DeepSeek (deepseek-chat, deepseek-reasoner), xAI (grok-4-1-fast), MiniMax (MiniMax-M2.1), Qwen (qwen3.5-plus)"
+    - "✨ Updated Claude to 4.6 series (claude-opus-4-6, claude-sonnet-4-6)"
+    - "✨ Any future model works automatically without code changes — just pass the model ID"
+    - "🔧 Simplified _call_ai — all OpenAI-compat providers share one code path"
   "1.0.6":
     - "🔒 Fixed license contradiction — source code IS included for transparency"
     - "🔒 Changed license from 'proprietary' to 'free-to-use' with source included"

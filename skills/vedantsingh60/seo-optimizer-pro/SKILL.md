@@ -37,13 +37,21 @@ Every analysis includes:
 - 🎯 **Technical SEO** - Meta tags, link analysis, structured data
 - 🤖 **AI Search Optimization** - Recommendations for ChatGPT citations, AI Overviews
 
-### Multi-Model AI Integration
-Works with multiple AI models for flexibility:
-- **Claude 4.5 Series** - Highest quality reasoning (Opus, Sonnet, Haiku)
-- **GPT-5.2 Series** - Advanced reasoning (Pro, Thinking, Instant)
-- **Gemini 2.5/3.0** - Fast & efficient analysis
-- **Llama 3.2/3.3** - Open-source alternative
-- **Mistral Large** - High-performance model
+### Model-Agnostic AI Integration
+Pass any model ID — provider is auto-detected from the model name prefix.
+No hardcoded list; new models work without updates.
+
+| Provider | Tested Models | Prefix |
+|----------|--------------|--------|
+| **Anthropic** | claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5-20251001 | `claude-` |
+| **OpenAI** | gpt-5.2-pro, gpt-5.2, gpt-5.1 | `gpt-`, `o1`, `o3` |
+| **Google** | gemini-2.5-pro, gemini-2.5-flash | `gemini-` |
+| **Mistral** | mistral-large-latest, mistral-small-latest | `mistral-`, `mixtral-` |
+| **DeepSeek** | deepseek-chat, deepseek-reasoner | `deepseek-` |
+| **xAI** | grok-4-1-fast, grok-3-beta | `grok-` |
+| **MiniMax** | MiniMax-M2.1 | `MiniMax`, `minimax` |
+| **Qwen** | qwen3.5-plus, qwen3-max-instruct | `qwen` |
+| **Meta Llama** | meta-llama/llama-4-maverick, meta-llama/llama-3.3-70b-instruct | `meta-llama/`, `llama-` |
 
 Features:
 - **Title Optimization** - SEO-friendly titles (40-60 chars)
@@ -173,13 +181,17 @@ enhancing structure for AI readability, adding comparison tables.
 
 You need **one API key** — for whichever provider/model you want to use:
 
-| Provider | Env Variable | Models | Get Key |
+| Provider | Env Variable | Prefix | Get Key |
 |----------|-------------|--------|---------|
-| Anthropic | `ANTHROPIC_API_KEY` | Claude Opus, Sonnet, Haiku | https://console.anthropic.com |
-| OpenAI | `OPENAI_API_KEY` | GPT-5.2 Pro, Thinking, Instant | https://platform.openai.com |
-| Google | `GOOGLE_API_KEY` | Gemini 3 Pro, 2.5 Pro/Flash | https://aistudio.google.dev |
-| OpenRouter | `OPENROUTER_API_KEY` | Llama 3.3-70B, 3.2-90B | https://openrouter.ai |
-| Mistral | `MISTRAL_API_KEY` | Mistral Large 2501 | https://console.mistral.ai |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-` | https://console.anthropic.com |
+| OpenAI | `OPENAI_API_KEY` | `gpt-`, `o1`, `o3` | https://platform.openai.com |
+| Google | `GOOGLE_API_KEY` | `gemini-` | https://aistudio.google.dev |
+| Mistral | `MISTRAL_API_KEY` | `mistral-`, `mixtral-` | https://console.mistral.ai |
+| DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-` | https://platform.deepseek.com |
+| xAI | `XAI_API_KEY` | `grok-` | https://console.x.ai |
+| MiniMax | `MINIMAX_API_KEY` | `minimax`, `MiniMax` | https://platform.minimax.io |
+| Qwen/Alibaba | `DASHSCOPE_API_KEY` | `qwen` | https://dashscope.aliyun.com |
+| OpenRouter | `OPENROUTER_API_KEY` | `meta-llama/`, `llama-` | https://openrouter.ai |
 
 **Only set the key for the provider you're using.** For example, to use Claude:
 ```bash
@@ -260,19 +272,18 @@ for i, rec in enumerate(results.aeo_recommendations, 1):
     print(f"{i}. {rec}")
 ```
 
-**Supported Models:**
-- `claude-opus-4-5-20251101` (Recommended)
-- `claude-sonnet-4-5-20250929`
-- `claude-haiku-4-5-20251001`
-- `gpt-5.2-pro`
-- `gpt-5.2-thinking`
-- `gpt-5.2-instant`
-- `gemini-3-pro`
-- `gemini-2.5-pro`
-- `gemini-2.5-flash`
-- `llama-3.3-70b`
-- `llama-3.2-90b`
-- `mistral-large-2501`
+**Tested Models (any model matching a provider prefix also works):**
+- `claude-opus-4-6` (Recommended — best quality)
+- `claude-sonnet-4-6`
+- `claude-haiku-4-5-20251001` (Default — fastest/cheapest)
+- `gpt-5.2-pro`, `gpt-5.2`, `gpt-5.1`
+- `gemini-2.5-pro`, `gemini-2.5-flash`
+- `mistral-large-latest`, `mistral-small-latest`
+- `deepseek-chat`, `deepseek-reasoner`
+- `grok-4-1-fast`, `grok-3-beta`
+- `MiniMax-M2.1`
+- `qwen3.5-plus`, `qwen3-max-instruct`
+- `meta-llama/llama-4-maverick`, `meta-llama/llama-3.3-70b-instruct`
 
 ### 4. CLI Usage
 
@@ -462,6 +473,15 @@ This skill is **free and open to all users** on ClawhHub.
 
 ## 📝 Changelog
 
+### [1.0.7] - 2026-02-27
+
+#### 🏗️ Model-Agnostic Architecture
+- Provider auto-detected from model name prefix — no hardcoded whitelist
+- Any new model works automatically without code changes
+- Added DeepSeek, xAI Grok, MiniMax, Qwen as first-class providers
+- Updated Claude to 4.6 series (claude-opus-4-6, claude-sonnet-4-6)
+- Simplified internals — all OpenAI-compat providers share one code path
+
 ### [1.0.6] - 2026-02-14
 
 #### 🔒 Security & Transparency Improvements
@@ -517,8 +537,8 @@ This skill is **free and open to all users** on ClawhHub.
 
 ---
 
-**Last Updated**: February 14, 2026
-**Current Version**: 1.0.6
+**Last Updated**: February 27, 2026
+**Current Version**: 1.0.7
 **Status**: Active & Maintained
 
 © 2026 UnisAI. All rights reserved.
