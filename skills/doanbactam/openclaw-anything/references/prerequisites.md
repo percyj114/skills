@@ -1,47 +1,35 @@
-﻿# OpenClaw Prerequisites and Capability Boundaries
-
-Last verified: 2026-02-17.
-Source of truth: `https://docs.openclaw.ai`.
+﻿# OpenClaw Prerequisites
 
 ## Required
-- `openclaw` CLI installed and accessible in `PATH`
+`openclaw` CLI in `PATH`
 
-## Optional or Feature-dependent
-- Node.js and npm: install/update workflows
-- Playwright OS dependencies: managed browser features
-- `imsg` on macOS: iMessage channel integrations
-- Tailscale or equivalent private networking: remote/mobile node access
-- Docker Engine + Compose: containerized deployments
-- Nix: flake-based environments
+## Optional (feature-dependent)
 
-## Runtime Environment Variables
-- `OPENCLAW_CONFIG_PATH`
-- `OPENCLAW_STATE_DIR`
-- `OPENCLAW_HOME`
+| Dependency | For |
+|-----------|-----|
+| Node.js + npm | Install/update flows |
+| Playwright deps | Browser tooling |
+| Tailscale | Remote node access |
+| Docker + Compose | Containerized deploy |
+| Nix | Flake environments |
+| CoreDNS | `dns setup --apply` (macOS, sudo) |
+| Google Cloud creds | Gmail webhook |
+
+## Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENCLAW_CONFIG_PATH` | Override config file |
+| `OPENCLAW_STATE_DIR` | Override state dir |
+| `OPENCLAW_HOME` | Override home dir |
+| `OPENCLAW_GATEWAY_TOKEN` | Gateway token |
+| `OPENCLAW_GATEWAY_PASSWORD` | Gateway password |
+| `OPENCLAW_LOAD_SHELL_ENV=1` | Import shell env |
+| `OPENCLAW_AGENT_DIR` | Agent context scope |
+| `NO_COLOR=1` | Disable ANSI |
+| `OPENCLAW_WRAPPER_ALLOW_RISKY=1` | Wrapper high-risk gate |
 
 ## Capability Boundaries
-Low-risk by default:
-- status checks
-- diagnostics
-- read-focused configuration inspection
-
-High-risk (explicit approval required):
-- arbitrary shell execution features in upstream runtime
-- elevated mode
-- sub-agent execution with inherited environment
-- browser automation, plugin install/enable, cron mutation
-- device pairing and sensor-enabled features
-
-Wrapper-level control:
-- `OPENCLAW_WRAPPER_ALLOW_RISKY=1` is required for risky command groups in `scripts/openclaw.sh`.
-
-## What This Repo Provides
-- Local docs and references
-- A shell wrapper (`scripts/openclaw.sh`) that routes commands to `openclaw`
-
-## What This Repo Does Not Provide
-- Binary installation of OpenClaw itself
-- Automatic OS package provisioning
-- Host-level network/VPN setup
-- Mobile platform permissions and device configuration
-- Automatic approval for privileged actions
+- Low-risk by default: read, list, status, search, logs, docs
+- High-risk: see `security-policy.md`
+- Wrapper: `OPENCLAW_WRAPPER_ALLOW_RISKY=1` for risky command groups

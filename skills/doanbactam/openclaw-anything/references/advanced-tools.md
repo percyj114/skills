@@ -1,57 +1,61 @@
-﻿# OpenClaw Advanced Tools Reference
+﻿# OpenClaw Advanced Tools — Operational Notes
 
-Reference normalized against:
-- `https://docs.openclaw.ai/tools`
-- `https://docs.openclaw.ai/tools/browser`
-- `https://docs.openclaw.ai/automation/cron-jobs`
-- `https://docs.openclaw.ai/plugins`
-- `https://docs.openclaw.ai/cli/gateway`
+For full command syntax, see `references/cli-full.md`.
+This file adds operational context not found in CLI reference.
 
-Last verified: 2026-02-17.
+## Gateway RPC Methods
+Use `openclaw gateway call <method> [--params <json>]` for direct RPC:
+- `config.apply`: validate → write → restart → wake
+- `config.patch`: merge partial update → restart → wake
+- `config.get`: read current config
+- `update.run`: run update → restart
+- `logs.tail`: tail logs (param: `{"sinceMs": 60000}`)
+- `status`: get runtime status
+- `secrets.reload`: re-resolve secret refs
 
-## Safety First
-This file documents advanced capabilities for operator awareness.
-It does not grant blanket authorization to execute privileged or high-risk operations.
-See `references/security-policy.md`.
+## Browser Operational Notes
+- Profile `openclaw` = isolated managed Chrome. Profile `chrome` = existing Chrome via extension relay.
+- Extension: `openclaw browser extension install` → load unpacked in `chrome://extensions`.
+- Remote browser: set `gateway.nodes.browser.mode` + `gateway.nodes.browser.node` in config.
+- All interaction commands accept `--target-id <id>` for multi-tab control.
+- Memory files: `MEMORY.md` and `memory/*.md` in workspace root.
 
-## Gateway API Utility
-Use gateway API calls directly from CLI:
-- `openclaw gateway call <path>`
+## Nodes Exec Behavior
+- `nodes run` reads `tools.exec.*` config + agent-level overrides.
+- Uses `exec.approval.request` before invoking `system.run`.
+- `--raw` runs via `/bin/sh -lc` (Unix) or `cmd.exe /c` (Windows).
+- Windows node hosts: `cmd.exe /c` wrapper always requires approval event with allowlist.
+- `--node` omittable when `tools.exec.node` is set in config.
+- Node hosts ignore `PATH` overrides; `tools.exec.pathPrepend` not applied.
 
-Typical patterns:
-- health checks
-- custom automation hooks
-- debugging specific gateway endpoints
+## Cron Delivery
+- `--announce`: announce to channel. `--deliver` / `--no-deliver` control message delivery.
+- `--at` + `--keep-after-run`: one-time job that persists after execution.
+- `cron.sessionRetention` (default 24h) prunes completed run sessions.
+- Run logs: `~/.openclaw/cron/runs/<jobId>.jsonl`.
 
-## Managed Browser (High-risk)
-- `openclaw browser start`
-- `openclaw browser open <url>`
-- `openclaw browser screenshot [--full-page]`
-- `openclaw browser snapshot --format aria`
-- `openclaw browser stop`
+## Secrets Workflow
+Recommended: `audit --check` → `configure` → `audit --check` (verify clean).
+- Finding codes: `PLAINTEXT_FOUND`, `REF_UNRESOLVED`, `REF_SHADOWED`, `LEGACY_RESIDUE`.
+- `secrets apply` is one-way (no rollback). Use `--dry-run` first.
+- Scrub options auto-enabled: `scrubEnv`, `scrubAuthProfilesForProviderTargets`, `scrubLegacyAuthJson`.
 
-Requires explicit approval and wrapper opt-in.
+## Security Audit Fix Scope
+`security audit --fix` will:
+- Flip `groupPolicy="open"` → `"allowlist"`
+- Set `logging.redactSensitive` → `"tools"`
+- Tighten file permissions on state/config
 
-## Cron Automation (High-risk)
-- `openclaw cron list`
-- `openclaw cron add ...`
-- `openclaw cron run <jobId>`
-- `openclaw cron remove <jobId>`
+`--fix` will NOT: rotate tokens, disable tools, change bind/auth/network.
 
-Creation, run, and delete operations require explicit approval.
+## Bundled Hooks
+Enable: `openclaw hooks enable <name>`. Require gateway restart.
+- `session-memory`: saves context on `/new` → `memory/YYYY-MM-DD-slug.md`
+- `bootstrap-extra-files`: injects `AGENTS.md`/`TOOLS.md` on agent bootstrap
+- `command-logger`: logs to `~/.openclaw/logs/commands.log` (JSONL)
+- `boot-md`: runs `BOOT.md` on gateway startup
 
-## Plugins (High-risk)
-- `openclaw plugins list`
-- `openclaw plugins install <path-or-url>`
-- `openclaw plugins enable <name>`
-- `openclaw plugins disable <name>`
-
-Install and enable operations should be limited to trusted sources.
-
-## Upstream Runtime Capabilities (Awareness)
-Depending on OpenClaw runtime configuration, upstream may expose:
-- `exec` style arbitrary command execution
-- elevated permission workflows
-- sub-agent delegation
-
-Treat these as privileged features with explicit, per-action approval.
+## Config Hot Reload
+`gateway.reload.mode`: `hybrid` (default) | `hot` | `restart` | `off`
+- Hot-apply: channels, agents, models, routing, hooks, cron, tools, browser, skills, etc.
+- Restart required: gateway.*, discovery, plugins, gateway.remote

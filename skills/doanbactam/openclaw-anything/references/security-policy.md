@@ -1,34 +1,39 @@
 ﻿# OpenClaw Security Policy
 
-Last verified: 2026-02-17.
+Default stance: least privilege. Do not chain high-risk actions unattended.
 
-## Purpose Constraint
-This skill exists to operate OpenClaw safely as a CLI wrapper plus documentation aid.
-It is not a blanket authorization for privileged or autonomous actions.
-
-## Approval Model
-- Low-risk read operations may run by default.
-- High-risk operations require explicit user approval for each action.
-- Do not chain high-risk actions into unattended workflows by default.
+## Low-risk (default)
+status · doctor · version · health · logs · dashboard · config read · docs search
+channels list/status · models list/status · memory status/search · skills list
+plugins list/info/doctor · hooks list/info/check · sandbox list/explain
+sessions · approvals get · system presence/heartbeat
 
 ## High-risk Categories
-- Shell execution features (`exec`) that can run arbitrary commands
-- Elevated privilege flows
-- Sub-agent delegation with inherited environment/context
-- Plugin install from external sources
-- Cron add/remove/force-run operations
-- Browser automation on arbitrary remote sites
-- Device pairing and sensor access (camera/audio/location)
 
-## Required Controls
-- Principle of least privilege
-- Explicit, contextual consent before each high-risk step
-- Prefer read-only checks before any mutating action
-- Use trusted plugin sources only
-- Keep gateway bound to loopback unless remote access is intentional
+| Category | Commands | Gate |
+|----------|----------|------|
+| Shell/Exec | `exec` tool, nodes invoke/run | Full |
+| Device/Sensor | pairing, devices approve/rotate/revoke, camera snap/clip, screen record, location get | Full |
+| Browser | All browser interaction commands, evaluate (JS exec) | Full |
+| Automation | cron add/edit/rm/run, webhooks gmail, dns setup --apply | Full |
+| Plugin/Hook | plugins install/enable, hooks install/enable | Sub-cmd |
+| Security | security audit --fix | Full |
+| Secrets | secrets apply | Sub-cmd |
+| Sandbox | sandbox recreate | Sub-cmd |
 
 ## Wrapper Enforcement
-`bash scripts/openclaw.sh` blocks high-risk command groups unless:
-- `OPENCLAW_WRAPPER_ALLOW_RISKY=1`
+`scripts/openclaw.sh` blocks high-risk via `OPENCLAW_WRAPPER_ALLOW_RISKY=1` (session-scoped).
 
-This opt-in is session-scoped and should be set only when required.
+Granular gating:
+- `plugin`: only `install` and `enable` gated
+- `hooks`: only `install` and `enable` gated
+- `secrets`: only `apply` gated
+- `sandbox`: only `recreate` gated
+- All others in table above: fully gated
+
+## Required Controls
+- Explicit consent per high-risk step
+- Prefer read-only before mutating
+- Gateway: keep loopback unless remote intentional
+- Verify node identity before approving
+- Use `security audit` periodically

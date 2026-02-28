@@ -1,43 +1,36 @@
-﻿# OpenClaw Deployment and Operations
+﻿# OpenClaw Deployment
 
-Reference normalized against:
-- `https://docs.openclaw.ai/install`
-- `https://docs.openclaw.ai/install/docker`
-- `https://docs.openclaw.ai/install/updating`
-- `https://docs.openclaw.ai/install/uninstall`
+## Install & Onboard
+```
+npm install -g openclaw@latest
+openclaw onboard [--install-daemon]
+openclaw doctor
+```
 
-Last verified: 2026-02-17.
+## Docker
+See `https://docs.openclaw.ai/install/docker`. Also: Podman, Nix, Ansible.
 
-## Local Install and Onboarding
-- Install CLI via official install flow from docs.
-- Run `openclaw onboard` to initialize and connect providers/channels.
-- Validate with `openclaw doctor`.
+## Gateway Service
+```
+openclaw gateway install [--port <port>] [--runtime <node|bun>] [--token <token>] [--force]
+openclaw gateway start|stop|restart|status|uninstall
+```
+Default runtime: Node (bun not recommended for WhatsApp/Telegram).
 
-## Docker Deployment
-- Use the official Docker guide under `/install/docker`.
-- Typical lifecycle:
-  - `docker compose up -d`
-  - `docker compose logs -f`
-  - `docker compose down`
-- Keep OpenClaw state mounted on persistent volume.
+## Node Host
+```
+openclaw node install --host <gateway-host> [--port <port>] [--runtime <node|bun>]
+openclaw node start|stop|restart|uninstall|status
+```
 
-## Service Lifecycle
-- `openclaw gateway install`: Install background service.
-- `openclaw gateway restart`: Restart service.
-- `openclaw gateway status`: Check runtime status.
-- `openclaw gateway uninstall`: Remove service.
+## Update / Rollback
+`openclaw update` → re-run `openclaw doctor`.
+Rollback: reinstall pinned version.
 
-## Updating and Rollback
-- Update CLI: `openclaw update`
-- If rollback is needed, reinstall pinned version using the official package path described in docs.
-- Re-run `openclaw doctor` after updates.
-
-## Uninstall
-- Use `openclaw uninstall` for full removal flow.
-- Confirm whether state data should be preserved or removed.
-
-## Production Safety Checklist
-- Set strong `gateway.auth.token`.
-- Avoid public bind unless required.
-- Use VPN/Tailscale or private network for remote access.
-- Monitor with `openclaw gateway health`.
+## Production Checklist
+- [ ] Strong `gateway.auth.token`
+- [ ] Loopback bind (or VPN/Tailscale)
+- [ ] `openclaw security audit` periodic
+- [ ] `openclaw secrets audit` for plaintext
+- [ ] `openclaw devices list` for unauthorized devices
+- [ ] Node runtime (not bun) for stability
