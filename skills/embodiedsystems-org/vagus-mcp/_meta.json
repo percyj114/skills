@@ -1,0 +1,11 @@
+{
+  "owner": "embodiedsystems-org",
+  "slug": "vagus-mcp",
+  "displayName": "VAGUS MCP",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772241250788,
+    "commit": null
+  },
+  "history": []
+}
