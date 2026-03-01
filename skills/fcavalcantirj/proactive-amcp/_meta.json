@@ -1,13 +1,18 @@
 {
   "owner": "fcavalcantirj",
   "slug": "proactive-amcp",
-  "displayName": "Proactive AMCP",
+  "displayName": "Skill",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772327875419,
-    "commit": "https://github.com/openclaw/skills/commit/75fef14d171a7c435b9f0d5cfe8ae1250dcb2196"
+    "version": "1.0.1",
+    "publishedAt": 1772327982125,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772327875419,
+      "commit": "https://github.com/openclaw/skills/commit/75fef14d171a7c435b9f0d5cfe8ae1250dcb2196"
+    },
     {
       "version": "0.9.8",
       "publishedAt": 1772060394802,
