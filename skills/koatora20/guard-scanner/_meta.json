@@ -1,13 +1,18 @@
 {
   "owner": "koatora20",
   "slug": "guard-scanner",
-  "displayName": "Guard Scanner",
+  "displayName": "guard-scanner",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1771424671656,
-    "commit": "https://github.com/openclaw/skills/commit/ea6a9891bb5d2e01abf2ea51d9a46318dad96614"
+    "version": "4.0.2",
+    "publishedAt": 1772209944461,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1771424671656,
+      "commit": "https://github.com/openclaw/skills/commit/ea6a9891bb5d2e01abf2ea51d9a46318dad96614"
+    },
     {
       "version": "2.0.1",
       "publishedAt": 1771360127440,
