@@ -3,11 +3,16 @@
   "slug": "agent-swarm",
   "displayName": "Agent Swarm",
   "latest": {
-    "version": "1.7.13",
-    "publishedAt": 1771548530555,
-    "commit": "https://github.com/openclaw/skills/commit/2b73d92cea28ef386c4dc7695086e3661bc227d4"
+    "version": "1.7.15",
+    "publishedAt": 1772283673908,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.7.13",
+      "publishedAt": 1771548530555,
+      "commit": "https://github.com/openclaw/skills/commit/2b73d92cea28ef386c4dc7695086e3661bc227d4"
+    },
     {
       "version": "1.7.12",
       "publishedAt": 1771446667115,
