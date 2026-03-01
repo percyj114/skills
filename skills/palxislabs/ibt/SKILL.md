@@ -1,15 +1,15 @@
 ---
 name: ibt
-version: 2.5.0
+version: 2.6.0
 title: IBT: Instinct + Behavior + Trust
-description: Execution discipline with agency, instinct detection, critical safety rules, and trust layer. v2.5 adds human ambiguity handling and session realignment.
+description: Execution discipline with agency, instinct detection, critical safety rules, and trust layer. v2.6 adds Discrepancy Reasoning protocol.
 homepage: https://github.com/palxislabs/ibt-skill
 metadata: {"openclaw":{"emoji":"🧠","category":"execution","tags":["ibt","instinct","behavior","trust","discipline","safety"]}}
 ---
 
-# IBT v2.5 — Instinct + Behavior + Trust
+# IBT v2.6 — Instinct + Behavior + Trust
 
-> **v2.5 supersedes v2.4** — Install v2.5 for the complete IBT framework with all features.
+> **v2.6 supersedes v2.5** — Install v2.6 for Discrepancy Reasoning protocol from Trinity.
 
 ## What to Do (Quick Reference)
 
@@ -353,6 +353,67 @@ Users can customize realignment behavior:
 > - Some users may prefer once daily; others may want more frequent check-ins
 > - Always respect the user's configured preference
 
+### Discrepancy Reasoning Protocol (v2.5.1 — Trinity)
+
+*Added 2026-02-27 by Trinity for systematic verification when data doesn't match.*
+
+#### Why It Matters
+
+When the agent's observations don't match the human's data:
+- **Don't assume you're right** — the human might have newer information
+- **Don't assume they're right** — they might have outdated data
+- **Systematically verify** — apply the 5-step protocol
+
+#### The 5-Step Protocol
+
+When you detect a discrepancy (Δ):
+
+1. **LIST** — List all possible reasons for the mismatch
+   - "Could be: stale cache, different API versions, different timestamps, calculation errors"
+
+2. **CHECK** — Check timestamps and data sources
+   - "Your data is from X, my data is from Y. Which is more recent?"
+
+3. **LOOK** — Look for concrete evidence
+   - Fetch fresh data from the source
+   - "Let me verify with a fresh API call"
+
+4. **FORM** — Form a hypothesis
+   - "Based on the evidence, it appears that..."
+
+5. **TEST** — Test the hypothesis
+   - "The most likely cause is X. To confirm: [test]"
+
+#### Example: Account Balance
+
+```
+User: My balance is $X,XXX
+Agent: I'm showing $Y,YYY. Let me verify.
+
+LIST reasons:
+- Stale cache
+- Different API endpoint
+- Different time snapshot
+- Calculation error
+
+CHECK: My data is from API at [time], yours is from [time]. Which is more recent?
+
+LOOK: [fetches fresh API data]
+
+FORM: The API shows $Y,YYY, which matches my previous read. 
+      Your $X,XXX might be from a different account or before a transaction.
+
+TEST: "Can you confirm which account you're checking? 
+       My API shows $Y,YYY for [account ID]. Is that the right account?"
+```
+
+#### When to Use
+
+- Financial data discrepancies (balances, prices, positions)
+- Factual claims that don't match your knowledge
+- Data that seems outdated
+- Any time "that doesn't match what I see"
+
 ---
 
 ## Installation
@@ -370,15 +431,16 @@ clawhub install ibt
 | `TEMPLATE.md` | Full drop-in policy |
 | `EXAMPLES.md` | Before/after demonstrations |
 
-## Upgrading from v1, v2, v2.2, v2.3, or v2.4
+## Upgrading from v1, v2, v2.2, v2.3, v2.4, v2.5, or v2.5.1
 
-v2.5 is a drop-in replacement. Just install v2.5 and you get:
+v2.6 is a drop-in replacement. Just install v2.6 and you get:
 - ✅ All v1 steps (Parse → ... → Stop)
 - ✅ Observe step (v2)
 - ✅ Instinct layer (takes, concerns, suggestions)
 - ✅ OpenClaw /stop integration (v2.2)
 - ✅ Trust Layer with contracts and session realignment (v2.3)
 - ✅ Human ambiguity handling + Car Wash example (v2.5)
+- ✅ Discrepancy Reasoning protocol (v2.6) — Trinity's contribution
 
 No changes to your existing setup needed.
 
