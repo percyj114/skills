@@ -3,11 +3,16 @@
   "slug": "polymarket-elon-tweets",
   "displayName": "Polymarket Elon Tweets",
   "latest": {
-    "version": "1.0.9",
-    "publishedAt": 1772172222102,
-    "commit": "https://github.com/openclaw/skills/commit/f39caf2be344703f08f13b0dbfa5164420cd6c85"
+    "version": "1.0.10",
+    "publishedAt": 1772186713236,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.9",
+      "publishedAt": 1772172222102,
+      "commit": "https://github.com/openclaw/skills/commit/f39caf2be344703f08f13b0dbfa5164420cd6c85"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1771938250101,
